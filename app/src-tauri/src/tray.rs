@@ -47,6 +47,11 @@ pub enum Look {
 }
 
 impl Look {
+    /// A lamp the app does not drive, whose Diagnostics have nothing to show.
+    fn locked(self) -> bool {
+        matches!(self, Look::NeedsUpdate | Look::Newer)
+    }
+
     fn tooltip(self, locale: Locale) -> String {
         let key = match self {
             Look::NoLamp => "noLamp",
@@ -119,16 +124,23 @@ fn render(look: Look) -> Image<'static> {
     Image::new_owned(rgba, SIZE, SIZE)
 }
 
-fn menu(app: &AppHandle, locale: Locale) -> tauri::Result<Menu<Wry>> {
-    let item =
-        |id: &str| MenuItem::with_id(app, id, locale.t(&format!("tray.{id}")), true, None::<&str>);
+fn menu(app: &AppHandle, locale: Locale, look: Look) -> tauri::Result<Menu<Wry>> {
+    let item = |id: &str, enabled: bool| {
+        MenuItem::with_id(
+            app,
+            id,
+            locale.t(&format!("tray.{id}")),
+            enabled,
+            None::<&str>,
+        )
+    };
     Menu::with_items(
         app,
         &[
-            &item("open")?,
-            &item("diagnostics")?,
+            &item("open", true)?,
+            &item("diagnostics", !look.locked())?,
             &PredefinedMenuItem::separator(app)?,
-            &item("quit")?,
+            &item("quit", true)?,
         ],
     )
 }
@@ -139,7 +151,7 @@ pub fn create(app: &AppHandle, locale: Locale) -> tauri::Result<()> {
     TrayIconBuilder::with_id(TRAY_ID)
         .icon(render(Look::NoLamp))
         .tooltip(Look::NoLamp.tooltip(locale))
-        .menu(&menu(app, locale)?)
+        .menu(&menu(app, locale, Look::NoLamp)?)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "open" => windows::show_popup(app),
@@ -171,15 +183,23 @@ pub fn create(app: &AppHandle, locale: Locale) -> tauri::Result<()> {
 /// skipped, since in automatic brightness the lamp reports its level up to
 /// twice a second.
 pub fn show(app: &AppHandle, look: Look) {
+    let mut was_locked = false;
     if let Ok(mut shown) = app.state::<TrayState>().0.lock() {
         if *shown == look {
             return;
         }
+        was_locked = shown.locked();
         *shown = look;
     }
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        let locale = app.state::<LocaleState>().get();
         let _ = tray.set_icon(Some(render(look)));
-        let _ = tray.set_tooltip(Some(look.tooltip(app.state::<LocaleState>().get())));
+        let _ = tray.set_tooltip(Some(look.tooltip(locale)));
+        if look.locked() != was_locked
+            && let Ok(menu) = menu(app, locale, look)
+        {
+            let _ = tray.set_menu(Some(menu));
+        }
     }
 }
 
@@ -192,7 +212,7 @@ pub fn relabel(app: &AppHandle, locale: Locale) {
         .map(|look| *look)
         .unwrap_or_default();
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
-        if let Ok(menu) = menu(app, locale) {
+        if let Ok(menu) = menu(app, locale, look) {
             let _ = tray.set_menu(Some(menu));
         }
         let _ = tray.set_tooltip(Some(look.tooltip(locale)));

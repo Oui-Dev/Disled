@@ -98,9 +98,6 @@ const groups = computed<{ title: string; rows: Row[] }[]>(() => {
   <p v-if="!lamp.connection.connected" class="text-sm text-muted">
     {{ t('diagnostics.noLamp') }}
   </p>
-  <p v-else-if="lamp.info && !lamp.info.diagnostics" class="text-sm text-muted">
-    {{ t('health.unsupported') }}
-  </p>
   <p v-else-if="!groups.length" class="text-sm text-muted">{{ t('health.reading') }}</p>
   <div v-else class="flex flex-col gap-5">
     <section v-for="group in groups" :key="group.title" class="flex flex-col gap-1">

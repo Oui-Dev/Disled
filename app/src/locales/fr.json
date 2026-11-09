@@ -90,7 +90,6 @@
     "title": "Santé",
     "issues": "{n} point à vérifier | {n} points à vérifier",
     "issue": "à vérifier",
-    "unsupported": "Le firmware de cette lampe ne fournit pas de diagnostics.",
     "reading": "Lecture…",
     "stability": "Stabilité",
     "boots": "Démarrages",
@@ -118,7 +117,6 @@
   },
   "selfTest": {
     "title": "Autotest",
-    "unsupported": "Le firmware de cette lampe n’a pas d’autotest.",
     "instructions": "La lampe affiche rouge, vert, bleu et blanc chaud (vérifiez-les), puis brille en bleu : touchez le couvercle dans les 10 s.",
     "run": "Lancer l’autotest",
     "running": "En cours…",
@@ -158,7 +156,6 @@
     "saveTitle": "Exporter l’enregistrement",
     "permille": "{value} ‰",
     "lux": "{value} lx",
-    "unsupported": "Le firmware de cette lampe n’envoie pas de télémétrie.",
     "stopped": "Télémétrie arrêtée",
     "stoppedHint": "Choisissez une période pour recevoir les mesures de la lampe.",
     "waiting": "En attente des mesures…",

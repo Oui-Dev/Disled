@@ -39,6 +39,9 @@ export default defineConfig({
         alert: {
           slots: { title: 'text-highlighted', description: 'text-default opacity-100' },
         },
+        // The badges likewise keep their color on the background, the ring
+        // and the icon, and their text in the neutral tokens.
+        badge: { slots: { label: 'text-default' } },
       },
       // The app works offline and its CSP forbids other origins, so the icons
       // it uses are bundled, never fetched.

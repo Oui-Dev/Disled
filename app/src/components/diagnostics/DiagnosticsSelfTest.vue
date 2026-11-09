@@ -62,9 +62,6 @@ const checks = computed(() => {
   <p v-if="!lamp.connection.connected" class="text-sm text-muted">
     {{ t('diagnostics.noLamp') }}
   </p>
-  <p v-else-if="lamp.info && !lamp.info.self_test" class="text-sm text-muted">
-    {{ t('selfTest.unsupported') }}
-  </p>
   <div v-else class="flex flex-col gap-4">
     <p class="text-sm text-muted">{{ t('selfTest.instructions') }}</p>
     <ul aria-live="polite" class="flex flex-col divide-y divide-default">

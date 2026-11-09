@@ -80,6 +80,7 @@ function restart(): Promise<void> {
         size="sm"
         icon="i-lucide-rotate-ccw"
         class="shrink-0"
+        :disabled="lamp.locked"
         @click="confirmingRestart = true"
       >
         {{ t('diagnostics.restart') }}

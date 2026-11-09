@@ -11,10 +11,20 @@ import type { TabsItem } from '@nuxt/ui';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useDiagnosticsStore } from '@/stores/diagnostics';
+import { useLampStore } from '@/stores/lamp';
 import { issueCount } from '@/utils/health';
 
 const { t } = useI18n();
 const diagnostics = useDiagnosticsStore();
+const lamp = useLampStore();
+
+/** Why a lamp that the app does not drive shows no tabs. */
+const lockedLine = computed(() => {
+  if (lamp.generation === 'v1') {
+    return t('lampV1.line');
+  }
+  return lamp.generation === 'newer' ? t('lampNewer.text') : null;
+});
 
 const issues = computed(() => (diagnostics.diagnostics ? issueCount(diagnostics.diagnostics) : 0));
 
@@ -34,7 +44,8 @@ const tabs = computed<TabsItem[]>(() => [
   <main class="flex h-screen flex-col">
     <DiagnosticsHeader class="shrink-0 border-b border-default px-5 py-3" />
 
-    <div class="flex min-h-0 flex-1">
+    <p v-if="lockedLine" class="p-5 text-sm text-muted">{{ lockedLine }}</p>
+    <div v-else class="flex min-h-0 flex-1">
       <UTabs
         :items="tabs"
         default-value="lamp"
@@ -43,16 +54,19 @@ const tabs = computed<TabsItem[]>(() => [
         class="w-80 shrink-0 border-e border-default"
         :ui="{ root: 'gap-0', list: 'px-3 pt-2', content: 'min-h-0 flex-1 overflow-y-auto p-4' }"
       >
+        <!-- The number goes through the label, which takes the text color of
+             every badge; the sentence beside it is for screen readers. -->
         <template #trailing="{ item }">
-          <UBadge
-            v-if="item.value === 'health' && issues"
-            color="warning"
-            variant="subtle"
-            size="sm"
-          >
-            <span aria-hidden="true">{{ issues }}</span>
+          <template v-if="item.value === 'health' && issues">
+            <UBadge
+              color="warning"
+              variant="subtle"
+              size="sm"
+              :label="String(issues)"
+              aria-hidden="true"
+            />
             <span class="sr-only">{{ t('health.issues', issues) }}</span>
-          </UBadge>
+          </template>
         </template>
         <template #lamp><DiagnosticsLamp /></template>
         <template #health><DiagnosticsHealth /></template>

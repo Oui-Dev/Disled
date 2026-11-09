@@ -33,9 +33,6 @@ const placeholder = computed(() => {
   if (!lamp.connection.connected) {
     return { icon: 'i-lucide-unplug', description: t('diagnostics.noLamp') };
   }
-  if (lamp.info && !lamp.info.telemetry) {
-    return { icon: 'i-lucide-activity', description: t('telemetry.unsupported') };
-  }
   if (telemetry.periodMs === 0) {
     return {
       icon: 'i-lucide-circle-pause',

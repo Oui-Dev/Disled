@@ -90,7 +90,6 @@
     "title": "Health",
     "issues": "{n} thing to check | {n} things to check",
     "issue": "to check",
-    "unsupported": "This lamp firmware does not report diagnostics.",
     "reading": "Reading…",
     "stability": "Stability",
     "boots": "Boots",
@@ -118,7 +117,6 @@
   },
   "selfTest": {
     "title": "Self-test",
-    "unsupported": "This lamp firmware has no self-test.",
     "instructions": "The lamp shows red, green, blue and warm white (check them), then glows blue: touch the lid within 10 s.",
     "run": "Run the self-test",
     "running": "Running…",
@@ -158,7 +156,6 @@
     "saveTitle": "Save the recording",
     "permille": "{value} ‰",
     "lux": "{value} lx",
-    "unsupported": "This lamp firmware sends no telemetry.",
     "stopped": "Telemetry is off",
     "stoppedHint": "Choose a period to stream measurements from the lamp.",
     "waiting": "Waiting for measurements…",
