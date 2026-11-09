@@ -110,9 +110,9 @@ proto_status_t app_alert(uint8_t seq, uint8_t count, uint16_t period_ms)
     return PROTO_OK;
 }
 
-/* The touch never acts on the alert itself, but on the lamp: an alert ends
- * with the lamp off, at a USB suspend, when the self-test takes the LED, and
- * after its last breath. Returns the breath to show now. */
+/* The touch acts on nothing during an alert (task_touch()). An alert ends
+ * with the lamp turned off by the host, at a USB suspend, when the self-test
+ * takes the LED, and after its last breath. Returns the breath to show now. */
 static uint16_t update_alert(uint32_t now_ms, bool testing)
 {
     if (app.link == USB_LINK_SUSPENDED) {
@@ -194,7 +194,10 @@ static void task_touch(uint32_t now_ms)
     uint16_t raw;
     uint32_t sample_ms;
     while (tkey_read(&raw, &sample_ms)) {
-        const touch_event_t event = touch_detector_feed(&app.touch, raw, sample_ms);
+        /* No gesture acts during an alert, nor at the release of a press it
+         * covered. The alert ends in task_output(), between two samples. */
+        const touch_event_t event =
+            touch_gate_feed(&app.touch_gate, &app.touch, raw, sample_ms, alert_running(&app.alert));
         bool changed = false;
         if (self_test_running(&app.self_test)) {
             /* The self-test watches the touch signal itself. */
@@ -389,6 +392,7 @@ void app_init(const fault_record_t *fault)
     als_probe(&app.als, bsp_time_ms(), APP_ALS_FIRST_RETRY_MS);
 
     touch_detector_init(&app.touch, &app_touch_config);
+    touch_gate_init(&app.touch_gate);
     tkey_init(&app_tkey_config);
     tkey_start();
 

@@ -23,6 +23,7 @@
 #include "self_test.h"
 #include "touch_cycle.h"
 #include "touch_detector.h"
+#include "touch_gate.h"
 
 typedef struct {
     bool present;
@@ -39,6 +40,7 @@ typedef struct {
     change_source_t source; /* cause of the latest lamp change */
     brightness_t brightness;
     touch_detector_t touch;
+    touch_gate_t touch_gate; /* no gesture during an alert */
     led_output_t output;
     uint16_t duty[LED_CHANNEL_COUNT];
     usb_link_t link;
