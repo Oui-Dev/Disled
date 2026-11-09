@@ -580,6 +580,39 @@ static void test_a_correction_during_a_press_waits_for_its_release(void)
     assert_thresholds(30, 17, 25);
 }
 
+static void test_a_correction_during_a_press_waits_with_the_hand_near_the_lid(void)
+{
+    /* The hand rests 30 per mille down: a press asks for 80, the floor and
+     * the rise, and its release for 55, the floor and half the rise. */
+    start(&board_config, 0);
+    hold(dropped(30), 500);
+    hold(dropped(100), 300);
+    hold(dropped(65), 200); /* the finger relaxes, still down */
+    TEST_ASSERT_EQUAL(TOUCH_STATE_PRESSED, touch_detector_state(&td));
+
+    /* Applied now, -50 would take the release to 67 through the rise (75),
+     * above the finger: a short press, finger down. It waits. */
+    touch_detector_set_sensitivity(&td, -50);
+    hold(dropped(65), 500);
+    TEST_ASSERT_EQUAL(TOUCH_STATE_PRESSED, touch_detector_state(&td));
+    TEST_ASSERT_EQUAL_UINT(0, short_presses + long_presses);
+
+    /* The finger leaves, the hand stays: one short press. */
+    hold(dropped(30), 400);
+    TEST_ASSERT_EQUAL(TOUCH_STATE_IDLE, touch_detector_state(&td));
+    TEST_ASSERT_EQUAL_UINT(1, short_presses);
+
+    /* Then the new thresholds, over the same hand: a press asks for 105, so a
+     * tap of 100 per mille no longer counts, and one of 115 does. */
+    hold(dropped(100), 150);
+    hold(dropped(30), 400);
+    TEST_ASSERT_EQUAL_UINT(1, short_presses);
+    hold(dropped(115), 150);
+    hold(dropped(30), 400);
+    TEST_ASSERT_EQUAL_UINT(2, short_presses);
+    TEST_ASSERT_EQUAL_UINT(0, long_presses);
+}
+
 static void test_back_to_no_correction_behaves_as_never_corrected(void)
 {
     touch_detector_t fresh;
@@ -646,6 +679,7 @@ int main(void)
     RUN_TEST(test_the_ends_of_the_range_on_the_measured_board);
     RUN_TEST(test_a_correction_while_idle_applies_at_once_and_keeps_the_baseline);
     RUN_TEST(test_a_correction_during_a_press_waits_for_its_release);
+    RUN_TEST(test_a_correction_during_a_press_waits_with_the_hand_near_the_lid);
     RUN_TEST(test_back_to_no_correction_behaves_as_never_corrected);
     return UNITY_END();
 }
