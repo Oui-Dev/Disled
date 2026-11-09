@@ -9,8 +9,9 @@
 
 #include "time_utils.h"
 
-/* `permille` times (100 - percent) / 100, rounded: unchanged at 0. A drop
- * never passes 1000 per mille, so neither does a threshold, nor the result. */
+/* `permille` times (100 - percent) / 100, rounded half up: unchanged at 0. A
+ * threshold that a drop can reach stays under 1000 per mille, and the result
+ * under 1500. */
 static uint16_t corrected(uint16_t permille, int32_t percent)
 {
     return (uint16_t)(((uint32_t)permille * (uint32_t)(100 - percent) + 50u) / 100u);

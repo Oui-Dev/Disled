@@ -42,12 +42,13 @@
 /* Alert breath: perceived swing, per mille of L*, up from a lamp below 70 %
  * and down from a brighter one. Not tuned on a board yet. */
 #define APP_ALERT_DEPTH_PERMILLE 300u
-/* The console's alert, and what the app should send: 3 breaths of 1.3 s. */
+/* The console's alert. The app sends the same 3 breaths, of a period still
+ * to be chosen on a board, lid closed: 1.3 or 1.5 s. */
 #define APP_ALERT_DEFAULT_COUNT     3u
 #define APP_ALERT_DEFAULT_PERIOD_MS 1300u
 
 /* Power-only touch falls back to normal after this long without a command.
- * The app sends one every few seconds (GET_STATE does). */
+ * In that mode, the app sends a SET_STATE of the touch mode alone every 3 s. */
 #define APP_HOST_SILENCE_MS 10000u
 
 extern const tkey_config_t app_tkey_config;

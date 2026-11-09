@@ -14,8 +14,10 @@
  * reading near mid-scale, about 2100 of 4095. The WCH example values
  * (charge 16, 7.5 cycles) saturate it.
  *
- * Thresholds, in per mille below the baseline, through the closed lid. A tap
- * reads 77 to 188, a hand held 1 cm above 60 to 80, idle noise under 25. A
+ * Thresholds, in per mille below the baseline, through the closed lid, from
+ * the measurements of 2026-10-31 on a PC on an earthed monitor hub: a firm
+ * finger on the ring reads 182 to 198, a light tap in the center 69 to 105, a
+ * hand held 1 cm above 80 to 89, the idle noise about 6 (peaks under 15). A
  * finger lands faster than a hand nears, so the rise above the floor (50)
  * tells them apart. A 60 ms debounce misses light taps over the ring's hole.
  * The touch sensitivity setting of the desktop app scales press, release and

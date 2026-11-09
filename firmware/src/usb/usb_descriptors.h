@@ -11,9 +11,10 @@
 #include "tusb_config.h"
 
 /*
- * pid.codes test PIDs, for private testing only (see LICENSING.md).
- * Debug builds expose an extra CDC interface; a separate PID keeps hosts
- * from mixing up the cached descriptors of the two builds.
+ * pid.codes test PIDs (see LICENSING.md): release builds use 1209:0001 until
+ * pid.codes grants 1209:D1ED, and debug builds, for private testing only,
+ * keep 1209:0002. Debug builds expose an extra CDC interface; a separate PID
+ * keeps hosts from mixing up the cached descriptors of the two builds.
  */
 #define USB_VID 0x1209u
 #if DISLED_DEBUG
