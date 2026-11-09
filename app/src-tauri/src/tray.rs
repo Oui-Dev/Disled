@@ -227,7 +227,7 @@ pub fn create(app: &AppHandle, locale: Locale) -> tauri::Result<()> {
                 let app = app.clone();
                 tauri::async_runtime::spawn(async move { windows::open_diagnostics(&app) });
             }
-            "quit" => app.exit(0),
+            "quit" => crate::quit_app(app),
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {

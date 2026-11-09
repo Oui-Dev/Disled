@@ -2,15 +2,21 @@
 // SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! Connection to the lamp on a worker thread: discovery and reconnection,
-//! command writes, message reads. Results reach the frontend as events.
+//! command writes, message reads, and the heartbeat of the integrations
+//! mode. Results reach the frontend as events, and the control of the app.
 //!
 //! Until the INFO of a lamp says it speaks protocol 2, only GET_INFO goes to
 //! it and only its INFO comes back: a version 1 lamp gets the lock of the
 //! app, and nothing that it sends shows as an error.
+//!
+//! The replies to the commands that the backend sends on its own, such as
+//! the connection sequence, the heartbeat and those of the control, stay in
+//! the backend: a window would show their refusal, during a self-test for
+//! instance, as an error of the user.
 
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use hidapi::{HidApi, HidDevice};
 use serde::Serialize;
@@ -23,6 +29,7 @@ use disled_protocol::{
 };
 
 use crate::colors::{ColorsState, Palette, PreviewState};
+use crate::control::{self, ControlState, Input};
 use crate::i18n::LocaleState;
 use crate::settings::{Settings, SettingsState};
 use crate::tray::{self, Look};
@@ -30,6 +37,9 @@ use crate::windows;
 
 const SCAN_INTERVAL: Duration = Duration::from_millis(1000);
 const READ_TIMEOUT_MS: i32 = 20;
+/// In the integrations mode, a command at least this often keeps the touch
+/// in power only: the lamp goes back to normal touch after 10 s of silence.
+const HEARTBEAT: Duration = Duration::from_secs(3);
 
 const EVENT_CONNECTION: &str = "device-connection";
 const EVENT_MESSAGE: &str = "device-message";
@@ -121,8 +131,14 @@ impl Session {
 /// does not speak protocol 2 gets none. A version 2 lamp keeps nothing of
 /// the app across a power cycle, so it gets everything again, in the order
 /// of the protocol: the state first, then the corrections, the palette, and
-/// the state the app sets.
-pub fn commands_after_info(info: &Info, settings: &Settings, palette: &Palette) -> Vec<Command> {
+/// the state the app sets, with the touch mode and the color that the
+/// control imposes.
+pub fn commands_after_info(
+    info: &Info,
+    settings: &Settings,
+    palette: &Palette,
+    (touch_mode, color): (TouchMode, Option<u8>),
+) -> Vec<Command> {
     if Generation::of(info) != Generation::V2 {
         return Vec::new();
     }
@@ -137,12 +153,51 @@ pub fn commands_after_info(info: &Info, settings: &Settings, palette: &Palette) 
     ];
     commands.extend(palette.commands());
     commands.push(Command::SetState(SetState {
+        color,
         brightness_mode: Some(settings.brightness_mode),
         manual_level: Some(settings.manual_level),
-        touch_mode: Some(TouchMode::Normal),
+        touch_mode: Some(touch_mode),
         ..SetState::default()
     }));
     commands
+}
+
+/// Whether the heartbeat is due: on, and no command for `HEARTBEAT`, since
+/// every command counts as one.
+pub fn heartbeat_due(on: bool, last_write: Instant, now: Instant) -> bool {
+    on && now.saturating_duration_since(last_write) >= HEARTBEAT
+}
+
+/// The heartbeat: a SET_STATE that only sets the touch to power only, which
+/// also brings it back after a fallback.
+fn heartbeat() -> Command {
+    Command::SetState(SetState {
+        touch_mode: Some(TouchMode::PowerOnly),
+        ..SetState::default()
+    })
+}
+
+/// Whether a message of the lamp goes to the windows. The acknowledgments,
+/// refusals and alert ends that answer a command of the backend stay with
+/// it. A STATE always goes, but the reply to a heartbeat only when it
+/// changed something, after the lamp fell back to normal touch.
+fn shown(message: &Message, automatic: bool, heartbeat: bool, previous: Option<u16>) -> bool {
+    match message {
+        Message::State(state) => !heartbeat || previous != Some(state.state_seq),
+        Message::Ack { .. } | Message::Error { .. } | Message::AlertDone { .. } => !automatic,
+        _ => true,
+    }
+}
+
+/// What the worker gets from the rest of the app, in order.
+enum Request {
+    /// A command, `automatic` when the backend sends it on its own.
+    Command { command: Command, automatic: bool },
+    /// The heartbeat on or off. Through the same queue as the commands, so
+    /// that none follows the command that turns the touch back to normal.
+    Heartbeat(bool),
+    /// Told once the lamp answered the commands queued before.
+    Flush(mpsc::Sender<()>),
 }
 
 /// The tray icon for an INFO: a lamp the app cannot drive shows at once,
@@ -156,7 +211,7 @@ fn look_of_info(info: &Info) -> Option<Look> {
 }
 
 pub struct DeviceHandle {
-    commands: mpsc::Sender<Command>,
+    commands: mpsc::Sender<Request>,
     connection: Arc<Mutex<Connection>>,
     info: Arc<Mutex<Option<Info>>>,
     state: Arc<Mutex<Option<State>>>,
@@ -184,6 +239,12 @@ impl DeviceHandle {
                     state: shared_state,
                     seq: 0,
                     session: Session::default(),
+                    automatic: [false; 256],
+                    last_seq: None,
+                    last_write: Instant::now(),
+                    heartbeat: false,
+                    heartbeat_seq: None,
+                    flush: None,
                 }
                 .run()
             })
@@ -206,16 +267,41 @@ impl DeviceHandle {
         self.state.lock().ok().and_then(|state| state.clone())
     }
 
-    /// Queues a command. A lamp that does not speak protocol 2 gets only
-    /// GET_INFO: the worker drops the others, and the caller hears of no
-    /// error, since the windows show the lock instead.
+    /// Queues a command of a window, whose replies the windows get. A lamp
+    /// that does not speak protocol 2 gets only GET_INFO: the worker drops
+    /// the others, and the caller hears of no error, since the windows show
+    /// the lock instead.
     pub fn send(&self, command: Command) -> Result<(), String> {
+        self.queue(command, false)
+    }
+
+    /// Queues a command that the backend sends on its own: its refusal goes
+    /// to the control, never to the windows.
+    pub fn send_automatic(&self, command: Command) -> Result<(), String> {
+        self.queue(command, true)
+    }
+
+    fn queue(&self, command: Command, automatic: bool) -> Result<(), String> {
         if !self.connection().connected {
             return Err("no Disled lamp connected".into());
         }
         self.commands
-            .send(command)
+            .send(Request::Command { command, automatic })
             .map_err(|_| "the USB worker stopped".to_string())
+    }
+
+    /// Turns the heartbeat of the integrations mode on or off.
+    pub fn heartbeat(&self, on: bool) {
+        let _ = self.commands.send(Request::Heartbeat(on));
+    }
+
+    /// Waits until the lamp answered the commands queued so far, or
+    /// `timeout`. Returns at once without a lamp.
+    pub fn flush(&self, timeout: Duration) {
+        let (done, answered) = mpsc::channel();
+        if self.commands.send(Request::Flush(done)).is_ok() {
+            let _ = answered.recv_timeout(timeout);
+        }
     }
 
     pub fn connection(&self) -> Connection {
@@ -228,12 +314,23 @@ impl DeviceHandle {
 
 struct Worker {
     app: AppHandle,
-    receiver: mpsc::Receiver<Command>,
+    receiver: mpsc::Receiver<Request>,
     connection: Arc<Mutex<Connection>>,
     info: Arc<Mutex<Option<Info>>>,
     state: Arc<Mutex<Option<State>>>,
     seq: u8,
     session: Session,
+    /// For each sequence number, whether the backend sent that command on
+    /// its own.
+    automatic: [bool; 256],
+    /// The sequence number of the last command written.
+    last_seq: Option<u8>,
+    last_write: Instant,
+    heartbeat: bool,
+    /// The sequence number of the last heartbeat.
+    heartbeat_seq: Option<u8>,
+    /// The sequence number whose reply ends a flush, and whom to tell.
+    flush: Option<(u8, mpsc::Sender<()>)>,
 }
 
 /// Why the connected loop ended.
@@ -254,17 +351,25 @@ impl Worker {
             match self.open(&mut api) {
                 Some(device) => {
                     self.session = Session::default();
+                    self.automatic = [false; 256];
+                    self.last_seq = None;
+                    self.heartbeat = false;
+                    self.heartbeat_seq = None;
                     if let Exit::AppClosed = self.serve(&device) {
                         return;
                     }
+                    // A flush under way waits no more.
+                    self.flush = None;
                     self.set_info(None);
                     self.set_state(None);
                     self.app.state::<PreviewState>().forget();
+                    let _ = control::input(&self.app, Input::Disconnected);
                     self.set_connection(Connection::default());
                     tray::show(&self.app, Look::NoLamp);
                 }
                 None => {
-                    // Commands sent while no lamp is connected are dropped.
+                    // Requests made while no lamp is connected are dropped,
+                    // and a flush with them.
                     loop {
                         match self.receiver.try_recv() {
                             Ok(_) => continue,
@@ -323,14 +428,66 @@ impl Worker {
 
     /// Writes a command the session allows, and drops the others. False if
     /// the lamp is gone.
-    fn write(&mut self, device: &HidDevice, command: &Command) -> bool {
+    fn write(&mut self, device: &HidDevice, command: &Command, automatic: bool) -> bool {
         if !self.session.allows(command) {
             return true;
         }
+        let seq = self.next_seq();
+        self.automatic[usize::from(seq)] = automatic;
+        self.last_seq = Some(seq);
+        self.last_write = Instant::now();
         let mut report = [0u8; PAYLOAD_SIZE + 1];
         report[0] = REPORT_ID_COMMAND;
-        report[1..].copy_from_slice(&command.encode(self.next_seq()));
-        device.write(&report).is_ok()
+        report[1..].copy_from_slice(&command.encode(seq));
+        let written = device.write(&report).is_ok();
+        // The lamp refuses the commands of the control during a self-test,
+        // which the control hears of.
+        if written && *command == Command::SelfTest {
+            let _ = control::input(&self.app, Input::SelfTest(true));
+        }
+        written
+    }
+
+    /// The reply to the last command written ends a flush. Without a lamp
+    /// that the app drives, no reply comes.
+    fn begin_flush(&mut self, done: mpsc::Sender<()>) {
+        match self.last_seq {
+            Some(seq) if self.session.drives() => self.flush = Some((seq, done)),
+            _ => {
+                let _ = done.send(());
+            }
+        }
+    }
+
+    /// Hands the control what concerns it, and tells whether the windows
+    /// get the message.
+    fn route(&mut self, frame: &Frame, previous: Option<u16>) -> bool {
+        let automatic = frame.seq != 0 && self.automatic[usize::from(frame.seq)];
+        let heartbeat = frame.seq != 0 && self.heartbeat_seq == Some(frame.seq);
+        if let Some((seq, done)) = self.flush.take() {
+            if seq == frame.seq {
+                let _ = done.send(());
+            } else {
+                self.flush = Some((seq, done));
+            }
+        }
+        let input = match &frame.message {
+            Message::State(state) => Some(Input::State(state.clone())),
+            Message::AlertDone { .. } => Some(Input::AlertDone),
+            Message::SelfTestResult(_) => Some(Input::SelfTest(false)),
+            Message::Error { command, .. } if *command == Command::SelfTest.code() => {
+                Some(Input::SelfTest(false))
+            }
+            Message::Error { command, error } if automatic => Some(Input::Refused {
+                command: *command,
+                error: *error,
+            }),
+            _ => None,
+        };
+        if let Some(input) = input {
+            let _ = control::input(&self.app, input);
+        }
+        shown(&frame.message, automatic, heartbeat, previous)
     }
 
     /// Sends the state of the app after the first INFO of a connection, and
@@ -348,11 +505,17 @@ impl Worker {
                 if first_info {
                     let settings = self.app.state::<SettingsState>().get();
                     let palette = self.app.state::<ColorsState>().get();
-                    for command in commands_after_info(info, &settings, &palette) {
-                        if !self.write(device, &command) {
+                    let imposed = self.app.state::<ControlState>().on_connect();
+                    let commands = commands_after_info(info, &settings, &palette, imposed);
+                    if commands.is_empty() {
+                        return true;
+                    }
+                    for command in commands {
+                        if !self.write(device, &command, true) {
                             return false;
                         }
                     }
+                    let _ = control::input(&self.app, Input::Connected);
                 }
             }
             Message::State(state) => {
@@ -374,21 +537,31 @@ impl Worker {
 
     fn serve(&mut self, device: &HidDevice) -> Exit {
         // Learn who is there; the rest waits for its INFO.
-        if !self.write(device, &Command::GetInfo) {
+        if !self.write(device, &Command::GetInfo, true) {
             return Exit::Disconnected;
         }
         let mut buffer = [0u8; PAYLOAD_SIZE + 1];
         loop {
             loop {
                 match self.receiver.try_recv() {
-                    Ok(command) => {
-                        if !self.write(device, &command) {
+                    Ok(Request::Command { command, automatic }) => {
+                        if !self.write(device, &command, automatic) {
                             return Exit::Disconnected;
                         }
                     }
+                    Ok(Request::Heartbeat(on)) => self.heartbeat = on,
+                    Ok(Request::Flush(done)) => self.begin_flush(done),
                     Err(mpsc::TryRecvError::Empty) => break,
                     Err(mpsc::TryRecvError::Disconnected) => return Exit::AppClosed,
                 }
+            }
+            if self.session.drives()
+                && heartbeat_due(self.heartbeat, self.last_write, Instant::now())
+            {
+                if !self.write(device, &heartbeat(), true) {
+                    return Exit::Disconnected;
+                }
+                self.heartbeat_seq = self.last_seq;
             }
             match device.read_timeout(&mut buffer, READ_TIMEOUT_MS) {
                 Ok(0) => {}
@@ -396,8 +569,16 @@ impl Worker {
                     let first_info = self.session.generation.is_none();
                     match self.session.receive(&buffer[1..length]) {
                         Incoming::Forward(frame) => {
+                            let previous = self
+                                .state
+                                .lock()
+                                .ok()
+                                .and_then(|state| state.as_ref().map(|state| state.state_seq));
                             if !self.follow(device, &frame.message, first_info) {
                                 return Exit::Disconnected;
+                            }
+                            if !self.route(&frame, previous) {
+                                continue;
                             }
                             // Up to 50 samples a second, which only the
                             // Diagnostics window follows.
@@ -426,6 +607,9 @@ mod tests {
     use crate::colors::BUILT_IN;
     use disled_protocol::{BrightnessMode, LinearRgb, SLOT_COUNT};
     use serde_json::{Value, json};
+
+    /// The end of the connection sequence in manual mode.
+    const MANUAL: (TouchMode, Option<u8>) = (TouchMode::Normal, None);
 
     fn vectors() -> Value {
         let path = concat!(
@@ -470,7 +654,10 @@ mod tests {
     fn a_version_1_lamp_gets_nothing_after_its_info() {
         let info = info_of("info_of_a_version_1_lamp");
         assert_eq!(Generation::of(&info), Generation::V1);
-        assert!(commands_after_info(&info, &Settings::default(), &Palette::default()).is_empty());
+        assert!(
+            commands_after_info(&info, &Settings::default(), &Palette::default(), MANUAL)
+                .is_empty()
+        );
     }
 
     #[test]
@@ -545,7 +732,10 @@ mod tests {
         let mut info = info_of("info");
         info.protocol = [3, 0];
         assert_eq!(Generation::of(&info), Generation::Newer);
-        assert!(commands_after_info(&info, &Settings::default(), &Palette::default()).is_empty());
+        assert!(
+            commands_after_info(&info, &Settings::default(), &Palette::default(), MANUAL)
+                .is_empty()
+        );
         assert_eq!(look_of_info(&info), Some(Look::Newer));
     }
 
@@ -566,7 +756,7 @@ mod tests {
             ],
             "cycle": [0, 4, 1, 6]
         }));
-        let commands = commands_after_info(&info, &settings, &palette);
+        let commands = commands_after_info(&info, &settings, &palette, MANUAL);
         // With GET_INFO, 18 reports: the most the protocol foresees.
         assert_eq!(commands.len(), 17);
         assert_eq!(commands[0], Command::GetState);
@@ -605,6 +795,81 @@ mod tests {
                 ..SetState::default()
             })
         );
+    }
+
+    #[test]
+    fn a_lamp_that_follows_an_integration_gets_its_touch_mode_and_color() {
+        let commands = commands_after_info(
+            &info_of("info"),
+            &Settings::default(),
+            &Palette::default(),
+            (TouchMode::PowerOnly, Some(1)),
+        );
+        assert_eq!(
+            commands.last(),
+            Some(&Command::SetState(SetState {
+                color: Some(1),
+                brightness_mode: Some(BrightnessMode::Auto),
+                manual_level: Some(Settings::default().manual_level),
+                touch_mode: Some(TouchMode::PowerOnly),
+                ..SetState::default()
+            }))
+        );
+    }
+
+    #[test]
+    fn the_heartbeat_comes_after_3_s_without_a_command() {
+        let written = Instant::now();
+        assert!(!heartbeat_due(
+            true,
+            written,
+            written + Duration::from_millis(2_999)
+        ));
+        assert!(heartbeat_due(true, written, written + HEARTBEAT));
+        assert!(!heartbeat_due(
+            false,
+            written,
+            written + Duration::from_secs(60)
+        ));
+        // Its own bytes, which annex A fixes.
+        assert_eq!(
+            heartbeat().encode(7)[..9],
+            [0x03, 7, 0x06, 0x10, 0, 0, 0, 0, 1]
+        );
+    }
+
+    #[test]
+    fn the_windows_hear_a_heartbeat_only_when_it_changed_something() {
+        let state = |state_seq| match protocol::decode_message(&report("state_after_touch"))
+            .expect("STATE")
+            .message
+        {
+            Message::State(state) => Message::State(State { state_seq, ..state }),
+            other => panic!("{other:?}"),
+        };
+        // A reply that repeats the state, as most do.
+        assert!(!shown(&state(8), true, true, Some(8)));
+        // After a fallback to normal touch, the heartbeat set it again.
+        assert!(shown(&state(9), true, true, Some(8)));
+        // Any other STATE goes, the reply to a command of the backend too.
+        assert!(shown(&state(8), true, false, Some(8)));
+        assert!(shown(&state(8), false, false, Some(8)));
+    }
+
+    #[test]
+    fn the_refusal_of_a_command_of_the_backend_stays_out_of_the_windows() {
+        let refused = Message::Error {
+            command: Command::SetState(SetState::default()).code(),
+            error: disled_protocol::ProtocolError::Busy,
+        };
+        assert!(!shown(&refused, true, true, None), "the heartbeat");
+        assert!(!shown(&refused, true, false, None), "the control");
+        assert!(shown(&refused, false, false, None), "a window");
+        let ack = Message::Ack {
+            command: Command::SetAutoBias { bias: 0 }.code(),
+        };
+        assert!(!shown(&ack, true, false, None));
+        assert!(shown(&ack, false, false, None));
     }
 
     #[test]

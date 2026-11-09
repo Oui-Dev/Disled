@@ -244,6 +244,11 @@ pub enum Command {
 }
 
 impl Command {
+    /// The code of the command, which ACK and ERROR name.
+    pub fn code(&self) -> u8 {
+        self.encode(0)[0]
+    }
+
     /// Encodes the command payload, which follows the report ID.
     pub fn encode(&self, seq: u8) -> [u8; PAYLOAD_SIZE] {
         let (kind, body): (u8, Vec<u8>) = match self {
@@ -1094,6 +1099,16 @@ mod tests {
             payload[HEADER_SIZE], 100,
             "the true count, which the lamp refuses"
         );
+    }
+
+    #[test]
+    fn a_command_has_the_code_that_its_replies_name() {
+        let alert = Command::Alert {
+            count: 3,
+            period_ms: 1300,
+        };
+        assert_eq!(alert.code(), CMD_ALERT);
+        assert_eq!(Command::SetState(SetState::default()).code(), CMD_SET_STATE);
     }
 
     #[test]

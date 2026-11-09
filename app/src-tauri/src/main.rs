@@ -2,13 +2,15 @@
 // SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! Disled desktop app: a tray icon with a popup for daily use, a
-//! Diagnostics window, the USB worker behind both, the app updates and the
-//! lamp firmware updates.
+//! Diagnostics window, the USB worker behind both, the control of the lamp
+//! beyond the choices of the user, the app updates and the lamp firmware
+//! updates.
 
 // Prevents an additional console window on Windows in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod colors;
+mod control;
 mod device;
 mod firmware;
 mod i18n;
@@ -18,6 +20,7 @@ mod updates;
 mod windows;
 
 use colors::{Around, ColorsState, Palette, PaletteChange, PreviewState};
+use control::{ControlState, ControlStatus, Input};
 use device::{Connection, DeviceHandle};
 use disled_protocol::{Command, SetState};
 use firmware::{FirmwareState, FirmwareStatus};
@@ -62,15 +65,40 @@ struct LampChoice {
     slot: Option<u8>,
 }
 
-/// A choice of the user for the lamp, from a tile of the popup. The backend
-/// hears of it, as the rules of the calls and the modes will need.
+/// A choice of the user for the lamp, from a tile or the card of an
+/// integration in the popup. The control hears of it: during a call, the
+/// choice keeps the hand.
 #[tauri::command]
-fn lamp_choose(device: State<'_, DeviceHandle>, choice: LampChoice) -> Result<(), String> {
-    device.send(Command::SetState(SetState {
-        on: Some(choice.on),
-        color: choice.slot.filter(|_| choice.on),
-        ..SetState::default()
-    }))
+fn lamp_choose(app: AppHandle, choice: LampChoice) -> Result<(), String> {
+    if !app.state::<DeviceHandle>().connection().connected {
+        return Err("no Disled lamp connected".into());
+    }
+    control::input(
+        &app,
+        Input::Choose {
+            on: choice.on,
+            slot: choice.slot,
+        },
+    )
+}
+
+/// What the windows show of the control, for a window that starts.
+#[tauri::command]
+fn control_get(control: State<'_, ControlState>) -> ControlStatus {
+    control.status()
+}
+
+/// The source the lamp follows: an integration on offer, or none for the
+/// user.
+#[tauri::command]
+fn control_set_mode(app: AppHandle, mode: Option<String>) -> Result<(), String> {
+    let offered = app.state::<ControlState>().status().integrations;
+    if let Some(id) = &mode
+        && !offered.iter().any(|integration| &integration.id == id)
+    {
+        return Err(format!("no integration {id}"));
+    }
+    control::input(&app, Input::Follow(mode))
 }
 
 #[tauri::command]
@@ -92,25 +120,33 @@ fn apply_palette(app: &AppHandle, palette: Palette, commands: Vec<Command>) -> R
     Ok(())
 }
 
-/// Applies a deletion or an import: the palette, and the call color when it
-/// lost its color.
+/// Applies a deletion or an import: the palette, the call color when it
+/// lost its color, and the color a call gives back.
 fn apply_change(app: &AppHandle, change: PaletteChange) -> Result<(), String> {
     let mut settings = app.state::<SettingsState>().get();
-    if settings.calls.color != change.call_color {
+    let call_color = settings.calls.color != change.call_color;
+    if call_color {
         settings.calls.color = change.call_color;
         settings::save(app, settings)?;
         let _ = app.emit(EVENT_SETTINGS, settings);
     }
-    apply_palette(app, change.palette, change.commands)
+    apply_palette(app, change.palette, change.commands)?;
+    let _ = control::input(app, Input::CallBack(change.call_then));
+    if call_color {
+        let _ = control::input(app, Input::CallSettings(settings.calls));
+    }
+    Ok(())
 }
 
-/// What else uses the colors now: the lamp. The calls and the integrations
-/// join with their own parts of the app.
+/// What else uses the colors now: the lamp, the call that shows its color,
+/// and the integration the lamp follows.
 fn around(app: &AppHandle) -> Around {
+    let control = app.state::<ControlState>();
     Around {
         lamp: app.state::<DeviceHandle>().state().map(|state| state.color),
         call_color: app.state::<SettingsState>().get().calls.color,
-        ..Around::default()
+        call_then: control.call_back(),
+        integration: control.integration_slot(),
     }
 }
 
@@ -292,6 +328,9 @@ fn settings_set(
             percent: settings.touch_sensitivity,
         });
     }
+    if patch.calls_mic.is_some() || patch.calls_color.is_some() {
+        let _ = control::input(&app, Input::CallSettings(settings.calls));
+    }
     Ok(settings)
 }
 
@@ -434,8 +473,16 @@ fn open_link(app: AppHandle, link: Link) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// "Quit" of the popup.
 #[tauri::command]
 fn quit(app: AppHandle) {
+    quit_app(&app);
+}
+
+/// The one way out of the app, for "Quit" in the popup and in the tray
+/// menu: the lamp first gets its own behavior back.
+fn quit_app(app: &AppHandle) {
+    control::release(app);
     app.exit(0);
 }
 
@@ -497,6 +544,8 @@ fn main() {
 
             let handle = app.handle().clone();
             let settings = init_settings(&handle);
+            // Before the USB worker, which tells it of the lamp.
+            app.manage(ControlState::new(settings.calls));
             handle.set_theme(settings.color_mode.theme());
             let locale = Locale::of(settings.language);
             handle.state::<LocaleState>().replace(locale);
@@ -519,6 +568,8 @@ fn main() {
             device_connection,
             device_send,
             lamp_choose,
+            control_get,
+            control_set_mode,
             colors_get,
             colors_save_custom,
             colors_rename_original,
