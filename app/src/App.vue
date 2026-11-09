@@ -10,6 +10,7 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { useColorMode } from '@vueuse/core';
 import { type Component, computed, defineAsyncComponent, onMounted, watch, watchEffect } from 'vue';
 import { nuxtUiLocales, setLocale } from '@/i18n';
+import { useColorsStore } from '@/stores/colors';
 import { useDiagnosticsStore } from '@/stores/diagnostics';
 import { useFirmwareStore } from '@/stores/firmware';
 import { useLampStore } from '@/stores/lamp';
@@ -26,11 +27,11 @@ interface WindowSetup {
 const WINDOWS: Record<string, WindowSetup> = {
   popup: {
     view: defineAsyncComponent(() => import('@/views/PopupView.vue')),
-    stores: [useLampStore, useFirmwareStore, useUpdatesStore],
+    stores: [useLampStore, useColorsStore, useFirmwareStore, useUpdatesStore],
   },
   diagnostics: {
     view: defineAsyncComponent(() => import('@/views/DiagnosticsView.vue')),
-    stores: [useLampStore, useTelemetryStore, useDiagnosticsStore],
+    stores: [useLampStore, useColorsStore, useTelemetryStore, useDiagnosticsStore],
   },
   'lamp-update': {
     view: defineAsyncComponent(() => import('@/views/LampUpdateView.vue')),

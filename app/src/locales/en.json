@@ -4,7 +4,9 @@
     "back": "Back",
     "quit": "Quit",
     "cancel": "Cancel",
-    "close": "Close"
+    "close": "Close",
+    "save": "Save",
+    "copied": "Copied"
   },
   "status": {
     "noLamp": "No lamp connected",
@@ -19,12 +21,15 @@
     "unplugged": "Plug the lamp into this computer. The settings below will apply to it.",
     "colors": {
       "legend": "Lamp color",
+      "title": "Color",
       "off": "Off",
       "green": "Available",
       "orange": "Busy",
       "red": "Do not disturb",
       "warm_white": "Soft light",
-      "more": "More"
+      "more": "More",
+      "moreLabel": "More colors",
+      "moreCurrent": "More colors, current: {name}"
     },
     "brightness": {
       "title": "Brightness",
@@ -276,5 +281,79 @@
   },
   "lampNewer": {
     "text": "This lamp has a newer firmware than this app. Update Disled."
+  },
+  "colors": {
+    "mine": {
+      "title": "My colors",
+      "manage": "Manage",
+      "new": "New"
+    },
+    "library": {
+      "title": "Colors",
+      "touch": "Touch",
+      "new": "New color",
+      "cycle": "On a touch of the lid:",
+      "appOnly": "Without the app, the lamp goes back to its four colors and its original cycle.",
+      "share": "Share",
+      "more": "More actions for {name}",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleted": "{name} deleted."
+    },
+    "cycle": {
+      "add": "Add {name} to the touch cycle",
+      "remove": "{name}, {rank} on touch: remove from the cycle",
+      "addTitle": "Add to touch",
+      "removeTitle": "Remove from touch",
+      "added": "{name}, {rank} on touch.",
+      "removed": "{name} removed from the cycle.",
+      "last": "{name} stays: the cycle keeps at least one color.",
+      "rank": {
+        "one": "{n}st",
+        "two": "{n}nd",
+        "few": "{n}rd",
+        "other": "{n}th"
+      }
+    },
+    "editor": {
+      "new": "New color",
+      "edit": "Edit the color",
+      "name": "Name",
+      "suggestions": "Suggestions",
+      "suggestion": {
+        "yellow": "Yellow",
+        "cyan": "Cyan",
+        "blue": "Blue",
+        "violet": "Violet",
+        "magenta": "Magenta",
+        "pink": "Pink",
+        "coolWhite": "Cool white"
+      },
+      "hue": "Hue",
+      "pale": "Pale",
+      "vivid": "Vivid",
+      "vividLabel": "Pale or vivid",
+      "hex": "Hex code",
+      "preview": "Preview on the lamp",
+      "restore": "Restore “{name}”",
+      "fixed": "The original colors keep their shade. For another one, create a color."
+    },
+    "share": {
+      "title": "Share your colors",
+      "send": "Send",
+      "sendHint": "Your names, your colors and your touch cycle, in a code to paste in a message.",
+      "copy": "Copy the code",
+      "receive": "Receive",
+      "placeholder": "Paste the code you received",
+      "invalid": "Cannot read this code."
+    },
+    "import": {
+      "title": "Import these colors?",
+      "originals": "Lamp colors",
+      "custom": "Added colors",
+      "cycle": "Touch of the lid",
+      "replaces": "Replaces your names, your colors and your cycle.",
+      "action": "Import"
+    }
   }
 }

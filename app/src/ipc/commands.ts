@@ -11,6 +11,7 @@ import type { FirmwareStatus } from '@/bindings/FirmwareStatus';
 import type { LampChoice } from '@/bindings/LampChoice';
 import type { Link } from '@/bindings/Link';
 import type { Locale } from '@/bindings/Locale';
+import type { Palette } from '@/bindings/Palette';
 import type { Settings } from '@/bindings/Settings';
 import type { SettingsPatch } from '@/bindings/SettingsPatch';
 import type { UpdateStatus } from '@/bindings/UpdateStatus';
@@ -28,6 +29,60 @@ export function deviceSend(command: Command): Promise<void> {
 /** Tells the backend what the user chose for the lamp: off, or a color slot. */
 export function lampChoose(choice: LampChoice): Promise<void> {
   return invoke('lamp_choose', { choice });
+}
+
+export function colorsGet(): Promise<Palette> {
+  return invoke('colors_get');
+}
+
+/**
+ * Saves a custom color, with no slot for a new one, and resolves to its
+ * slot. A preview on the lamp ends; with `keepLit`, a new color stays lit.
+ */
+export function colorsSaveCustom(color: {
+  slot: number | null;
+  name: string;
+  hex: string;
+  keepLit: boolean;
+}): Promise<number> {
+  return invoke('colors_save_custom', color);
+}
+
+/** Names a built-in color, null for its default name. */
+export function colorsRenameOriginal(slot: number, name: string | null): Promise<void> {
+  return invoke('colors_rename_original', { slot, name });
+}
+
+export function colorsSetCycle(slots: number[]): Promise<void> {
+  return invoke('colors_set_cycle', { slots });
+}
+
+/** Deletes a custom color, even in use: the backend applies the fallbacks. */
+export function colorsDelete(slot: number): Promise<void> {
+  return invoke('colors_delete', { slot });
+}
+
+export function colorsShareCode(): Promise<string> {
+  return invoke('colors_share_code');
+}
+
+/** Writes the share code to the clipboard, which the app never reads. */
+export function colorsCopyCode(): Promise<void> {
+  return invoke('colors_copy_code');
+}
+
+/** The colors of a pasted text, null when it holds no readable code. */
+export function colorsReadCode(text: string): Promise<Palette | null> {
+  return invoke('colors_read_code', { text });
+}
+
+export function colorsImport(text: string): Promise<void> {
+  return invoke('colors_import', { text });
+}
+
+/** Shows a code on the lamp while the editor changes it; null ends the preview. */
+export function colorsPreview(hex: string | null): Promise<void> {
+  return invoke('colors_preview', { hex });
 }
 
 /** Writes a recording to a `.csv` file chosen in a save dialog. */

@@ -9,6 +9,7 @@ import type { Connection } from '@/bindings/Connection';
 import type { FirmwareStatus } from '@/bindings/FirmwareStatus';
 import type { Frame } from '@/bindings/Frame';
 import type { Locale } from '@/bindings/Locale';
+import type { Palette } from '@/bindings/Palette';
 import type { Settings } from '@/bindings/Settings';
 import type { UpdateStatus } from '@/bindings/UpdateStatus';
 
@@ -21,6 +22,8 @@ interface Events {
   'device-protocol-error': string;
   /** Any window changed the settings. */
   'settings-changed': Settings;
+  /** Any window changed the colors. */
+  'colors-changed': Palette;
   /** The language of the app changed, through a setting or the system's. */
   'locale-changed': Locale;
   'update-status': UpdateStatus;

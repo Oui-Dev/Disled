@@ -19,7 +19,7 @@ const lamp = useLampStore();
   </p>
   <p v-else-if="!lamp.state" class="text-sm text-muted">{{ t('diagnostics.waiting') }}</p>
   <div v-else class="flex flex-col gap-4">
-    <LampColorPicker />
+    <LampColorPicker standalone />
     <LampBrightness />
     <p class="text-xs text-muted">
       {{

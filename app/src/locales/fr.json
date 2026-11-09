@@ -4,7 +4,9 @@
     "back": "Retour",
     "quit": "Quitter",
     "cancel": "Annuler",
-    "close": "Fermer"
+    "close": "Fermer",
+    "save": "Enregistrer",
+    "copied": "Copié"
   },
   "status": {
     "noLamp": "Aucune lampe connectée",
@@ -19,12 +21,15 @@
     "unplugged": "Branchez la lampe à cet ordinateur. Les réglages ci-dessous lui seront appliqués.",
     "colors": {
       "legend": "Couleur de la lampe",
+      "title": "Couleur",
       "off": "Éteinte",
       "green": "Disponible",
       "orange": "Occupé",
       "red": "Ne pas déranger",
       "warm_white": "Lumière douce",
-      "more": "Autres"
+      "more": "Autres",
+      "moreLabel": "Autres couleurs",
+      "moreCurrent": "Autres couleurs, actuelle : {name}"
     },
     "brightness": {
       "title": "Luminosité",
@@ -276,5 +281,79 @@
   },
   "lampNewer": {
     "text": "Cette lampe a un firmware plus récent que cette app. Mettez Disled à jour."
+  },
+  "colors": {
+    "mine": {
+      "title": "Mes couleurs",
+      "manage": "Gérer",
+      "new": "Nouvelle"
+    },
+    "library": {
+      "title": "Couleurs",
+      "touch": "Toucher",
+      "new": "Nouvelle couleur",
+      "cycle": "Au toucher du couvercle :",
+      "appOnly": "Sans l’app, la lampe reprend ses quatre couleurs et le cycle d’origine.",
+      "share": "Partager",
+      "more": "Plus d’actions pour {name}",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "deleted": "{name} supprimée."
+    },
+    "cycle": {
+      "add": "Ajouter {name} au cycle du toucher",
+      "remove": "{name}, {rank} au toucher : retirer du cycle",
+      "addTitle": "Ajouter au toucher",
+      "removeTitle": "Retirer du toucher",
+      "added": "{name}, {rank} au toucher.",
+      "removed": "{name} retirée du cycle.",
+      "last": "{name} reste : le cycle garde au moins une couleur.",
+      "rank": {
+        "one": "{n}re",
+        "two": "{n}e",
+        "few": "{n}e",
+        "other": "{n}e"
+      }
+    },
+    "editor": {
+      "new": "Nouvelle couleur",
+      "edit": "Modifier la couleur",
+      "name": "Nom",
+      "suggestions": "Suggestions",
+      "suggestion": {
+        "yellow": "Jaune",
+        "cyan": "Cyan",
+        "blue": "Bleu",
+        "violet": "Violet",
+        "magenta": "Magenta",
+        "pink": "Rose",
+        "coolWhite": "Blanc froid"
+      },
+      "hue": "Teinte",
+      "pale": "Pâle",
+      "vivid": "Vive",
+      "vividLabel": "Pâle ou vive",
+      "hex": "Code hexadécimal",
+      "preview": "Aperçu sur la lampe",
+      "restore": "Rétablir « {name} »",
+      "fixed": "Les couleurs d’origine gardent leur teinte. Pour une autre nuance, créez une couleur."
+    },
+    "share": {
+      "title": "Partager vos couleurs",
+      "send": "Envoyer",
+      "sendHint": "Vos noms, vos couleurs et votre cycle du toucher, dans un code à coller dans un message.",
+      "copy": "Copier le code",
+      "receive": "Recevoir",
+      "placeholder": "Collez le code reçu",
+      "invalid": "Impossible de lire ce code."
+    },
+    "import": {
+      "title": "Importer ces couleurs ?",
+      "originals": "Couleurs de la lampe",
+      "custom": "Couleurs ajoutées",
+      "cycle": "Toucher du couvercle",
+      "replaces": "Remplace vos noms, vos couleurs et votre cycle.",
+      "action": "Importer"
+    }
   }
 }

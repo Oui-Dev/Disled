@@ -14,6 +14,7 @@ Third-party code keeps its own license:
 - **wchisp** (the flasher of the lamp updates, in the desktop app installers): GPL-2.0. A separate program that the app runs, never linked with it. Its license and notice are in `app/src-tauri/third-party/wchisp`, and its source is attached to every app release.
 - **Montserrat** (the font of the desktop app, bundled from the `@fontsource-variable/montserrat` package): SIL Open Font License 1.1, The Montserrat Project Authors.
 - **Lucide** (the icons of the desktop app, bundled from the `@iconify-json/lucide` package): ISC, Lucide Contributors.
+- **hyphen** (the hyphenation of the color names in the desktop app, bundled from the `hyphen` package): ISC, Yevhen Tiurin. Its patterns come from the hyph-utf8 project: the French ones under the MIT license, Daniel Flipo, Bernard Gaulle and Arthur Reutenauer; the American English ones under the terms of Gerard D.C. Kuiken, which allow copying and distribution provided the copyright notice and these terms are preserved.
 
 ## Software notice
 
