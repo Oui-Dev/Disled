@@ -15,6 +15,7 @@ import { useControlStore } from '@/stores/control';
 import { useDiagnosticsStore } from '@/stores/diagnostics';
 import { useFirmwareStore } from '@/stores/firmware';
 import { useLampStore } from '@/stores/lamp';
+import { usePluginsStore } from '@/stores/plugins';
 import { useSettingsStore } from '@/stores/settings';
 import { useTelemetryStore } from '@/stores/telemetry';
 import { useUpdatesStore } from '@/stores/updates';
@@ -33,6 +34,10 @@ const WINDOWS: Record<string, WindowSetup> = {
   diagnostics: {
     view: defineAsyncComponent(() => import('@/views/DiagnosticsView.vue')),
     stores: [useLampStore, useColorsStore, useTelemetryStore, useDiagnosticsStore],
+  },
+  integrations: {
+    view: defineAsyncComponent(() => import('@/views/IntegrationsView.vue')),
+    stores: [useColorsStore, useControlStore, usePluginsStore],
   },
   'lamp-update': {
     view: defineAsyncComponent(() => import('@/views/LampUpdateView.vue')),

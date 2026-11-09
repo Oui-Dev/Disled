@@ -260,7 +260,17 @@ mod tests {
             "lampInstall.install",
             "lampInstall.reinstall",
             "modes.manual",
+            "modes.manage",
             "calls.mic",
+            "common.copy",
+            "integrations.openFolder",
+            "integrations.import",
+            "integrations.reviewNote",
+            "integrations.regenerate",
+            "integrations.remove",
+            "integrations.approve.action",
+            "integrations.regenerateConfirm.action",
+            "integrations.removeConfirm.action",
             "diagnostics.restart",
             "selfTest.run",
             "telemetry.record",
@@ -335,6 +345,71 @@ mod tests {
             ("calls.title", "Appels"),
             ("calls.manualOnly", "Seulement en mode Manuel"),
             ("calls.mic", "Micro utilisé"),
+            ("modes.manage", "Gérer les intégrations"),
+            ("window.integrations", "Intégrations Disled"),
+            ("integrations.title", "Intégrations"),
+            ("integrations.subtitle", "Elles viennent de vos plugins."),
+            ("integrations.openFolder", "Ouvrir le dossier des plugins"),
+            ("integrations.import", "Importer un plugin"),
+            ("integrations.driving", "Pilote la lampe"),
+            ("integrations.new", "Nouveau\u{202f}: à vérifier"),
+            ("integrations.noEvent", "Aucun événement reçu"),
+            (
+                "integrations.noEventYet",
+                "Aucun événement reçu pour l’instant.",
+            ),
+            (
+                "integrations.lastEvent",
+                "Dernier événement reçu il y a {ago}\u{202f}: {state}.",
+            ),
+            (
+                "integrations.neverEdits",
+                "Disled ne modifie jamais les réglages de {name}\u{202f}: c’est vous qui collez ce bloc.",
+            ),
+            (
+                "integrations.installed",
+                "Installation faite\u{202f}: {name} envoie ses événements.",
+            ),
+            ("integrations.reviewNote", "Revoir la note"),
+            ("integrations.can", "Ce que ce plugin peut faire"),
+            (
+                "integrations.perm.color",
+                "Choisir la couleur de la lampe, quand elle le suit",
+            ),
+            ("integrations.perm.alert", "Faire une alerte sur la lampe"),
+            (
+                "integrations.perm.events",
+                "Recevoir les événements de {name}, en local",
+            ),
+            (
+                "integrations.perm.process",
+                "Lancer un programme sur cet ordinateur, avec vos droits\u{202f}: {command}",
+            ),
+            (
+                "integrations.perm.nothingElse",
+                "Rien d’autre\u{202f}: aucun programme, pas d’Internet",
+            ),
+            (
+                "integrations.colorsHint",
+                "Quand la lampe suit {name}\u{202f}:",
+            ),
+            ("integrations.tokenOwn", "Jeton propre à ce plugin"),
+            ("integrations.regenerate", "Régénérer le jeton"),
+            ("integrations.remove", "Retirer le plugin"),
+            (
+                "integrations.approve.title",
+                "Activer «\u{202f}{name}\u{202f}»\u{202f}?",
+            ),
+            (
+                "integrations.approve.meta",
+                "Plugin {version} · par {author} · trouvé dans le dossier des plugins",
+            ),
+            ("integrations.approve.can", "Ce plugin pourra\u{202f}:"),
+            (
+                "integrations.approve.trust",
+                "N’activez que les plugins de personnes en qui vous avez confiance. Si ses \
+                 fichiers changent, Disled vous redemandera votre accord.",
+            ),
         ];
         for (key, text) in reviewed {
             assert_eq!(Locale::Fr.t(key), text, "{key}");

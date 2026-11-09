@@ -15,6 +15,7 @@ import { useI18n } from 'vue-i18n';
 import { useColorsStore } from '@/stores/colors';
 import { useControlStore } from '@/stores/control';
 import { useLampStore } from '@/stores/lamp';
+import { pluginIcon } from '@/utils/pluginIcons';
 
 const { t, d } = useI18n();
 const lamp = useLampStore();
@@ -22,7 +23,7 @@ const control = useControlStore();
 const colors = useColorsStore();
 
 const name = computed(() => control.integration?.name ?? '');
-const icon = computed(() => control.integration && `i-lucide-${control.integration.icon}`);
+const icon = computed(() => pluginIcon(control.integration?.icon));
 const state = computed(() => control.status.state);
 /** Off as the lamp last said; without a lamp, the card shows the state. */
 const off = computed(() => lamp.state !== null && !lamp.state.on);
@@ -98,7 +99,7 @@ function turnOn(): void {
           <span
             class="absolute -end-1.25 -bottom-1.25 grid size-3.75 place-items-center rounded-full bg-default ring-1 ring-accented"
           >
-            <UIcon v-if="icon" :name="icon" class="size-2.5 text-primary" />
+            <UIcon :name="icon" class="size-2.5 text-primary" />
           </span>
         </span>
         <span class="flex min-w-0 flex-col text-xs">

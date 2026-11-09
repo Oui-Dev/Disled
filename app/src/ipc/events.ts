@@ -11,6 +11,7 @@ import type { FirmwareStatus } from '@/bindings/FirmwareStatus';
 import type { Frame } from '@/bindings/Frame';
 import type { Locale } from '@/bindings/Locale';
 import type { Palette } from '@/bindings/Palette';
+import type { PluginView } from '@/bindings/PluginView';
 import type { Settings } from '@/bindings/Settings';
 import type { UpdateStatus } from '@/bindings/UpdateStatus';
 
@@ -29,6 +30,8 @@ interface Events {
   'locale-changed': Locale;
   /** The source the lamp follows, the call, the integrations on offer (control.rs). */
   'control-changed': ControlStatus;
+  /** The plugins, after any change (plugins/mod.rs). No event carries a token. */
+  'plugins-changed': PluginView[];
   'update-status': UpdateStatus;
   'firmware-status': FirmwareStatus;
 }

@@ -8,11 +8,13 @@ import { invoke } from '@tauri-apps/api/core';
 import type { Command } from '@/bindings/Command';
 import type { Connection } from '@/bindings/Connection';
 import type { ControlStatus } from '@/bindings/ControlStatus';
+import type { FilledBlock } from '@/bindings/FilledBlock';
 import type { FirmwareStatus } from '@/bindings/FirmwareStatus';
 import type { LampChoice } from '@/bindings/LampChoice';
 import type { Link } from '@/bindings/Link';
 import type { Locale } from '@/bindings/Locale';
 import type { Palette } from '@/bindings/Palette';
+import type { PluginView } from '@/bindings/PluginView';
 import type { Settings } from '@/bindings/Settings';
 import type { SettingsPatch } from '@/bindings/SettingsPatch';
 import type { UpdateStatus } from '@/bindings/UpdateStatus';
@@ -43,6 +45,56 @@ export function controlGet(): Promise<ControlStatus> {
 /** The source the lamp follows: an integration on offer, or null for the user. */
 export function controlSetMode(mode: string | null): Promise<void> {
   return invoke('control_set_mode', { mode });
+}
+
+/** The plugins, read again from their folder. */
+export function pluginsList(): Promise<PluginView[]> {
+  return invoke('plugins_list');
+}
+
+/** The block of the installation note, with the address and the token. */
+export function pluginNote(id: string): Promise<FilledBlock | null> {
+  return invoke('plugin_note', { id });
+}
+
+/** Writes the block of the note to the clipboard, which the app never reads. */
+export function pluginCopyNote(id: string): Promise<void> {
+  return invoke('plugin_copy_note', { id });
+}
+
+/** "Enable" in the question, for the fingerprint it showed. */
+export function pluginApprove(id: string, fingerprint: string): Promise<void> {
+  return invoke('plugin_approve', { id, fingerprint });
+}
+
+/** Turning a plugin on needs the approval of its files as they are. */
+export function pluginSetEnabled(id: string, enabled: boolean): Promise<void> {
+  return invoke('plugin_set_enabled', { id, enabled });
+}
+
+export function pluginSetColor(id: string, state: string, slot: number): Promise<void> {
+  return invoke('plugin_set_color', { id, state, slot });
+}
+
+export function pluginRegenerateToken(id: string): Promise<void> {
+  return invoke('plugin_regenerate_token', { id });
+}
+
+export function pluginRemove(id: string): Promise<void> {
+  return invoke('plugin_remove', { id });
+}
+
+/** Imports the plugin of a zip file; rejects with the reason of a refusal. */
+export function pluginsImport(path: string): Promise<string> {
+  return invoke('plugins_import', { path });
+}
+
+export function pluginsOpenFolder(): Promise<void> {
+  return invoke('plugins_open_folder');
+}
+
+export function openIntegrations(): Promise<void> {
+  return invoke('open_integrations');
 }
 
 export function colorsGet(): Promise<Palette> {

@@ -44,8 +44,9 @@ export default defineConfig({
         badge: { slots: { label: 'text-default' } },
       },
       // The app works offline and its CSP forbids other origins, so the icons
-      // it uses are bundled, never fetched.
-      icon: { clientBundle: { scan: true } },
+      // it uses are bundled, never fetched. The scan reads the TypeScript
+      // files too, for the icons of the plugins (src/utils/pluginIcons.ts).
+      icon: { clientBundle: { scan: { globInclude: ['**/*.{vue,ts}'] } } },
     }),
     // The messages are compiled at build time, so a malformed message fails
     // the build and the bundle ships without the message compiler.

@@ -6,6 +6,7 @@
     "cancel": "Cancel",
     "close": "Close",
     "save": "Save",
+    "copy": "Copy",
     "copied": "Copied"
   },
   "status": {
@@ -50,6 +51,7 @@
     "manualHint": "You choose the color.",
     "integrations": "Integrations",
     "pluginTag": "plugin",
+    "manage": "Manage integrations",
     "on": "On: follows {name}",
     "turnOn": "Turn on: follow {name}",
     "clickToTurnOn": "Click to turn on",
@@ -61,7 +63,89 @@
     "mic": "Microphone in use"
   },
   "integrations": {
-    "noEvent": "No event received"
+    "noEvent": "No event received",
+    "title": "Integrations",
+    "subtitle": "They come from your plugins.",
+    "openFolder": "Open the plugins folder",
+    "import": "Import a plugin",
+    "list": "Plugins",
+    "details": "Details",
+    "empty": "No plugin",
+    "enable": "Enable {name}",
+    "on": "Enabled",
+    "off": "Disabled",
+    "driving": "Drives the lamp",
+    "new": "New: to review",
+    "unreadable": "{file} unreadable",
+    "noEventYet": "No event received yet.",
+    "lastEvent": "Last event received {ago} ago: {state}.",
+    "lastEventNoState": "Last event received {ago} ago.",
+    "ago": {
+      "seconds": "{n} s",
+      "minutes": "{n} min",
+      "hours": "{n} h"
+    },
+    "newDetail": "New: read what it will be able to do before enabling it.",
+    "meta": "Plugin {version} · by {author}",
+    "install": "Installation",
+    "noteSource": "Plugin note",
+    "filled": "{address} and {token} filled in by Disled",
+    "address": "address",
+    "token": "token",
+    "blockLabel": "Block to add to {file}",
+    "neverEdits": "Disled never changes the settings of {name}: you paste this block yourself.",
+    "installed": "Installed: {name} sends its events.",
+    "reviewNote": "See the note again",
+    "can": "What this plugin can do",
+    "perm": {
+      "process": "Run a program on this computer, with your rights: {command}",
+      "color": "Choose the lamp color, when the lamp follows it",
+      "alert": "Make an alert on the lamp",
+      "events": "Receive events from {name}, locally",
+      "nothingElse": "Nothing else: no program, no Internet"
+    },
+    "colors": "Colors",
+    "colorsHint": "When the lamp follows {name}:",
+    "tokenOwn": "Token of this plugin",
+    "regenerate": "Regenerate the token",
+    "remove": "Remove the plugin",
+    "approve": {
+      "title": "Enable “{name}”?",
+      "meta": "Plugin {version} · by {author} · found in the plugins folder",
+      "can": "This plugin will be able to:",
+      "trust": "Only enable plugins from people you trust. If its files change, Disled will ask you again.",
+      "action": "Enable"
+    },
+    "regenerateConfirm": {
+      "title": "Regenerate the token of “{name}”?",
+      "text": "The old token will stop working. You will have to copy the block of the installation note again.",
+      "action": "Regenerate"
+    },
+    "removeConfirm": {
+      "title": "Remove “{name}”?",
+      "text": "Its folder will be deleted, with its token.",
+      "action": "Remove"
+    },
+    "status": {
+      "modified": "Changed: to review",
+      "failed": "Stopped after several errors",
+      "running": "Running",
+      "stopped": "The program stopped.",
+      "notFound": "Program not found: {program}",
+      "portTaken": "Port {port} is taken by another program."
+    },
+    "importFailed": "Import refused",
+    "reason": {
+      "missing": "No plugin.json file.",
+      "json": "Invalid JSON, line {line}.",
+      "field": "Missing field: {field}.",
+      "invalid": "Invalid field: {field}.",
+      "api": "Unsupported API version: {api}.",
+      "id": "The id does not match the folder name.",
+      "link": "Symbolic link refused: {path}.",
+      "size": "Plugin too large.",
+      "path": "Path refused in the archive: {path}."
+    }
   },
   "settings": {
     "autostart": "Start Disled when I log in",
@@ -316,6 +400,7 @@
   },
   "window": {
     "diagnostics": "Disled diagnostics",
+    "integrations": "Disled integrations",
     "lampUpdate": "Disled lamp update",
     "lampInstall": "Reinstall the firmware"
   },

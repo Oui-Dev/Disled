@@ -5,16 +5,19 @@
   The source the lamp follows, at the top right of the lamp page: the user
   in manual mode, or a single integration that picks the color, which tints
   the button. Its menu also holds the calls, which follow the microphone in
-  manual mode only, where this system can tell a call. A setting of the
-  app, so active without a lamp; a lamp the app does not drive locks it.
+  manual mode only, where this system can tell a call, and the way to the
+  integrations window. A setting of the app, so active without a lamp; a
+  lamp the app does not drive locks it.
 -->
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { openIntegrations } from '@/ipc/commands';
 import { useControlStore } from '@/stores/control';
 import { useLampStore } from '@/stores/lamp';
 import { useSettingsStore } from '@/stores/settings';
+import { pluginIcon } from '@/utils/pluginIcons';
 
 const { t } = useI18n();
 const lamp = useLampStore();
@@ -25,7 +28,7 @@ const integration = computed(() => control.integration);
 const mic = computed(() => settingsStore.settings?.calls.mic ?? false);
 const source = computed(() => integration.value?.name ?? t('modes.manual'));
 const icon = computed(() =>
-  integration.value ? `i-lucide-${integration.value.icon}` : 'i-lucide-hand',
+  integration.value ? pluginIcon(integration.value.icon) : 'i-lucide-hand',
 );
 
 const items = computed(() => {
@@ -75,13 +78,20 @@ const items = computed(() => {
       ...control.status.integrations.map((known) => ({
         type: 'checkbox' as const,
         label: known.name,
-        icon: `i-lucide-${known.icon}`,
+        icon: pluginIcon(known.icon),
         checked: control.status.mode === known.id,
         slot: 'integration' as const,
         onSelect: () => void control.setMode(known.id),
       })),
     ]);
   }
+  groups.push([
+    {
+      label: t('modes.manage'),
+      icon: 'i-lucide-settings-2',
+      onSelect: () => void openIntegrations(),
+    },
+  ]);
   return groups;
 });
 </script>
