@@ -3,7 +3,7 @@
  * SPDX-FileCopyrightText: 2026 The DISLED contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
- * Pin map of the DISLED board, pcb 1.0.0, board revision 4 in INFO
+ * Pin map of the Disled board, pcb 1.0.0, board revision 4 in INFO
  * (hardware/README.md). Nothing else knows where things are wired.
  */
 #ifndef DISLED_BOARD_H

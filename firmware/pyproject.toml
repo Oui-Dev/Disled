@@ -11,7 +11,7 @@
 [project]
 name = "disled-firmware-tools"
 version = "0.0.0"
-description = "Build and check tools of the DISLED firmware"
+description = "Build and check tools of the Disled firmware"
 requires-python = ">=3.14.9"
 dependencies = [
     "platformio==6.2.0",

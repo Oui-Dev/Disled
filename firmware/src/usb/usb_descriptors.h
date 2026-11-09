@@ -23,8 +23,8 @@
 #define USB_PID 0x0001u
 #endif
 
-#define USB_MANUFACTURER_STRING "DISLED"
-#define USB_PRODUCT_STRING      "DISLED"
+#define USB_MANUFACTURER_STRING "Disled"
+#define USB_PRODUCT_STRING      "Disled"
 
 /* Declared current draw: LED budget plus MCU, with margin (constraint N2
  * in hardware/README.md). */

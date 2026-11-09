@@ -95,9 +95,9 @@ _Static_assert(PROTO_REPORT_SIZE + 1u <= CFG_TUD_HID_EP_BUFSIZE, "HID report mus
 static const char *const string_table[] = {
     [STRID_MANUFACTURER] = USB_MANUFACTURER_STRING,
     [STRID_PRODUCT] = USB_PRODUCT_STRING,
-    [STRID_HID] = "DISLED control",
+    [STRID_HID] = "Disled control",
 #if CFG_TUD_CDC
-    [STRID_CDC] = "DISLED console",
+    [STRID_CDC] = "Disled console",
 #endif
 };
 

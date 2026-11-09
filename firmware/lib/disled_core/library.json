@@ -1,7 +1,7 @@
 {
   "name": "disled_core",
   "version": "0.1.0",
-  "description": "Hardware-independent logic of the DISLED firmware: lamp state machine, touch detection, brightness, color pipeline, power limiter and protocol codec. Includes no SDK header, so it also builds and runs natively for unit tests.",
+  "description": "Hardware-independent logic of the Disled firmware: lamp state machine, touch detection, brightness, color pipeline, power limiter and protocol codec. Includes no SDK header, so it also builds and runs natively for unit tests.",
   "license": "GPL-3.0-or-later",
   "frameworks": "*",
   "platforms": "*",
