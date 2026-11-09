@@ -2,18 +2,18 @@
   SPDX-License-Identifier: GPL-3.0-or-later
   SPDX-FileCopyrightText: 2026 The Disled contributors
 
-  Off, then the four lamp colors, as a radio group whose choice the arrow
-  keys move. The lamp owns its state, so the selection is its last STATE
-  message.
+  Off, then the four built-in colors, as a radio group whose choice the
+  arrow keys move. The lamp owns its state, so the selection is its last
+  STATE message. A color is a palette slot.
 -->
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { LampColor } from '@/bindings/LampColor';
 import { useLampStore } from '@/stores/lamp';
-import { LAMP_COLORS, SWATCH_COLORS } from '@/utils/lamp';
+import { BUILT_IN_COLORS } from '@/utils/lamp';
 
-type Choice = LampColor | 'off';
+/** Off, a built-in color by slot, or another color, which checks no item. */
+type Choice = number | 'off' | 'other';
 
 const { t } = useI18n();
 const lamp = useLampStore();
@@ -21,7 +21,7 @@ const lamp = useLampStore();
 // A radio group emits the type of its items' values.
 const items = computed<{ value: Choice; label: string }[]>(() => [
   { value: 'off', label: t('lamp.colors.off') },
-  ...LAMP_COLORS.map((color) => ({ value: color, label: t(`lamp.colors.${color}`) })),
+  ...BUILT_IN_COLORS.map((color, slot) => ({ value: slot, label: t(`lamp.colors.${color.key}`) })),
 ]);
 
 const selected = computed<Choice | undefined>(() => {
@@ -29,11 +29,24 @@ const selected = computed<Choice | undefined>(() => {
   if (!state) {
     return undefined;
   }
-  return state.on ? state.color : 'off';
+  if (!state.on) {
+    return 'off';
+  }
+  return state.color < BUILT_IN_COLORS.length ? state.color : 'other';
 });
 
+/** The swatch of a built-in color; off draws its own. */
+function swatch(choice: Choice): { background: string } | undefined {
+  const color = typeof choice === 'number' ? BUILT_IN_COLORS[choice] : undefined;
+  return color ? { background: color.swatch } : undefined;
+}
+
 function select(choice: Choice): void {
-  void lamp.setLamp(choice === 'off' ? { on: false } : { on: true, color: choice });
+  if (choice === 'off') {
+    void lamp.setLamp({ on: false });
+  } else if (typeof choice === 'number') {
+    void lamp.setLamp({ on: true, color: choice });
+  }
 }
 </script>
 
@@ -48,7 +61,7 @@ function select(choice: Choice): void {
     :legend="t('lamp.colors.legend')"
     orientation="horizontal"
     indicator="hidden"
-    :disabled="!lamp.state"
+    :disabled="!lamp.ready"
     :ui="{
       legend: 'sr-only',
       fieldset: 'flex-nowrap gap-x-1',
@@ -63,7 +76,7 @@ function select(choice: Choice): void {
         aria-hidden="true"
         class="block size-9 rounded-[20%] border border-accented ring-2 ring-transparent ring-offset-2 ring-offset-bg transition-shadow group-has-data-[state=checked]:ring-inverted"
         :class="{ off: item.value === 'off' }"
-        :style="item.value === 'off' ? undefined : { background: SWATCH_COLORS[item.value] }"
+        :style="swatch(item.value)"
       />
       <span class="max-w-full text-center leading-tight">
         {{ item.label }}

@@ -8,6 +8,7 @@
 // Prevents an additional console window on Windows in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod colors;
 mod device;
 mod firmware;
 mod i18n;
@@ -16,6 +17,7 @@ mod tray;
 mod updates;
 mod windows;
 
+use colors::ColorsState;
 use device::{Connection, DeviceHandle};
 use disled_protocol::{Command, SetState};
 use firmware::{FirmwareState, FirmwareStatus};
@@ -72,6 +74,7 @@ fn settings_set(
 ) -> Result<Settings, String> {
     let mut settings = app.state::<SettingsState>().get();
     settings.apply(&patch);
+    settings.fit(&app.state::<ColorsState>().get());
     settings::save(&app, settings)?;
     // Every window keeps its own copy, so all of them hear of the change.
     let _ = app.emit(EVENT_SETTINGS, settings);
@@ -90,9 +93,14 @@ fn settings_set(
             ..SetState::default()
         }));
     }
-    if patch.auto_bias.is_some() && device.auto_bias_supported() {
+    if patch.auto_bias.is_some() {
         let _ = device.send(Command::SetAutoBias {
             bias: settings.auto_bias,
+        });
+    }
+    if patch.touch_sensitivity.is_some() {
+        let _ = device.send(Command::SetTouchSensitivity {
+            percent: settings.touch_sensitivity,
         });
     }
     Ok(settings)
@@ -223,15 +231,16 @@ fn quit(app: AppHandle) {
     app.exit(0);
 }
 
-/// Loads the settings. At the very first launch of an installed app, it
-/// turns on start at login, but never under `tauri dev`, which would register
-/// the debug executable.
+/// Loads the settings and the palette, and saves them once, corrected. At
+/// the very first launch of an installed app, it turns on start at login,
+/// but never under `tauri dev`, which would register the debug executable.
 fn init_settings(app: &AppHandle) -> Settings {
-    let mut settings = settings::load(app);
+    let (mut settings, palette) = settings::load(app);
     if !settings.autostart_initialized && !cfg!(debug_assertions) {
         let _ = app.autolaunch().enable();
         settings.autostart_initialized = true;
     }
+    let _ = settings::save_palette(app, palette);
     let _ = settings::save(app, settings);
     settings
 }
@@ -256,6 +265,7 @@ fn main() {
         // Only open_link uses it, from Rust, so no window has its permission.
         .plugin(tauri_plugin_opener::init())
         .manage(SettingsState::default())
+        .manage(ColorsState::default())
         .manage(LocaleState::default())
         .manage(TrayState::default())
         .manage(windows::PopupState::default())

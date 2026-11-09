@@ -1,25 +1,38 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Disled contributors
 
-//! Settings kept on this computer. The lamp starts in automatic brightness and forgets
-//! its bias at each power-up, so the app applies the brightness ones at every
-//! connection. Power and color are not settings, since the lamp always starts green.
+//! Settings kept on this computer, in a store file of three keys: `settings`
+//! for the simple ones, `colors` for the palette (colors.rs) and
+//! `integrations` for the plugins. The lamp keeps nothing, so the app sends
+//! what it needs at every connection (device.rs). App 1.1.2 wrote only the
+//! `settings` key: its file reads as it is, the new fields taking their
+//! defaults, and it keeps the other keys if the user goes back to it.
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use disled_protocol::{AUTO_BIAS_MAX, AUTO_BIAS_MIN, BrightnessMode, Command, SetState};
+use disled_protocol::{
+    AUTO_BIAS_MAX, AUTO_BIAS_MIN, BrightnessMode, SLOT_RED, TOUCH_SENSITIVITY_MAX,
+    TOUCH_SENSITIVITY_MIN,
+};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tauri::{AppHandle, Manager, Theme, Wry};
 use tauri_plugin_store::{Store, StoreExt};
 
+use crate::colors::{ColorsState, Palette};
+
 const STORE_FILE: &str = "settings.json";
 const KEY: &str = "settings";
+const COLORS_KEY: &str = "colors";
 /// The version of the app that ran last, kept next to the settings.
 const VERSION_KEY: &str = "version";
 /// The store writes its file once the changes stop for this long, and at
 /// exit, since a slider changes the settings several times a second.
 const SAVE_DELAY: Duration = Duration::from_millis(500);
+/// The touch sensitivity moves by this much, percent.
+pub const TOUCH_SENSITIVITY_STEP: i8 = 5;
 
 /// Light or dark windows, or as the system.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -54,6 +67,25 @@ pub enum Language {
     Fr,
 }
 
+/// The color the lamp takes while the microphone is in use.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(ts_rs::TS), ts(export))]
+pub struct CallSettings {
+    /// Follow the microphone at all.
+    pub mic: bool,
+    /// A slot that holds a color; red, "Do not disturb", by default.
+    pub color: u8,
+}
+
+impl Default for CallSettings {
+    fn default() -> Self {
+        Self {
+            mic: false,
+            color: SLOT_RED,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(test, derive(ts_rs::TS), ts(export))]
 #[serde(default)]
@@ -70,6 +102,11 @@ pub struct Settings {
     pub check_updates: bool,
     pub color_mode: ColorMode,
     pub language: Language,
+    /// Touch sensitivity correction, percent, a multiple of 5.
+    pub touch_sensitivity: i8,
+    /// Show a color on the lamp while the editor changes it.
+    pub color_preview: bool,
+    pub calls: CallSettings,
 }
 
 impl Default for Settings {
@@ -82,6 +119,9 @@ impl Default for Settings {
             check_updates: true,
             color_mode: ColorMode::System,
             language: Language::System,
+            touch_sensitivity: 0,
+            color_preview: true,
+            calls: CallSettings::default(),
         }
     }
 }
@@ -96,10 +136,53 @@ pub struct SettingsPatch {
     pub check_updates: Option<bool>,
     pub color_mode: Option<ColorMode>,
     pub language: Option<Language>,
+    pub touch_sensitivity: Option<i8>,
+    pub color_preview: Option<bool>,
+    pub calls_mic: Option<bool>,
+    pub calls_color: Option<u8>,
+}
+
+/// One field of a saved object, if it reads as `T`.
+fn field<T: DeserializeOwned>(object: &Value, key: &str) -> Option<T> {
+    object.get(key).and_then(|value| T::deserialize(value).ok())
+}
+
+/// The nearest multiple of the step, within the limits.
+fn touch_sensitivity(percent: i8) -> i8 {
+    let step = f64::from(TOUCH_SENSITIVITY_STEP);
+    let rounded = (f64::from(percent) / step).round() * step;
+    rounded.clamp(
+        f64::from(TOUCH_SENSITIVITY_MIN),
+        f64::from(TOUCH_SENSITIVITY_MAX),
+    ) as i8
 }
 
 impl Settings {
-    /// Applies a patch, keeping every value in its range.
+    /// Reads saved settings field by field. A field that cannot be read
+    /// keeps its default, and the others stay.
+    pub fn from_value(value: &Value) -> Self {
+        let calls = value.get("calls").unwrap_or(&Value::Null);
+        let mut settings = Settings::default();
+        settings.apply(&SettingsPatch {
+            brightness_mode: field(value, "brightness_mode"),
+            manual_level: field(value, "manual_level"),
+            auto_bias: field(value, "auto_bias"),
+            check_updates: field(value, "check_updates"),
+            color_mode: field(value, "color_mode"),
+            language: field(value, "language"),
+            touch_sensitivity: field(value, "touch_sensitivity"),
+            color_preview: field(value, "color_preview"),
+            calls_mic: field(calls, "mic"),
+            calls_color: field(calls, "color"),
+        });
+        if let Some(initialized) = field(value, "autostart_initialized") {
+            settings.autostart_initialized = initialized;
+        }
+        settings
+    }
+
+    /// Applies a patch, keeping every value in its range. The call color
+    /// still has to name a color of the palette (`fit`).
     pub fn apply(&mut self, patch: &SettingsPatch) {
         if let Some(mode) = patch.brightness_mode {
             self.brightness_mode = mode;
@@ -119,22 +202,26 @@ impl Settings {
         if let Some(language) = patch.language {
             self.language = language;
         }
+        if let Some(percent) = patch.touch_sensitivity {
+            self.touch_sensitivity = touch_sensitivity(percent);
+        }
+        if let Some(preview) = patch.color_preview {
+            self.color_preview = preview;
+        }
+        if let Some(mic) = patch.calls_mic {
+            self.calls.mic = mic;
+        }
+        if let Some(color) = patch.calls_color {
+            self.calls.color = color;
+        }
     }
 
-    /// Commands that bring a lamp in line with these settings. The bias goes
-    /// only to a lamp that announces the `auto_bias` capability.
-    pub fn commands(&self, auto_bias_supported: bool) -> Vec<Command> {
-        let mut commands = vec![Command::SetState(SetState {
-            brightness_mode: Some(self.brightness_mode),
-            manual_level: Some(self.manual_level.clamp(1, 100)),
-            ..SetState::default()
-        })];
-        if auto_bias_supported {
-            commands.push(Command::SetAutoBias {
-                bias: self.auto_bias,
-            });
+    /// Brings the call color back to its default when the palette does not
+    /// hold it, as after the deletion of a custom color.
+    pub fn fit(&mut self, palette: &Palette) {
+        if !palette.defines(self.calls.color) {
+            self.calls.color = CallSettings::default().color;
         }
-        commands
     }
 }
 
@@ -148,14 +235,25 @@ impl SettingsState {
     }
 }
 
-/// Reads the saved settings, or the defaults when there are none or they
-/// cannot be read.
-pub fn load(app: &AppHandle) -> Settings {
-    store(app)
-        .ok()
-        .and_then(|store| store.get(KEY))
-        .and_then(|value| serde_json::from_value(value).ok())
-        .unwrap_or_default()
+/// Reads the saved settings and palette, each part that cannot be read
+/// taking its default.
+pub fn load(app: &AppHandle) -> (Settings, Palette) {
+    let store = store(app).ok();
+    let read = |key: &str| {
+        store
+            .as_ref()
+            .and_then(|store| store.get(key))
+            .unwrap_or(Value::Null)
+    };
+    read_all(&read(KEY), &read(COLORS_KEY))
+}
+
+/// The settings and the palette of two saved keys.
+fn read_all(settings: &Value, colors: &Value) -> (Settings, Palette) {
+    let palette = Palette::from_value(colors);
+    let mut settings = Settings::from_value(settings);
+    settings.fit(&palette);
+    (settings, palette)
 }
 
 /// The store of the settings. Its options hold from the first call, which
@@ -175,6 +273,16 @@ pub fn save(app: &AppHandle, settings: Settings) -> Result<(), String> {
         KEY,
         serde_json::to_value(settings).map_err(|e| e.to_string())?,
     );
+    Ok(())
+}
+
+/// Updates the shared palette and the store, as `save` does.
+pub fn save_palette(app: &AppHandle, palette: Palette) -> Result<(), String> {
+    let value = serde_json::to_value(&palette).map_err(|e| e.to_string())?;
+    app.state::<ColorsState>().set(palette);
+    store(app)
+        .map_err(|e| e.to_string())?
+        .set(COLORS_KEY, value);
     Ok(())
 }
 
@@ -200,6 +308,20 @@ pub fn first_launch_of_version(app: &AppHandle) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
+
+    /// The `settings` key as app 1.1.2 writes it.
+    fn file_of_1_1_2() -> Value {
+        json!({
+            "brightness_mode": "manual",
+            "manual_level": 40,
+            "auto_bias": -10,
+            "autostart_initialized": true,
+            "check_updates": false,
+            "color_mode": "dark",
+            "language": "fr"
+        })
+    }
 
     #[test]
     fn a_patch_keeps_values_in_range() {
@@ -215,39 +337,79 @@ mod tests {
     }
 
     #[test]
-    fn the_bias_is_sent_only_to_lamps_that_know_it() {
-        let settings = Settings {
-            brightness_mode: BrightnessMode::Manual,
-            manual_level: 30,
-            auto_bias: 20,
-            ..Settings::default()
-        };
-        assert_eq!(settings.commands(false).len(), 1);
-        let commands = settings.commands(true);
-        assert_eq!(commands.len(), 2);
-        assert_eq!(commands[1], Command::SetAutoBias { bias: 20 });
-        match &commands[0] {
-            Command::SetState(s) => {
-                assert_eq!(s.brightness_mode, Some(BrightnessMode::Manual));
-                assert_eq!(s.manual_level, Some(30));
-                assert_eq!(s.on, None);
-                assert_eq!(s.color, None);
-            }
-            other => panic!("unexpected {other:?}"),
+    fn a_1_1_2_file_loads_with_v2_defaults() {
+        let (settings, palette) = read_all(&file_of_1_1_2(), &Value::Null);
+        assert_eq!(settings.brightness_mode, BrightnessMode::Manual);
+        assert_eq!(settings.manual_level, 40);
+        assert_eq!(settings.auto_bias, -10);
+        assert!(settings.autostart_initialized);
+        assert!(!settings.check_updates);
+        assert_eq!(settings.color_mode, ColorMode::Dark);
+        assert_eq!(settings.language, Language::Fr);
+        assert_eq!(settings.touch_sensitivity, 0);
+        assert!(settings.color_preview);
+        assert!(!settings.calls.mic);
+        assert_eq!(settings.calls.color, SLOT_RED);
+        assert_eq!(palette, Palette::default());
+    }
+
+    #[test]
+    fn one_bad_field_keeps_the_others() {
+        let mut file = file_of_1_1_2();
+        file["manual_level"] = json!("forty");
+        file["calls"] = json!({ "mic": "yes", "color": 1 });
+        let settings = Settings::from_value(&file);
+        assert_eq!(settings.manual_level, 50);
+        assert_eq!(settings.language, Language::Fr);
+        assert_eq!(settings.color_mode, ColorMode::Dark);
+        assert!(!settings.calls.mic);
+        assert_eq!(settings.calls.color, 1);
+        assert_eq!(
+            Settings::from_value(&json!("not an object")),
+            Settings::default()
+        );
+    }
+
+    #[test]
+    fn the_sensitivity_is_rounded_and_bounded() {
+        for (saved, kept) in [
+            (7, 5),
+            (8, 10),
+            (-7, -5),
+            (-8, -10),
+            (2, 0),
+            (90, 50),
+            (-90, -50),
+        ] {
+            let settings = Settings::from_value(&json!({ "touch_sensitivity": saved }));
+            assert_eq!(settings.touch_sensitivity, kept, "{saved}");
         }
     }
 
     #[test]
-    fn old_files_without_new_fields_still_load() {
-        let settings: Settings =
-            serde_json::from_str(r#"{"brightness_mode":"manual","manual_level":40}"#)
-                .expect("settings");
-        assert_eq!(settings.manual_level, 40);
-        assert_eq!(settings.auto_bias, 0);
-        assert!(!settings.autostart_initialized);
-        assert!(settings.check_updates);
-        assert_eq!(settings.color_mode, ColorMode::System);
-        assert_eq!(settings.language, Language::System);
+    fn a_file_saved_by_1_1_2_keeps_the_colors() {
+        // App 1.1.2 rewrites the `settings` key without the fields it does not
+        // know, and leaves the `colors` key alone.
+        let colors = json!({
+            "schema": 1,
+            "names": [null, null, null, null],
+            "custom": [{ "slot": 4, "name": "Musique", "hex": "#9B59F6" }],
+            "cycle": [0, 1, 2, 4]
+        });
+        let (settings, palette) = read_all(&file_of_1_1_2(), &colors);
+        assert_eq!(settings.touch_sensitivity, 0);
+        assert_eq!(palette.custom.len(), 1);
+        assert_eq!(palette.cycle, [0, 1, 2, 4]);
+    }
+
+    #[test]
+    fn a_call_color_that_left_the_palette_goes_back_to_red() {
+        let file = json!({ "calls": { "mic": true, "color": 6 } });
+        let (settings, _) = read_all(&file, &Value::Null);
+        assert!(settings.calls.mic);
+        assert_eq!(settings.calls.color, SLOT_RED);
+        let colors = json!({ "custom": [{ "slot": 6, "name": "Focus", "hex": "#3B82F6" }] });
+        assert_eq!(read_all(&file, &colors).0.calls.color, 6);
     }
 
     #[test]

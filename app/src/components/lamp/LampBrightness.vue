@@ -26,8 +26,8 @@ const settingsStore = useSettingsStore();
 
 const settings = computed(() => settingsStore.settings);
 const auto = computed(() => settings.value?.brightness_mode !== 'manual');
-/** Unknown until INFO arrives, so assume support rather than flash a warning. */
-const biasSupported = computed(() => lamp.info?.auto_bias ?? true);
+/** A lamp the app does not drive, whose level the app does not know either. */
+const locked = computed(() => !settings.value || lamp.locked);
 
 /** The value under the user's hand, kept until saved so that the thumb never jumps back. */
 const held = ref<number | null>(null);
@@ -42,9 +42,14 @@ const value = computed(
 
 /**
  * The level in use, in percent. In automatic mode it is the one the lamp
- * chose, null until the lamp reports it.
+ * chose, null until the lamp reports it, and never shown for a locked lamp.
  */
-const level = computed(() => (auto.value ? (lamp.state?.applied_level ?? null) : value.value));
+const level = computed(() => {
+  if (lamp.locked) {
+    return null;
+  }
+  return auto.value ? (lamp.state?.applied_level ?? null) : value.value;
+});
 const levelText = computed(() =>
   level.value === null ? undefined : n(level.value / 100, 'percent'),
 );
@@ -100,9 +105,6 @@ const hint = computed(() => {
   if (!auto.value) {
     return t('lamp.brightness.fixed');
   }
-  if (!biasSupported.value) {
-    return t('lamp.brightness.needsFirmware');
-  }
   const correction =
     value.value === 0 ? biasText.value : t('lamp.brightness.correction', { value: biasText.value });
   return `${t('lamp.brightness.follows')} · ${correction}`;
@@ -128,7 +130,7 @@ const hint = computed(() => {
         <USwitch
           :model-value="auto"
           :label="t('lamp.brightness.auto')"
-          :disabled="!settings"
+          :disabled="locked"
           size="sm"
           @update:model-value="setAuto"
         />
@@ -144,7 +146,7 @@ const hint = computed(() => {
           :min="AUTO_BIAS_MIN"
           :max="AUTO_BIAS_MAX"
           :step="BIAS_STEP"
-          :disabled="!settings || !biasSupported"
+          :disabled="locked"
           :tooltip="{ text: biasText }"
           :aria-label="t('lamp.brightness.correctionLabel')"
           :aria-valuetext="biasText"
@@ -160,7 +162,7 @@ const hint = computed(() => {
           :model-value="value"
           :min="1"
           :max="100"
-          :disabled="!settings"
+          :disabled="locked"
           :aria-label="t('lamp.brightness.title')"
           :aria-valuetext="levelText"
           class="flex-1"

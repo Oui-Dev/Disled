@@ -7,7 +7,6 @@
 
 use std::sync::Mutex;
 
-use disled_protocol::LampColor;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -24,13 +23,27 @@ const HALF: f32 = 14.0;
 /// vanish once the system shows this icon at 16 px.
 const CORNER: f32 = 8.0;
 
+/// The built-in colors, by palette slot: the key of their tooltip, and their
+/// color on screen, as the swatches of the popup (`app/src/utils/lamp.ts`).
+const BUILT_IN_COLORS: [(&str, [u8; 3]); 4] = [
+    ("green", [0x2e, 0xcc, 0x71]),
+    ("orange", [0xf3, 0x9c, 0x12]),
+    ("red", [0xe7, 0x4c, 0x3c]),
+    ("warm_white", [0xff, 0xe2, 0xb8]),
+];
+
 /// What the icon shows.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Look {
     #[default]
     NoLamp,
     Off,
-    On(LampColor),
+    /// On, with a built-in color, by palette slot.
+    On(u8),
+    /// A version 1 lamp, which the app does not drive.
+    NeedsUpdate,
+    /// A lamp of a later protocol than the app.
+    Newer,
 }
 
 impl Look {
@@ -38,10 +51,9 @@ impl Look {
         let key = match self {
             Look::NoLamp => "noLamp",
             Look::Off => "off",
-            Look::On(LampColor::Green) => "green",
-            Look::On(LampColor::Orange) => "orange",
-            Look::On(LampColor::Red) => "red",
-            Look::On(LampColor::WarmWhite) => "warm_white",
+            Look::On(slot) => BUILT_IN_COLORS[usize::from(slot) % BUILT_IN_COLORS.len()].0,
+            Look::NeedsUpdate => "needsUpdate",
+            Look::Newer => "newer",
         };
         locale.t(&format!("tray.tooltip.{key}"))
     }
@@ -50,15 +62,6 @@ impl Look {
 /// The look on show, to word the tooltip again when the language changes.
 #[derive(Default)]
 pub struct TrayState(Mutex<Look>);
-
-fn color_rgb(color: LampColor) -> [u8; 3] {
-    match color {
-        LampColor::Green => [0x2e, 0xcc, 0x71],
-        LampColor::Orange => [0xf3, 0x9c, 0x12],
-        LampColor::Red => [0xe7, 0x4c, 0x3c],
-        LampColor::WarmWhite => [0xff, 0xe2, 0xb8],
-    }
-}
 
 /// Signed distance in pixels, negative inside, from a point to the edge of a
 /// square centred on the origin, of half side `half` and corner radius `r`.
@@ -77,7 +80,8 @@ fn square(dx: f32, dy: f32, inset: f32) -> f32 {
 
 /// Renders the icon: a square in the lamp color with a darker rim, which
 /// keeps warm white visible on a light menu bar, a grey outline when the lamp
-/// is off, and a faint outline when no lamp is connected.
+/// is off, and a faint outline when no lamp is connected or the app cannot
+/// drive it.
 fn render(look: Look) -> Image<'static> {
     let mut rgba = vec![0u8; (SIZE * SIZE * 4) as usize];
     let center = (SIZE as f32 - 1.0) / 2.0;
@@ -90,8 +94,8 @@ fn render(look: Look) -> Image<'static> {
                 continue;
             }
             let (rgb, alpha) = match look {
-                Look::On(color) => {
-                    let fill = color_rgb(color);
+                Look::On(slot) => {
+                    let fill = BUILT_IN_COLORS[usize::from(slot) % BUILT_IN_COLORS.len()].1;
                     let inner = square(dx, dy, 1.5);
                     // Blend the fill into a rim at 60 % brightness.
                     let rgb = fill.map(|c| {
@@ -100,7 +104,7 @@ fn render(look: Look) -> Image<'static> {
                     });
                     (rgb, outer)
                 }
-                Look::Off | Look::NoLamp => {
+                Look::Off | Look::NoLamp | Look::NeedsUpdate | Look::Newer => {
                     let hole = square(dx, dy, 2.5);
                     let ring = outer * (1.0 - hole);
                     let strength = if look == Look::Off { 1.0 } else { 0.55 };
@@ -207,7 +211,7 @@ mod tests {
 
     #[test]
     fn a_lit_lamp_is_a_full_square_in_its_color() {
-        let image = render(Look::On(LampColor::Red));
+        let image = render(Look::On(2));
         assert_eq!(pixel(&image, 16, 16), [0xe7, 0x4c, 0x3c, 255]);
         assert_eq!(pixel(&image, 0, 0)[3], 0, "the margin stays transparent");
         assert_eq!(pixel(&image, 5, 5)[3], 255, "a square, not a dot");
@@ -229,10 +233,12 @@ mod tests {
         let looks = [
             Look::NoLamp,
             Look::Off,
-            Look::On(LampColor::Green),
-            Look::On(LampColor::Orange),
-            Look::On(LampColor::Red),
-            Look::On(LampColor::WarmWhite),
+            Look::On(0),
+            Look::On(1),
+            Look::On(2),
+            Look::On(3),
+            Look::NeedsUpdate,
+            Look::Newer,
         ];
         for locale in [Locale::En, Locale::Fr] {
             for look in looks {
@@ -242,9 +248,6 @@ mod tests {
                 );
             }
         }
-        assert_eq!(
-            Look::On(LampColor::WarmWhite).tooltip(Locale::En),
-            "DISLED: warm white"
-        );
+        assert_eq!(Look::On(3).tooltip(Locale::En), "DISLED: warm white");
     }
 }

@@ -13,4 +13,8 @@ stack_free_min: number, i2c_errors: number, light_sensor_probes: number, touch_s
 /**
  * Automatic brightness bias in force, percent.
  */
-auto_bias: number, light_sensor_present: boolean, crystal_running: boolean, };
+auto_bias: number, light_sensor_present: boolean, crystal_running: boolean, 
+/**
+ * Touch sensitivity correction in force, percent.
+ */
+touch_sensitivity: number, };

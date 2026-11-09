@@ -6,7 +6,7 @@
 // last STATE message and sends commands.
 
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import type { Command } from '@/bindings/Command';
 import type { Connection } from '@/bindings/Connection';
 import type { Info } from '@/bindings/Info';
@@ -14,7 +14,14 @@ import type { LampState } from '@/bindings/LampState';
 import type { SetState } from '@/bindings/SetState';
 import { deviceConnection, deviceSend } from '@/ipc/commands';
 import { follow, on } from '@/ipc/events';
+import { PROTOCOL_MAJOR } from '@/utils/lamp';
 import { useErrorStore } from './errors';
+
+/**
+ * What the protocol of a lamp lets the app do: a version 1 lamp and a lamp
+ * newer than the app are locked, a version 2 lamp is driven.
+ */
+export type Generation = 'v1' | 'v2' | 'newer';
 
 export const useLampStore = defineStore('lamp', () => {
   const errors = useErrorStore();
@@ -22,6 +29,24 @@ export const useLampStore = defineStore('lamp', () => {
   const connection = ref<Connection>({ connected: false, debug_build: false, serial: null });
   const info = ref<Info | null>(null);
   const state = ref<LampState | null>(null);
+
+  /** Read in the INFO of the lamp, null until it answers. */
+  const generation = computed<Generation | null>(() => {
+    const major = info.value?.protocol[0];
+    if (major === undefined) {
+      return null;
+    }
+    if (major === PROTOCOL_MAJOR) {
+      return 'v2';
+    }
+    return major < PROTOCOL_MAJOR ? 'v1' : 'newer';
+  });
+  /** A lamp the app does not drive: its controls stay greyed. */
+  const locked = computed(() => generation.value === 'v1' || generation.value === 'newer');
+  /** A version 2 lamp whose state is known, which the controls drive. */
+  const ready = computed(
+    () => connection.value.connected && generation.value === 'v2' && state.value !== null,
+  );
 
   /**
    * Sends a command; a failure becomes the last error. A command the user
@@ -100,5 +125,16 @@ export const useLampStore = defineStore('lamp', () => {
     }
   }
 
-  return { connection, info, state, send, setLamp, restart, start };
+  return {
+    connection,
+    info,
+    state,
+    generation,
+    locked,
+    ready,
+    send,
+    setLamp,
+    restart,
+    start,
+  };
 });

@@ -2,8 +2,18 @@
 import type { Fault } from "./Fault";
 import type { ResetCause } from "./ResetCause";
 
-export type Info = { protocol: [number, number], firmware: [number, number, number], firmware_version: string, board_revision: number, 
+/**
+ * INFO, whose layout is the same in versions 1 and 2. Capabilities that a
+ * lamp does not announce read false: a version 1 lamp announces none of
+ * version 2, and a version 2 lamp all of them but the debug console, which
+ * only debug builds have.
+ */
+export type Info = { 
+/**
+ * Major and minor version of the protocol the lamp speaks.
+ */
+protocol: [number, number], firmware: [number, number, number], firmware_version: string, board_revision: number, 
 /**
  * Chip unique ID in hexadecimal, as in the USB serial number.
  */
-uid: string, telemetry: boolean, debug_console: boolean, auto_bias: boolean, diagnostics: boolean, self_test: boolean, enter_bootloader: boolean, reset_cause: ResetCause, debug_build: boolean, fault: Fault | null, };
+uid: string, telemetry: boolean, debug_console: boolean, auto_bias: boolean, diagnostics: boolean, self_test: boolean, custom_colors: boolean, touch_cycle: boolean, touch_mode: boolean, alert: boolean, touch_sensitivity: boolean, reset_cause: ResetCause, debug_build: boolean, fault: Fault | null, };

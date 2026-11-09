@@ -33,8 +33,7 @@
       "fixed": "Niveau fixe",
       "follows": "Suit la lumière de la pièce",
       "correction": "correction {value}",
-      "noCorrection": "sans correction",
-      "needsFirmware": "Suit la lumière de la pièce ; la correction demande une mise à jour du firmware de la lampe"
+      "noCorrection": "sans correction"
     }
   },
   "settings": {
@@ -223,7 +222,8 @@
       "unknown_command": "commande inconnue",
       "bad_length": "longueur incorrecte",
       "bad_value": "valeur invalide",
-      "busy": "occupée"
+      "busy": "occupée",
+      "lamp_off": "lampe éteinte"
     },
     "resetCause": {
       "unknown": "inconnue",
@@ -239,7 +239,8 @@
       "touch": "toucher",
       "host": "cet ordinateur",
       "auto_brightness": "luminosité automatique",
-      "usb": "USB"
+      "usb": "USB",
+      "host_silence": "silence de l’app"
     },
     "usbLink": {
       "unconfigured": "non configuré",
@@ -262,7 +263,9 @@
       "green": "DISLED : vert",
       "orange": "DISLED : orange",
       "red": "DISLED : rouge",
-      "warm_white": "DISLED : blanc chaud"
+      "warm_white": "DISLED : blanc chaud",
+      "needsUpdate": "DISLED : lampe à mettre à jour",
+      "newer": "DISLED : lampe plus récente que l’app"
     }
   },
   "window": {

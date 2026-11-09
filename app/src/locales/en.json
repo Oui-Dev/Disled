@@ -33,8 +33,7 @@
       "fixed": "Fixed level",
       "follows": "Follows the room light",
       "correction": "correction {value}",
-      "noCorrection": "no correction",
-      "needsFirmware": "Follows the room light; the correction needs a lamp firmware update"
+      "noCorrection": "no correction"
     }
   },
   "settings": {
@@ -223,7 +222,8 @@
       "unknown_command": "unknown command",
       "bad_length": "wrong length",
       "bad_value": "invalid value",
-      "busy": "busy"
+      "busy": "busy",
+      "lamp_off": "lamp off"
     },
     "resetCause": {
       "unknown": "unknown",
@@ -239,7 +239,8 @@
       "touch": "touch",
       "host": "this computer",
       "auto_brightness": "automatic brightness",
-      "usb": "USB"
+      "usb": "USB",
+      "host_silence": "app silence"
     },
     "usbLink": {
       "unconfigured": "not configured",
@@ -262,7 +263,9 @@
       "green": "DISLED: green",
       "orange": "DISLED: orange",
       "red": "DISLED: red",
-      "warm_white": "DISLED: warm white"
+      "warm_white": "DISLED: warm white",
+      "needsUpdate": "DISLED: lamp needs an update",
+      "newer": "DISLED: lamp newer than the app"
     }
   },
   "window": {
