@@ -12,9 +12,11 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useUpdateStatus } from '@/composables/useUpdateStatus';
 import { openDiagnostics, openLampUpdate } from '@/ipc/commands';
+import { useLampStore } from '@/stores/lamp';
 
 const { t } = useI18n();
 const { checking, appLine, lampLine, checkAll } = useUpdateStatus();
+const lamp = useLampStore();
 
 const items = computed(() => {
   const actions: DropdownMenuItem[] = [
@@ -33,6 +35,8 @@ const items = computed(() => {
     {
       label: t('settings.diagnostics'),
       icon: 'i-lucide-activity',
+      // A lamp the app does not drive has no diagnostics to show.
+      disabled: lamp.locked,
       onSelect: () => void openDiagnostics(),
     },
     // The lamp update window takes every case: a lamp up to date, one that
@@ -65,7 +69,7 @@ const items = computed(() => {
       color="neutral"
       variant="ghost"
       size="sm"
-      icon="i-lucide-ellipsis"
+      icon="i-lucide-ellipsis-vertical"
       :aria-label="t('settings.more')"
     />
     <!-- The status lines wrap, since an error can be long. -->

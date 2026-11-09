@@ -56,7 +56,14 @@
     "systemLanguage": "System",
     "diagnostics": "Open diagnostics",
     "versions": "App {app} · lamp firmware {firmware}",
-    "more": "More actions"
+    "more": "More actions",
+    "touch": {
+      "title": "Touch sensitivity",
+      "less": "Less sensitive",
+      "more": "More sensitive",
+      "label": "Correction of the touch sensitivity",
+      "hint": "Calibrated by the lamp"
+    }
   },
   "updates": {
     "install": "Install and restart",
@@ -119,6 +126,7 @@
     "crystalFailed": "Failed",
     "brightness": "Brightness",
     "correction": "Automatic correction",
+    "touchCorrection": "Touch correction",
     "uptime": "Uptime"
   },
   "selfTest": {

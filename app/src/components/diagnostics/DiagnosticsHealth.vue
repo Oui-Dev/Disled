@@ -12,6 +12,7 @@ import { useI18n } from 'vue-i18n';
 import { useFaultText } from '@/composables/useFaultText';
 import { useDiagnosticsStore } from '@/stores/diagnostics';
 import { useLampStore } from '@/stores/lamp';
+import { useSignedPercent } from '@/utils/format';
 import { healthIssues } from '@/utils/health';
 
 interface Row {
@@ -25,6 +26,7 @@ const { t, n } = useI18n();
 const lamp = useLampStore();
 const diagnostics = useDiagnosticsStore();
 const faultText = useFaultText();
+const signedPercent = useSignedPercent();
 
 const groups = computed<{ title: string; rows: Row[] }[]>(() => {
   const d = diagnostics.diagnostics;
@@ -84,7 +86,8 @@ const groups = computed<{ title: string; rows: Row[] }[]>(() => {
     {
       title: t('health.brightness'),
       rows: [
-        { label: t('health.correction'), value: n(d.auto_bias / 100, 'signedPercent') },
+        { label: t('health.correction'), value: signedPercent(d.auto_bias) },
+        { label: t('health.touchCorrection'), value: signedPercent(d.touch_sensitivity) },
         { label: t('health.uptime'), value: n(d.uptime_ms / 60_000, 'minutes') },
       ],
     },

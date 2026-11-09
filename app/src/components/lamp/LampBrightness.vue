@@ -13,6 +13,7 @@ import { useI18n } from 'vue-i18n';
 import type { SettingsPatch } from '@/bindings/SettingsPatch';
 import { useLampStore } from '@/stores/lamp';
 import { useSettingsStore } from '@/stores/settings';
+import { useSignedPercent } from '@/utils/format';
 import { AUTO_BIAS_MAX, AUTO_BIAS_MIN } from '@/utils/lamp';
 
 /** How often a moving slider updates the lamp. */
@@ -23,6 +24,7 @@ const BIAS_STEP = 5;
 const { t, n } = useI18n();
 const lamp = useLampStore();
 const settingsStore = useSettingsStore();
+const signedPercent = useSignedPercent();
 
 const settings = computed(() => settingsStore.settings);
 const auto = computed(() => settings.value?.brightness_mode !== 'manual');
@@ -54,7 +56,7 @@ const levelText = computed(() =>
   level.value === null ? undefined : n(level.value / 100, 'percent'),
 );
 const biasText = computed(() =>
-  value.value === 0 ? t('lamp.brightness.noCorrection') : n(value.value / 100, 'signedPercent'),
+  value.value === 0 ? t('lamp.brightness.noCorrection') : signedPercent(value.value),
 );
 
 function patchFor(next: number): SettingsPatch {

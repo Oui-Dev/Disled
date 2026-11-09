@@ -56,7 +56,14 @@
     "systemLanguage": "Système",
     "diagnostics": "Ouvrir les diagnostics",
     "versions": "App {app} · firmware de la lampe {firmware}",
-    "more": "Plus d’actions"
+    "more": "Plus d’actions",
+    "touch": {
+      "title": "Sensibilité du toucher",
+      "less": "Moins sensible",
+      "more": "Plus sensible",
+      "label": "Correction de la sensibilité du toucher",
+      "hint": "Calibrée par la lampe"
+    }
   },
   "updates": {
     "install": "Installer et redémarrer",
@@ -119,6 +126,7 @@
     "crystalFailed": "En panne",
     "brightness": "Luminosité",
     "correction": "Correction automatique",
+    "touchCorrection": "Correction du toucher",
     "uptime": "En marche depuis"
   },
   "selfTest": {

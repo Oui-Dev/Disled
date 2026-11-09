@@ -30,6 +30,7 @@ declare module 'vue' {
     LampV1Warning: typeof import('./components/lamp/LampV1Warning.vue')['default']
     PopupMenu: typeof import('./components/popup/PopupMenu.vue')['default']
     PopupSettings: typeof import('./components/popup/PopupSettings.vue')['default']
+    PopupTouchSensitivity: typeof import('./components/popup/PopupTouchSensitivity.vue')['default']
     PopupUpdates: typeof import('./components/popup/PopupUpdates.vue')['default']
     UAlert: typeof import('./../node_modules/@nuxt/ui/dist/runtime/components/Alert.vue')['default']
     UApp: typeof import('./../node_modules/@nuxt/ui/dist/runtime/components/App.vue')['default']
