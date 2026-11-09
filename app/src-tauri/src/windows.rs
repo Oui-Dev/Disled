@@ -34,7 +34,7 @@ const REOPEN_GUARD: Duration = Duration::from_millis(300);
 
 /// The width of the popup, as in tauri.conf.json; its height follows its
 /// content.
-const POPUP_WIDTH: f64 = 320.0;
+const POPUP_WIDTH: f64 = 340.0;
 /// The popup is never shorter, as in tauri.conf.json, so that the lamp page
 /// gets some room and the footer stays at the bottom.
 const POPUP_MIN_HEIGHT: f64 = 360.0;

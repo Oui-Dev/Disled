@@ -14,7 +14,7 @@
       {
         "label": "popup",
         "title": "DISLED",
-        "width": 320,
+        "width": 340,
         "height": 360,
         "resizable": false,
         "decorations": false,
