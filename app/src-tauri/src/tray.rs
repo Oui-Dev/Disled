@@ -7,11 +7,14 @@
 
 use std::sync::Mutex;
 
+use disled_protocol::{LinearRgb, State};
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, Wry};
 
+use crate::colors::{ColorsState, PREVIEW_SLOT, Palette};
+use crate::device::DeviceHandle;
 use crate::i18n::{Locale, LocaleState};
 use crate::windows;
 
@@ -23,9 +26,9 @@ const HALF: f32 = 14.0;
 /// vanish once the system shows this icon at 16 px.
 const CORNER: f32 = 8.0;
 
-/// The built-in colors, by palette slot: the key of their tooltip, and their
-/// color on screen, as the swatches of the popup (`app/src/utils/lamp.ts`).
-const BUILT_IN_COLORS: [(&str, [u8; 3]); 4] = [
+/// The built-in colors, by palette slot: the key of their default name, and
+/// their color on screen, as the swatches of the popup (`app/src/utils/lamp.ts`).
+pub const BUILT_IN_COLORS: [(&str, [u8; 3]); 4] = [
     ("green", [0x2e, 0xcc, 0x71]),
     ("orange", [0xf3, 0x9c, 0x12]),
     ("red", [0xe7, 0x4c, 0x3c]),
@@ -33,13 +36,16 @@ const BUILT_IN_COLORS: [(&str, [u8; 3]); 4] = [
 ];
 
 /// What the icon shows.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum Look {
     #[default]
     NoLamp,
     Off,
-    /// On, with a built-in color, by palette slot.
-    On(u8),
+    /// On: the color as the popup shows it, and its name as the user sees it.
+    On {
+        rgb: [u8; 3],
+        name: String,
+    },
     /// A version 1 lamp, which the app does not drive.
     NeedsUpdate,
     /// A lamp of a later protocol than the app.
@@ -48,20 +54,80 @@ pub enum Look {
 
 impl Look {
     /// A lamp the app does not drive, whose Diagnostics have nothing to show.
-    fn locked(self) -> bool {
+    fn locked(&self) -> bool {
         matches!(self, Look::NeedsUpdate | Look::Newer)
     }
 
-    fn tooltip(self, locale: Locale) -> String {
+    fn tooltip(&self, locale: Locale) -> String {
         let key = match self {
             Look::NoLamp => "noLamp",
             Look::Off => "off",
-            Look::On(slot) => BUILT_IN_COLORS[usize::from(slot) % BUILT_IN_COLORS.len()].0,
+            Look::On { name, .. } => return locale.format("tray.tooltip.color", &[("name", name)]),
             Look::NeedsUpdate => "needsUpdate",
             Look::Newer => "newer",
         };
         locale.t(&format!("tray.tooltip.{key}"))
     }
+}
+
+/// The default name of a built-in color in a language.
+pub fn default_name(slot: u8, locale: Locale) -> Option<String> {
+    let (key, _) = BUILT_IN_COLORS.get(usize::from(slot))?;
+    Some(locale.t(&format!("lamp.colors.{key}")))
+}
+
+/// `#RRGGBB` as three bytes, black for anything else.
+fn rgb_of_hex(hex: &str) -> [u8; 3] {
+    let byte = |at: usize| {
+        hex.get(at..at + 2)
+            .and_then(|pair| u8::from_str_radix(pair, 16).ok())
+            .unwrap_or(0)
+    };
+    [byte(1), byte(3), byte(5)]
+}
+
+/// The light a lamp reports, linear, back to sRGB for the screen.
+fn srgb_of(light: LinearRgb) -> [u8; 3] {
+    [light.r, light.g, light.b].map(|channel| {
+        let value = f64::from(channel) / 65535.0;
+        let encoded = if value <= 0.003_130_8 {
+            value * 12.92
+        } else {
+            1.055 * value.powf(1.0 / 2.4) - 0.055
+        };
+        (encoded * 255.0).round() as u8
+    })
+}
+
+/// The look of a lamp state. A built-in color shows its swatch and the name
+/// the user gave it, or its default one; a custom color its own code; any
+/// other slot the light the lamp reports. The preview slot of the editor
+/// changes eight times a second, so the icon keeps its look: `None`.
+pub fn look_of(state: &State, palette: &Palette, locale: Locale) -> Option<Look> {
+    if !state.on {
+        return Some(Look::Off);
+    }
+    let slot = state.color;
+    if slot == PREVIEW_SLOT {
+        return None;
+    }
+    if let Some((_, rgb)) = BUILT_IN_COLORS.get(usize::from(slot)) {
+        let name = palette.names[usize::from(slot)]
+            .clone()
+            .or_else(|| default_name(slot, locale))
+            .unwrap_or_default();
+        return Some(Look::On { rgb: *rgb, name });
+    }
+    if let Some(color) = palette.custom.iter().find(|color| color.slot == slot) {
+        return Some(Look::On {
+            rgb: rgb_of_hex(&color.hex),
+            name: color.name.clone(),
+        });
+    }
+    Some(Look::On {
+        rgb: srgb_of(state.rgb),
+        name: locale.t("lamp.colors.more"),
+    })
 }
 
 /// The look on show, to word the tooltip again when the language changes.
@@ -87,7 +153,7 @@ fn square(dx: f32, dy: f32, inset: f32) -> f32 {
 /// keeps warm white visible on a light menu bar, a grey outline when the lamp
 /// is off, and a faint outline when no lamp is connected or the app cannot
 /// drive it.
-fn render(look: Look) -> Image<'static> {
+fn render(look: &Look) -> Image<'static> {
     let mut rgba = vec![0u8; (SIZE * SIZE * 4) as usize];
     let center = (SIZE as f32 - 1.0) / 2.0;
     for y in 0..SIZE {
@@ -99,8 +165,8 @@ fn render(look: Look) -> Image<'static> {
                 continue;
             }
             let (rgb, alpha) = match look {
-                Look::On(slot) => {
-                    let fill = BUILT_IN_COLORS[usize::from(slot) % BUILT_IN_COLORS.len()].1;
+                Look::On { rgb, .. } => {
+                    let fill = *rgb;
                     let inner = square(dx, dy, 1.5);
                     // Blend the fill into a rim at 60 % brightness.
                     let rgb = fill.map(|c| {
@@ -112,7 +178,7 @@ fn render(look: Look) -> Image<'static> {
                 Look::Off | Look::NoLamp | Look::NeedsUpdate | Look::Newer => {
                     let hole = square(dx, dy, 2.5);
                     let ring = outer * (1.0 - hole);
-                    let strength = if look == Look::Off { 1.0 } else { 0.55 };
+                    let strength = if *look == Look::Off { 1.0 } else { 0.55 };
                     ([0x9a, 0xa0, 0xa6], ring * strength)
                 }
             };
@@ -124,7 +190,7 @@ fn render(look: Look) -> Image<'static> {
     Image::new_owned(rgba, SIZE, SIZE)
 }
 
-fn menu(app: &AppHandle, locale: Locale, look: Look) -> tauri::Result<Menu<Wry>> {
+fn menu(app: &AppHandle, locale: Locale, look: &Look) -> tauri::Result<Menu<Wry>> {
     let item = |id: &str, enabled: bool| {
         MenuItem::with_id(
             app,
@@ -149,9 +215,9 @@ fn menu(app: &AppHandle, locale: Locale, look: Look) -> tauri::Result<Menu<Wry>>
 /// gives access to the popup.
 pub fn create(app: &AppHandle, locale: Locale) -> tauri::Result<()> {
     TrayIconBuilder::with_id(TRAY_ID)
-        .icon(render(Look::NoLamp))
+        .icon(render(&Look::NoLamp))
         .tooltip(Look::NoLamp.tooltip(locale))
-        .menu(&menu(app, locale, Look::NoLamp)?)
+        .menu(&menu(app, locale, &Look::NoLamp)?)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "open" => windows::show_popup(app),
@@ -183,23 +249,40 @@ pub fn create(app: &AppHandle, locale: Locale) -> tauri::Result<()> {
 /// skipped, since in automatic brightness the lamp reports its level up to
 /// twice a second.
 pub fn show(app: &AppHandle, look: Look) {
-    let mut was_locked = false;
-    if let Ok(mut shown) = app.state::<TrayState>().0.lock() {
+    let was_locked = {
+        let state = app.state::<TrayState>();
+        let Ok(mut shown) = state.0.lock() else {
+            return;
+        };
         if *shown == look {
             return;
         }
-        was_locked = shown.locked();
-        *shown = look;
-    }
+        std::mem::replace(&mut *shown, look.clone()).locked()
+    };
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         let locale = app.state::<LocaleState>().get();
-        let _ = tray.set_icon(Some(render(look)));
+        let _ = tray.set_icon(Some(render(&look)));
         let _ = tray.set_tooltip(Some(look.tooltip(locale)));
         if look.locked() != was_locked
-            && let Ok(menu) = menu(app, locale, look)
+            && let Ok(menu) = menu(app, locale, &look)
         {
             let _ = tray.set_menu(Some(menu));
         }
+    }
+}
+
+/// Shows the last state of the lamp again, after the palette or the
+/// language changed the name or the color it goes by.
+pub fn refresh(app: &AppHandle) {
+    let Some(state) = app
+        .try_state::<DeviceHandle>()
+        .and_then(|device| device.state())
+    else {
+        return;
+    };
+    let palette = app.state::<ColorsState>().get();
+    if let Some(look) = look_of(&state, &palette, app.state::<LocaleState>().get()) {
+        show(app, look);
     }
 }
 
@@ -209,19 +292,23 @@ pub fn relabel(app: &AppHandle, locale: Locale) {
         .state::<TrayState>()
         .0
         .lock()
-        .map(|look| *look)
+        .map(|look| look.clone())
         .unwrap_or_default();
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
-        if let Ok(menu) = menu(app, locale, look) {
+        if let Ok(menu) = menu(app, locale, &look) {
             let _ = tray.set_menu(Some(menu));
         }
         let _ = tray.set_tooltip(Some(look.tooltip(locale)));
     }
+    // The default names of the built-in colors follow the language.
+    refresh(app);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use disled_protocol::{BrightnessMode, ChangeSource, TouchMode, UsbLink};
+    use serde_json::json;
 
     fn pixel(image: &Image<'_>, x: u32, y: u32) -> [u8; 4] {
         let i = ((y * SIZE + x) * 4) as usize;
@@ -229,9 +316,36 @@ mod tests {
         [rgba[i], rgba[i + 1], rgba[i + 2], rgba[i + 3]]
     }
 
+    fn state(on: bool, color: u8) -> State {
+        State {
+            state_seq: 1,
+            on,
+            color,
+            brightness_mode: BrightnessMode::Auto,
+            manual_level: 50,
+            applied_level: 40,
+            link: UsbLink::Configured,
+            source: ChangeSource::Host,
+            touch_mode: TouchMode::Normal,
+            rgb: LinearRgb {
+                r: 65535,
+                g: 32768,
+                b: 0,
+            },
+        }
+    }
+
+    fn palette() -> Palette {
+        Palette::from_value(&json!({
+            "names": [null, "Libre", null, null],
+            "custom": [{ "slot": 4, "name": "Musique", "hex": "#9B59F6" }]
+        }))
+    }
+
     #[test]
     fn a_lit_lamp_is_a_full_square_in_its_color() {
-        let image = render(Look::On(2));
+        let look = look_of(&state(true, 2), &palette(), Locale::Fr).expect("look");
+        let image = render(&look);
         assert_eq!(pixel(&image, 16, 16), [0xe7, 0x4c, 0x3c, 255]);
         assert_eq!(pixel(&image, 0, 0)[3], 0, "the margin stays transparent");
         assert_eq!(pixel(&image, 5, 5)[3], 255, "a square, not a dot");
@@ -240,12 +354,59 @@ mod tests {
     }
 
     #[test]
-    fn an_unlit_lamp_is_an_outline() {
-        let image = render(Look::Off);
+    fn a_custom_color_shows_in_its_own_code() {
+        let look = look_of(&state(true, 4), &palette(), Locale::Fr).expect("look");
+        assert_eq!(pixel(&render(&look), 16, 16), [0x9b, 0x59, 0xf6, 255]);
+        assert_eq!(look.tooltip(Locale::Fr), "Disled\u{202f}: Musique");
+    }
+
+    #[test]
+    fn the_tooltip_says_the_name_the_user_sees() {
+        let palette = palette();
+        let renamed = look_of(&state(true, 1), &palette, Locale::En).expect("look");
+        assert_eq!(renamed.tooltip(Locale::En), "Disled: Libre");
+        let default = look_of(&state(true, 0), &palette, Locale::En).expect("look");
+        assert_eq!(default.tooltip(Locale::En), "Disled: Available");
+    }
+
+    #[test]
+    fn an_unknown_slot_shows_the_light_of_the_lamp() {
+        let look = look_of(&state(true, 9), &palette(), Locale::En).expect("look");
+        assert_eq!(
+            look,
+            Look::On {
+                rgb: [255, 188, 0],
+                name: "More".into()
+            }
+        );
+    }
+
+    #[test]
+    fn the_preview_of_the_editor_leaves_the_icon_alone() {
+        assert_eq!(
+            look_of(&state(true, PREVIEW_SLOT), &palette(), Locale::En),
+            None
+        );
+        assert_eq!(
+            look_of(&state(false, PREVIEW_SLOT), &palette(), Locale::En),
+            Some(Look::Off)
+        );
+    }
+
+    #[test]
+    fn an_unlit_or_locked_lamp_is_an_outline() {
+        let image = render(&Look::Off);
         assert_eq!(pixel(&image, 16, 16)[3], 0, "the middle is empty");
         assert!(pixel(&image, 16, 3)[3] > 200, "the outline is drawn");
-        let faint = render(Look::NoLamp);
-        assert!(pixel(&faint, 16, 3)[3] < pixel(&image, 16, 3)[3]);
+        for faint in [Look::NoLamp, Look::NeedsUpdate, Look::Newer] {
+            let faint = render(&faint);
+            assert_eq!(pixel(&faint, 16, 16)[3], 0);
+            assert!(pixel(&faint, 16, 3)[3] < pixel(&image, 16, 3)[3]);
+        }
+        assert_eq!(
+            Look::NeedsUpdate.tooltip(Locale::Fr),
+            "Disled\u{202f}: lampe à mettre à jour"
+        );
     }
 
     #[test]
@@ -253,21 +414,19 @@ mod tests {
         let looks = [
             Look::NoLamp,
             Look::Off,
-            Look::On(0),
-            Look::On(1),
-            Look::On(2),
-            Look::On(3),
+            Look::On {
+                rgb: [0, 0, 0],
+                name: "Musique".into(),
+            },
             Look::NeedsUpdate,
             Look::Newer,
         ];
         for locale in [Locale::En, Locale::Fr] {
-            for look in looks {
-                assert!(
-                    look.tooltip(locale).starts_with("Disled"),
-                    "{look:?} in {locale:?}"
-                );
+            for look in &looks {
+                let tooltip = look.tooltip(locale);
+                assert!(tooltip.starts_with("Disled"), "{look:?} in {locale:?}");
+                assert!(!tooltip.contains('{'), "{tooltip}");
             }
         }
-        assert_eq!(Look::On(3).tooltip(Locale::En), "Disled: warm white");
     }
 }

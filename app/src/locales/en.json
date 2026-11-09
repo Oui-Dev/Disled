@@ -20,10 +20,11 @@
     "colors": {
       "legend": "Lamp color",
       "off": "Off",
-      "green": "Green",
-      "orange": "Orange",
-      "red": "Red",
-      "warm_white": "Warm white"
+      "green": "Available",
+      "orange": "Busy",
+      "red": "Do not disturb",
+      "warm_white": "Soft light",
+      "more": "More"
     },
     "brightness": {
       "title": "Brightness",
@@ -258,10 +259,7 @@
     "tooltip": {
       "noLamp": "Disled: no lamp",
       "off": "Disled: off",
-      "green": "Disled: green",
-      "orange": "Disled: orange",
-      "red": "Disled: red",
-      "warm_white": "Disled: warm white",
+      "color": "Disled: {name}",
       "needsUpdate": "Disled: lamp needs an update",
       "newer": "Disled: lamp newer than the app"
     }

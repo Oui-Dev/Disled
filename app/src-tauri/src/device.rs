@@ -17,12 +17,13 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
 use disled_protocol::{
-    self as protocol, Command, DecodeError, Frame, Info, Message, PAYLOAD_SIZE, PROTOCOL_MAJOR,
-    REPORT_ID_COMMAND, REPORT_ID_MESSAGE, SetState, State, TouchMode, USB_PRODUCT_ID_DEBUG,
-    USB_VENDOR_ID,
+    self as protocol, ChangeSource, Command, DecodeError, Frame, Info, Message, PAYLOAD_SIZE,
+    PROTOCOL_MAJOR, REPORT_ID_COMMAND, REPORT_ID_MESSAGE, SetState, State, TouchMode,
+    USB_PRODUCT_ID_DEBUG, USB_VENDOR_ID,
 };
 
-use crate::colors::{BUILT_IN, ColorsState, Palette};
+use crate::colors::{ColorsState, Palette, PreviewState};
+use crate::i18n::LocaleState;
 use crate::settings::{Settings, SettingsState};
 use crate::tray::{self, Look};
 use crate::windows;
@@ -154,22 +155,11 @@ fn look_of_info(info: &Info) -> Option<Look> {
     }
 }
 
-/// The tray icon for a STATE. The custom colors come with the tray of the
-/// colors: until then a custom slot leaves the icon as it was.
-fn look_of_state(state: &State) -> Option<Look> {
-    if !state.on {
-        Some(Look::Off)
-    } else if state.color < BUILT_IN {
-        Some(Look::On(state.color))
-    } else {
-        None
-    }
-}
-
 pub struct DeviceHandle {
     commands: mpsc::Sender<Command>,
     connection: Arc<Mutex<Connection>>,
     info: Arc<Mutex<Option<Info>>>,
+    state: Arc<Mutex<Option<State>>>,
 }
 
 impl DeviceHandle {
@@ -177,7 +167,12 @@ impl DeviceHandle {
         let (commands, receiver) = mpsc::channel();
         let connection = Arc::new(Mutex::new(Connection::default()));
         let info = Arc::new(Mutex::new(None));
-        let (shared, shared_info) = (Arc::clone(&connection), Arc::clone(&info));
+        let state = Arc::new(Mutex::new(None));
+        let (shared, shared_info, shared_state) = (
+            Arc::clone(&connection),
+            Arc::clone(&info),
+            Arc::clone(&state),
+        );
         thread::Builder::new()
             .name("disled-usb".into())
             .spawn(move || {
@@ -186,6 +181,7 @@ impl DeviceHandle {
                     receiver,
                     connection: shared,
                     info: shared_info,
+                    state: shared_state,
                     seq: 0,
                     session: Session::default(),
                 }
@@ -196,12 +192,18 @@ impl DeviceHandle {
             commands,
             connection,
             info,
+            state,
         }
     }
 
     /// The INFO message of the connected lamp, once it answered.
     pub fn info(&self) -> Option<Info> {
         self.info.lock().ok().and_then(|info| info.clone())
+    }
+
+    /// The last STATE of a version 2 lamp, which the app drives.
+    pub fn state(&self) -> Option<State> {
+        self.state.lock().ok().and_then(|state| state.clone())
     }
 
     /// Queues a command. A lamp that does not speak protocol 2 gets only
@@ -229,6 +231,7 @@ struct Worker {
     receiver: mpsc::Receiver<Command>,
     connection: Arc<Mutex<Connection>>,
     info: Arc<Mutex<Option<Info>>>,
+    state: Arc<Mutex<Option<State>>>,
     seq: u8,
     session: Session,
 }
@@ -255,6 +258,8 @@ impl Worker {
                         return;
                     }
                     self.set_info(None);
+                    self.set_state(None);
+                    self.app.state::<PreviewState>().forget();
                     self.set_connection(Connection::default());
                     tray::show(&self.app, Look::NoLamp);
                 }
@@ -304,6 +309,12 @@ impl Worker {
         }
     }
 
+    fn set_state(&self, state: Option<State>) {
+        if let Ok(mut shared) = self.state.lock() {
+            *shared = state;
+        }
+    }
+
     fn next_seq(&mut self) -> u8 {
         // 0 marks unsolicited messages, so a request never uses it.
         self.seq = if self.seq == u8::MAX { 1 } else { self.seq + 1 };
@@ -345,7 +356,14 @@ impl Worker {
                 }
             }
             Message::State(state) => {
-                if let Some(look) = look_of_state(state) {
+                self.set_state(Some(state.clone()));
+                // A touch took the lamp off the preview slot: the user chose.
+                if state.source == ChangeSource::Touch {
+                    self.app.state::<PreviewState>().forget();
+                }
+                let palette = self.app.state::<ColorsState>().get();
+                let locale = self.app.state::<LocaleState>().get();
+                if let Some(look) = tray::look_of(state, &palette, locale) {
                     tray::show(&self.app, look);
                 }
             }
@@ -405,6 +423,7 @@ impl Worker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::colors::BUILT_IN;
     use disled_protocol::{BrightnessMode, LinearRgb, SLOT_COUNT};
     use serde_json::{Value, json};
 
@@ -589,25 +608,11 @@ mod tests {
     }
 
     #[test]
-    fn the_tray_follows_the_state_of_a_version_2_lamp() {
-        let state = match protocol::decode_message(&report("state_after_touch"))
-            .expect("STATE")
-            .message
-        {
-            Message::State(state) => state,
-            other => panic!("{other:?}"),
-        };
-        assert_eq!(look_of_state(&state), Some(Look::On(1)));
-        let off = State {
-            on: false,
-            ..state.clone()
-        };
-        assert_eq!(look_of_state(&off), Some(Look::Off));
-        let custom = State { color: 9, ..state };
-        assert_eq!(look_of_state(&custom), None);
+    fn a_locked_lamp_shows_at_once_in_the_tray() {
         assert_eq!(
             look_of_info(&info_of("info_of_a_version_1_lamp")),
             Some(Look::NeedsUpdate)
         );
+        assert_eq!(look_of_info(&info_of("info")), None);
     }
 }

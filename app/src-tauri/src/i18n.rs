@@ -73,6 +73,14 @@ impl Locale {
             .unwrap_or(key)
             .to_owned()
     }
+
+    /// The message at `key`, with each named mark, such as `{name}`,
+    /// replaced by its value.
+    pub fn format(self, key: &str, values: &[(&str, &str)]) -> String {
+        values.iter().fold(self.t(key), |text, (mark, value)| {
+            text.replace(&format!("{{{mark}}}"), value)
+        })
+    }
 }
 
 /// The language in force, shared by the tray, the windows and the commands.
@@ -127,9 +135,9 @@ mod tests {
         );
     }
 
-    /// The tray and the titles show the messages as they are, so what the
-    /// backend reads has no vue-i18n syntax: no placeholders, links or
-    /// plurals.
+    /// The tray and the titles show the messages that the backend reads, so
+    /// they hold no vue-i18n syntax but the named marks that `format` fills:
+    /// no links, no plurals, no other placeholders.
     #[test]
     fn the_messages_of_the_backend_are_plain_text() {
         for locale in [Locale::En, Locale::Fr] {
@@ -143,10 +151,22 @@ mod tests {
             }
             assert!(!found.is_empty());
             for key in found {
-                let text = locale.t(&key);
+                let text = locale.format(&key, &[("name", "x")]);
                 assert!(!text.contains(['{', '}', '@', '|', '$']), "{key}: {text}");
             }
         }
+    }
+
+    #[test]
+    fn a_named_mark_takes_its_value() {
+        assert_eq!(
+            Locale::En.format("tray.tooltip.color", &[("name", "Musique")]),
+            "Disled: Musique"
+        );
+        assert_eq!(
+            Locale::En.format("tray.open", &[("name", "x")]),
+            "Open Disled"
+        );
     }
 
     /// Every message of a language, with its dotted key.
@@ -163,8 +183,9 @@ mod tests {
     }
 
     /// The writing rules of the French texts: no semicolon, typographic
-    /// apostrophes, and nothing done "manuellement", since every update of
-    /// the lamp is.
+    /// apostrophes, a thin no-break space before a colon, a question mark or
+    /// an exclamation mark, and nothing done "manuellement", since every
+    /// update of the lamp is.
     #[test]
     fn the_french_texts_follow_the_writing_rules() {
         for (key, text) in messages(Locale::Fr) {
@@ -174,6 +195,13 @@ mod tests {
                 "{key}: a straight apostrophe in {text}"
             );
             assert!(!text.contains("manuellement"), "{key}: {text}");
+            for (at, mark) in text.match_indices([':', '?', '!']) {
+                let before = text[..at].chars().next_back();
+                assert!(
+                    !matches!(before, Some(' ' | '\u{a0}')),
+                    "{key}: a wide space before {mark} in {text}"
+                );
+            }
         }
     }
 

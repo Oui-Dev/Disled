@@ -17,7 +17,7 @@ mod tray;
 mod updates;
 mod windows;
 
-use colors::ColorsState;
+use colors::{Around, ColorsState, Palette, PaletteChange, PreviewState};
 use device::{Connection, DeviceHandle};
 use disled_protocol::{Command, SetState};
 use firmware::{FirmwareState, FirmwareStatus};
@@ -26,6 +26,7 @@ use serde::Deserialize;
 use settings::{Language, Settings, SettingsPatch, SettingsState};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, State};
 use tauri_plugin_autostart::ManagerExt;
+use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_opener::OpenerExt;
 use tray::TrayState;
 use updates::{UpdateState, UpdateStatus};
@@ -35,6 +36,7 @@ use updates::{UpdateState, UpdateStatus};
 const AUTOSTART_ARG: &str = "--autostart";
 
 const EVENT_SETTINGS: &str = "settings-changed";
+const EVENT_COLORS: &str = "colors-changed";
 const EVENT_LOCALE: &str = "locale-changed";
 
 /// Current connection, for a frontend that starts after the first event.
@@ -69,6 +71,171 @@ fn lamp_choose(device: State<'_, DeviceHandle>, choice: LampChoice) -> Result<()
         color: choice.slot.filter(|_| choice.on),
         ..SetState::default()
     }))
+}
+
+#[tauri::command]
+fn colors_get(colors: State<'_, ColorsState>) -> Palette {
+    colors.get()
+}
+
+/// Saves a palette that the user changed, tells every window, shows it in
+/// the tray, and sends its commands to the lamp. Without a lamp, the palette
+/// reaches it at its next connection.
+fn apply_palette(app: &AppHandle, palette: Palette, commands: Vec<Command>) -> Result<(), String> {
+    settings::save_palette(app, palette.clone())?;
+    let _ = app.emit(EVENT_COLORS, palette);
+    let device = app.state::<DeviceHandle>();
+    for command in commands {
+        let _ = device.send(command);
+    }
+    tray::refresh(app);
+    Ok(())
+}
+
+/// Applies a deletion or an import: the palette, and the call color when it
+/// lost its color.
+fn apply_change(app: &AppHandle, change: PaletteChange) -> Result<(), String> {
+    let mut settings = app.state::<SettingsState>().get();
+    if settings.calls.color != change.call_color {
+        settings.calls.color = change.call_color;
+        settings::save(app, settings)?;
+        let _ = app.emit(EVENT_SETTINGS, settings);
+    }
+    apply_palette(app, change.palette, change.commands)
+}
+
+/// What else uses the colors now: the lamp. The calls and the integrations
+/// join with their own parts of the app.
+fn around(app: &AppHandle) -> Around {
+    Around {
+        lamp: app.state::<DeviceHandle>().state().map(|state| state.color),
+        call_color: app.state::<SettingsState>().get().calls.color,
+        ..Around::default()
+    }
+}
+
+/// A custom color made or changed in the editor, without `slot` for a new
+/// one. A preview on the lamp ends: the lamp goes back to its state, or,
+/// with `keep_lit`, stays on the new color, as from the "My colors" popover.
+/// Returns the slot of the color.
+#[tauri::command]
+fn colors_save_custom(
+    app: AppHandle,
+    slot: Option<u8>,
+    name: String,
+    hex: String,
+    keep_lit: bool,
+) -> Result<u8, String> {
+    let mut palette = app.state::<ColorsState>().get();
+    let saved = palette.save_custom(slot, &name, &hex)?;
+    let mut commands: Vec<Command> = palette
+        .custom
+        .iter()
+        .filter(|color| color.slot == saved)
+        .filter_map(|color| {
+            Some(Command::SetColor {
+                slot: saved,
+                rgb: colors::led_of(&color.hex)?,
+            })
+        })
+        .collect();
+    commands.extend(
+        app.state::<PreviewState>()
+            .end((keep_lit && slot.is_none()).then_some(saved)),
+    );
+    apply_palette(&app, palette, commands)?;
+    Ok(saved)
+}
+
+/// A new name for a built-in color, `null` for its default name.
+#[tauri::command]
+fn colors_rename_original(
+    app: AppHandle,
+    locale: State<'_, LocaleState>,
+    slot: u8,
+    name: Option<String>,
+) -> Result<(), String> {
+    let default = tray::default_name(slot, locale.get()).ok_or("not a built-in color")?;
+    let mut palette = app.state::<ColorsState>().get();
+    palette.rename_original(slot, name.as_deref(), &default)?;
+    apply_palette(&app, palette, Vec::new())
+}
+
+#[tauri::command]
+fn colors_set_cycle(app: AppHandle, slots: Vec<u8>) -> Result<(), String> {
+    let mut palette = app.state::<ColorsState>().get();
+    palette.set_cycle(&slots)?;
+    apply_palette(&app, palette, vec![Command::SetTouchCycle { slots }])
+}
+
+/// Deletes a custom color, even in use, with its fallbacks (colors.rs).
+#[tauri::command]
+fn colors_delete(app: AppHandle, slot: u8) -> Result<(), String> {
+    let change = app
+        .state::<ColorsState>()
+        .get()
+        .delete(slot, &around(&app))
+        .ok_or("no such custom color")?;
+    apply_change(&app, change)
+}
+
+/// The share code of the colors, for the "Send" block.
+#[tauri::command]
+fn colors_share_code(colors: State<'_, ColorsState>) -> String {
+    colors.get().share_code()
+}
+
+/// "Copy the code": the backend writes the clipboard, which no window reads.
+#[tauri::command]
+fn colors_copy_code(app: AppHandle) -> Result<(), String> {
+    let code = app.state::<ColorsState>().get().share_code();
+    app.clipboard().write_text(code).map_err(|e| e.to_string())
+}
+
+/// The colors of a pasted code, for the import preview; `null` when the
+/// text holds none that reads.
+#[tauri::command]
+fn colors_read_code(text: String) -> Option<Palette> {
+    colors::read_share_code(&text)
+}
+
+/// Replaces the colors with those of a pasted code.
+#[tauri::command]
+fn colors_import(app: AppHandle, text: String) -> Result<(), String> {
+    let shared = colors::read_share_code(&text).ok_or("no share code")?;
+    let change = app
+        .state::<ColorsState>()
+        .get()
+        .import(&shared, &around(&app));
+    apply_change(&app, change)
+}
+
+/// The preview of the editor on the lamp: a code starts or follows it, and
+/// `null` ends it, the lamp back to its state. Only with the preview setting
+/// on and a lamp that the app drives.
+#[tauri::command]
+fn colors_preview(app: AppHandle, hex: Option<String>) -> Result<(), String> {
+    let device = app.state::<DeviceHandle>();
+    let preview = app.state::<PreviewState>();
+    let commands = match hex {
+        Some(hex) => {
+            let Some(lamp) = device.state() else {
+                return Ok(());
+            };
+            if !app.state::<SettingsState>().get().color_preview {
+                return Ok(());
+            }
+            let rgb = colors::parse_hex(&hex)
+                .and_then(|hex| colors::led_of(&hex))
+                .ok_or("not a color code")?;
+            preview.follow(&lamp, rgb)
+        }
+        None => preview.end(None),
+    };
+    for command in commands {
+        let _ = device.send(command);
+    }
+    Ok(())
 }
 
 /// Writes a recording chosen by the user in a save dialog. Async, so that
@@ -283,11 +450,14 @@ fn main() {
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
+        // From Rust only, for "Copy the code": no window has its permission.
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         // Only open_link uses it, from Rust, so no window has its permission.
         .plugin(tauri_plugin_opener::init())
         .manage(SettingsState::default())
         .manage(ColorsState::default())
+        .manage(PreviewState::default())
         .manage(LocaleState::default())
         .manage(TrayState::default())
         .manage(windows::PopupState::default())
@@ -330,6 +500,16 @@ fn main() {
             device_connection,
             device_send,
             lamp_choose,
+            colors_get,
+            colors_save_custom,
+            colors_rename_original,
+            colors_set_cycle,
+            colors_delete,
+            colors_share_code,
+            colors_copy_code,
+            colors_read_code,
+            colors_import,
+            colors_preview,
             save_csv,
             settings_get,
             settings_set,

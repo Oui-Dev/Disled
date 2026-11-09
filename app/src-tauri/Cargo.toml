@@ -33,6 +33,10 @@ rustls = { version = "^0.23.46", default-features = false, features = ["ring", "
 semver.workspace = true
 # The languages of the system, for the "System" language setting.
 sys-locale = "^0.3.2"
+# The share codes of the colors, in base64url, and "Copy the code", which
+# writes the clipboard from Rust only.
+base64 = "^0.23.1"
+tauri-plugin-clipboard-manager = "^2.5.0"
 
 # The popup as a panel, the only kind of window that macOS shows over an app
 # in full screen.

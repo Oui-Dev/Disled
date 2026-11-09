@@ -20,10 +20,11 @@
     "colors": {
       "legend": "Couleur de la lampe",
       "off": "Éteinte",
-      "green": "Vert",
-      "orange": "Orange",
-      "red": "Rouge",
-      "warm_white": "Blanc chaud"
+      "green": "Disponible",
+      "orange": "Occupé",
+      "red": "Ne pas déranger",
+      "warm_white": "Lumière douce",
+      "more": "Autres"
     },
     "brightness": {
       "title": "Luminosité",
@@ -258,12 +259,9 @@
     "tooltip": {
       "noLamp": "Disled : aucune lampe",
       "off": "Disled : éteinte",
-      "green": "Disled : vert",
-      "orange": "Disled : orange",
-      "red": "Disled : rouge",
-      "warm_white": "Disled : blanc chaud",
-      "needsUpdate": "Disled : lampe à mettre à jour",
-      "newer": "Disled : lampe plus récente que l’app"
+      "color": "Disled : {name}",
+      "needsUpdate": "Disled : lampe à mettre à jour",
+      "newer": "Disled : lampe plus récente que l’app"
     }
   },
   "window": {
