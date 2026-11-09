@@ -1,6 +1,6 @@
 [package]
 name = "disled-protocol"
-description = "DISLED USB HID protocol codec (protocol/README.md)"
+description = "Disled USB HID protocol codec (protocol/README.md)"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
