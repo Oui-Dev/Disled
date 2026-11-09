@@ -30,14 +30,14 @@
     "vue-i18n": "^11.4.16"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.4",
-    "@iconify-json/lucide": "^1.2.149",
+    "@biomejs/biome": "^2.6.5",
+    "@iconify-json/lucide": "^1.2.151",
     "@intlify/unplugin-vue-i18n": "^11.2.8",
-    "@tauri-apps/cli": "2.11.5",
+    "@tauri-apps/cli": "2.12.4",
     "@types/node": "^24",
     "@vitejs/plugin-vue": "^6.0.10",
     "typescript": "^6.0.3",
-    "vite": "^8.3.5",
+    "vite": "^8.3.6",
     "vue-tsc": "^3.3.14"
   }
 }
