@@ -4,6 +4,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useFirmwareStore } from '@/stores/firmware';
+import { useLampStore } from '@/stores/lamp';
 import { useUpdatesStore } from '@/stores/updates';
 
 /** Where the app and lamp updates stand, worded for the popup. */
@@ -11,6 +12,7 @@ export function useUpdateStatus() {
   const { t, d, n } = useI18n();
   const updates = useUpdatesStore();
   const firmware = useFirmwareStore();
+  const lamp = useLampStore();
 
   const installing = computed(() => updates.status.progress !== null);
   const checking = computed(() => updates.status.checking || firmware.status.checking);
@@ -45,8 +47,14 @@ export function useUpdateStatus() {
     return null;
   });
 
-  /** The lamp: a failed check or a newer firmware, after the app's; null otherwise. */
+  /**
+   * The lamp: a version 1 lamp to update, a failed check or a newer
+   * firmware, after the app's; null otherwise.
+   */
   const lampLine = computed(() => {
+    if (lamp.generation === 'v1') {
+      return t('lampV1.line');
+    }
     const { checking: lampChecking, error } = firmware.status;
     const version = firmware.updateForLamp;
     // A lamp update on offer keeps its line too.
@@ -65,8 +73,14 @@ export function useUpdateStatus() {
       : t('updates.lampAvailable', { version });
   });
 
-  /** The offer in a few words, for the tooltip of the settings button in the popup footer. */
+  /**
+   * The offer in a few words, or the lamp to update, for the tooltip of the
+   * settings button in the popup footer.
+   */
   const offerLine = computed(() => {
+    if (lamp.generation === 'v1') {
+      return t('lampV1.line');
+    }
     if (offer.value === 'app') {
       return t('updates.toApp', { version: updates.status.available });
     }

@@ -9,7 +9,8 @@
   "status": {
     "noLamp": "No lamp connected",
     "connecting": "Connecting…",
-    "connected": "Lamp connected"
+    "connected": "Lamp connected",
+    "needsUpdate": "Lamp needs an update"
   },
   "popup": {
     "lampPage": "Lamp"
@@ -271,5 +272,14 @@
   "window": {
     "diagnostics": "DISLED diagnostics",
     "lampUpdate": "DISLED lamp update"
+  },
+  "lampV1": {
+    "title": "Update required",
+    "text": "This lamp still runs firmware v1, and Disled v2 needs firmware v2.",
+    "action": "Update",
+    "line": "This lamp runs firmware v1, and Disled v2 needs firmware v2."
+  },
+  "lampNewer": {
+    "text": "This lamp has a newer firmware than this app. Update Disled."
   }
 }

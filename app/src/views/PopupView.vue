@@ -82,7 +82,11 @@ const status = computed(() => {
   if (!lamp.connection.connected) {
     return t('status.noLamp');
   }
-  return lamp.state ? t('status.connected') : t('status.connecting');
+  if (lamp.generation === 'v1') {
+    return t('status.needsUpdate');
+  }
+  // A lamp newer than the app is connected, and its alert says the rest.
+  return lamp.state || lamp.generation === 'newer' ? t('status.connected') : t('status.connecting');
 });
 </script>
 
@@ -99,6 +103,7 @@ const status = computed(() => {
         <p v-if="!lamp.connection.connected" class="text-xs text-muted">
           {{ t('lamp.unplugged') }}
         </p>
+        <LampV1Warning />
         <LampColorPicker />
         <LampBrightness />
       </section>
@@ -114,6 +119,7 @@ const status = computed(() => {
           </h2>
           <PopupMenu />
         </div>
+        <LampV1Warning />
         <PopupUpdates />
         <PopupSettings />
       </section>
@@ -133,7 +139,7 @@ const status = computed(() => {
     </div>
 
     <footer ref="footer" class="mt-auto flex items-center justify-between gap-2 px-4 pb-3">
-      <!-- An update on offer turns it primary, with a dot, and its tooltip says which. -->
+      <!-- An update on offer, or a lamp to update, turns it primary, with a dot, and its tooltip says which. -->
       <UButton
         :color="settingsOffer ? 'primary' : 'neutral'"
         variant="link"

@@ -9,7 +9,8 @@
   "status": {
     "noLamp": "Aucune lampe connectée",
     "connecting": "Connexion…",
-    "connected": "Lampe connectée"
+    "connected": "Lampe connectée",
+    "needsUpdate": "Lampe à mettre à jour"
   },
   "popup": {
     "lampPage": "Lampe"
@@ -271,5 +272,14 @@
   "window": {
     "diagnostics": "Diagnostics DISLED",
     "lampUpdate": "Mise à jour de la lampe DISLED"
+  },
+  "lampV1": {
+    "title": "Mise à jour nécessaire",
+    "text": "Cette lampe a encore le firmware v1, et Disled v2 a besoin du firmware v2.",
+    "action": "Mettre à jour",
+    "line": "Cette lampe a le firmware v1, et Disled v2 a besoin du firmware v2."
+  },
+  "lampNewer": {
+    "text": "Cette lampe a un firmware plus récent que cette app. Mettez Disled à jour."
   }
 }
