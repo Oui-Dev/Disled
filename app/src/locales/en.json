@@ -38,7 +38,7 @@
     }
   },
   "settings": {
-    "autostart": "Start DISLED when I log in",
+    "autostart": "Start Disled when I log in",
     "checkUpdates": "Check for updates every day",
     "colorMode": "Appearance",
     "colorModes": {
@@ -59,11 +59,11 @@
     "downloading": "Downloading {version}… {progress}",
     "checking": "Checking for updates…",
     "error": "Update error: {detail}",
-    "available": "DISLED {version} is available.",
+    "available": "Disled {version} is available.",
     "upToDate": "Up to date (checked {date}).",
     "lampError": "Lamp firmware check error: {detail}",
     "lampAvailable": "Lamp firmware {version} is available.",
-    "lampAfterApp": "Lamp firmware {version} is available. Install DISLED {app} first.",
+    "lampAfterApp": "Lamp firmware {version} is available. Install Disled {app} first.",
     "reinstall": "Reinstall the lamp firmware…",
     "toApp": "Update to {version}",
     "toLamp": "Update the lamp"
@@ -191,9 +191,9 @@
       "install": "Choose {winusb}, then {install} (or {replace}).",
       "waiting": "The update goes on by itself once the driver is installed."
     },
-    "noPermission": "This computer does not let the app open the lamp in update mode. Reinstall the DISLED package (it adds the access rule), then start the update mode again.",
+    "noPermission": "This computer does not let the app open the lamp in update mode. Reinstall the Disled package (it adds the access rule), then start the update mode again.",
     "severalBootloaders": "Several devices are in update mode. Unplug them all but the lamp.",
-    "otherChip": "A device that is not a DISLED lamp is in update mode ({chip}). Unplug it.",
+    "otherChip": "A device that is not a Disled lamp is in update mode ({chip}). Unplug it.",
     "stages": {
       "erasing": "Erasing the old firmware…",
       "writing": "Writing the new firmware…",
@@ -252,23 +252,23 @@
     }
   },
   "tray": {
-    "open": "Open DISLED",
+    "open": "Open Disled",
     "diagnostics": "Diagnostics…",
-    "quit": "Quit DISLED",
+    "quit": "Quit Disled",
     "tooltip": {
-      "noLamp": "DISLED: no lamp",
-      "off": "DISLED: off",
-      "green": "DISLED: green",
-      "orange": "DISLED: orange",
-      "red": "DISLED: red",
-      "warm_white": "DISLED: warm white",
-      "needsUpdate": "DISLED: lamp needs an update",
-      "newer": "DISLED: lamp newer than the app"
+      "noLamp": "Disled: no lamp",
+      "off": "Disled: off",
+      "green": "Disled: green",
+      "orange": "Disled: orange",
+      "red": "Disled: red",
+      "warm_white": "Disled: warm white",
+      "needsUpdate": "Disled: lamp needs an update",
+      "newer": "Disled: lamp newer than the app"
     }
   },
   "window": {
-    "diagnostics": "DISLED diagnostics",
-    "lampUpdate": "DISLED lamp update"
+    "diagnostics": "Disled diagnostics",
+    "lampUpdate": "Disled lamp update"
   },
   "lampV1": {
     "title": "Update required",

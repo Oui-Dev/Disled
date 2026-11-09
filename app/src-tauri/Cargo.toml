@@ -2,7 +2,7 @@
 name = "disled-app"
 # No version here. The app version lives in package.json, where
 # release-please bumps it, and tauri.conf.json reads it from there.
-description = "Desktop app for the DISLED USB status light"
+description = "Desktop app for the Disled USB status light"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true

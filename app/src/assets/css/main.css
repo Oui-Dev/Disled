@@ -3,7 +3,7 @@
  * SPDX-FileCopyrightText: 2026 The Disled contributors
  *
  * Design system of every window: Tailwind, Nuxt UI, the Montserrat font and
- * the DISLED palettes (palettes.css).
+ * the Disled palettes (palettes.css).
  */
 @import 'tailwindcss';
 @import '@nuxt/ui';

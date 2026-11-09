@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Disled contributors
 
-//! DISLED desktop app: a tray icon with a popup for daily use, a
+//! Disled desktop app: a tray icon with a popup for daily use, a
 //! Diagnostics window, the USB worker behind both, the app updates and the
 //! lamp firmware updates.
 
@@ -241,7 +241,7 @@ enum Link {
 fn open_link(app: AppHandle, link: Link) -> Result<(), String> {
     let url = match link {
         Link::Zadig => "https://zadig.akeo.ie/",
-        Link::FlashingGuide => "https://github.com/Oui-Dev/DISLED/blob/main/docs/flashing.md",
+        Link::FlashingGuide => "https://github.com/Oui-Dev/Disled/blob/main/docs/flashing.md",
     };
     app.opener()
         .open_url(url, None::<&str>)
@@ -351,7 +351,7 @@ fn main() {
             quit
         ])
         .build(tauri::generate_context!())
-        .expect("error while building the DISLED app");
+        .expect("error while building the Disled app");
 
     app.run(|_app, event| {
         // A tray app keeps running with no window open; Quit calls exit(0),

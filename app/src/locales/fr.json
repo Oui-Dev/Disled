@@ -38,7 +38,7 @@
     }
   },
   "settings": {
-    "autostart": "Lancer DISLED à l’ouverture de session",
+    "autostart": "Lancer Disled à l’ouverture de session",
     "checkUpdates": "Rechercher les mises à jour chaque jour",
     "colorMode": "Apparence",
     "colorModes": {
@@ -59,11 +59,11 @@
     "downloading": "Téléchargement de {version}… {progress}",
     "checking": "Recherche des mises à jour…",
     "error": "Erreur de mise à jour : {detail}",
-    "available": "DISLED {version} est disponible.",
+    "available": "Disled {version} est disponible.",
     "upToDate": "À jour (vérifié le {date}).",
     "lampError": "Erreur de recherche du firmware de la lampe : {detail}",
     "lampAvailable": "Le firmware {version} de la lampe est disponible.",
-    "lampAfterApp": "Le firmware {version} de la lampe est disponible. Installez d’abord DISLED {app}.",
+    "lampAfterApp": "Le firmware {version} de la lampe est disponible. Installez d’abord Disled {app}.",
     "reinstall": "Réinstaller le firmware de la lampe…",
     "toApp": "Mettre à jour en {version}",
     "toLamp": "Mettre à jour la lampe"
@@ -191,9 +191,9 @@
       "install": "Choisissez {winusb}, puis {install} (ou {replace}).",
       "waiting": "La mise à jour reprend d’elle-même une fois le pilote installé."
     },
-    "noPermission": "Cet ordinateur ne laisse pas l’app ouvrir la lampe en mode mise à jour. Réinstallez le paquet DISLED (il ajoute la règle d’accès), puis relancez le mode mise à jour.",
+    "noPermission": "Cet ordinateur ne laisse pas l’app ouvrir la lampe en mode mise à jour. Réinstallez le paquet Disled (il ajoute la règle d’accès), puis relancez le mode mise à jour.",
     "severalBootloaders": "Plusieurs périphériques sont en mode mise à jour. Débranchez-les tous sauf la lampe.",
-    "otherChip": "Un périphérique qui n’est pas une lampe DISLED est en mode mise à jour ({chip}). Débranchez-le.",
+    "otherChip": "Un périphérique qui n’est pas une lampe Disled est en mode mise à jour ({chip}). Débranchez-le.",
     "stages": {
       "erasing": "Effacement de l’ancien firmware…",
       "writing": "Écriture du nouveau firmware…",
@@ -252,23 +252,23 @@
     }
   },
   "tray": {
-    "open": "Ouvrir DISLED",
+    "open": "Ouvrir Disled",
     "diagnostics": "Diagnostics…",
-    "quit": "Quitter DISLED",
+    "quit": "Quitter Disled",
     "tooltip": {
-      "noLamp": "DISLED : aucune lampe",
-      "off": "DISLED : éteinte",
-      "green": "DISLED : vert",
-      "orange": "DISLED : orange",
-      "red": "DISLED : rouge",
-      "warm_white": "DISLED : blanc chaud",
-      "needsUpdate": "DISLED : lampe à mettre à jour",
-      "newer": "DISLED : lampe plus récente que l’app"
+      "noLamp": "Disled : aucune lampe",
+      "off": "Disled : éteinte",
+      "green": "Disled : vert",
+      "orange": "Disled : orange",
+      "red": "Disled : rouge",
+      "warm_white": "Disled : blanc chaud",
+      "needsUpdate": "Disled : lampe à mettre à jour",
+      "newer": "Disled : lampe plus récente que l’app"
     }
   },
   "window": {
-    "diagnostics": "Diagnostics DISLED",
-    "lampUpdate": "Mise à jour de la lampe DISLED"
+    "diagnostics": "Diagnostics Disled",
+    "lampUpdate": "Mise à jour de la lampe Disled"
   },
   "lampV1": {
     "title": "Mise à jour nécessaire",

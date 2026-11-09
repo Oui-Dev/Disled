@@ -24,7 +24,7 @@ const EVENT_STATUS: &str = "firmware-status";
 
 /// The published releases only, since GitHub hides the drafts from
 /// anonymous callers.
-const RELEASES_URL: &str = "https://api.github.com/repos/Oui-Dev/DISLED/releases?per_page=100";
+const RELEASES_URL: &str = "https://api.github.com/repos/Oui-Dev/Disled/releases?per_page=100";
 const TAG_PREFIX: &str = "fw-v";
 
 /// How often the app looks for the bootloader.
@@ -84,7 +84,7 @@ pub enum Flash {
     NoPermission,
     /// Several WCH bootloaders, so which one is the lamp is unknown.
     SeveralBootloaders,
-    /// A WCH bootloader that is not a DISLED lamp.
+    /// A WCH bootloader that is not a Disled lamp.
     OtherChip {
         chip: String,
     },
@@ -202,7 +202,7 @@ fn flasher() -> Result<Wchisp, String> {
     } else if cfg!(debug_assertions) {
         Ok(Wchisp::new(wchisp::PROGRAM))
     } else {
-        Err("wchisp is missing next to the app: reinstall DISLED".into())
+        Err("wchisp is missing next to the app: reinstall Disled".into())
     }
 }
 
@@ -214,7 +214,7 @@ async fn get(app: &AppHandle, url: &str) -> Result<Vec<u8>, String> {
         let _ = rustls::crypto::ring::default_provider().install_default();
     }
     let client = reqwest::Client::builder()
-        .user_agent(format!("DISLED/{}", app.package_info().version))
+        .user_agent(format!("Disled/{}", app.package_info().version))
         .connect_timeout(Duration::from_secs(15))
         .timeout(Duration::from_secs(60))
         .build()
@@ -532,9 +532,9 @@ mod tests {
             "prerelease": false, "body": "Bug fixes",
             "assets": [
                 {"name": "disled-fw-0.2.2.hex", "size": 58359,
-                 "browser_download_url": "https://github.com/Oui-Dev/DISLED/releases/download/fw-v0.2.2/disled-fw-0.2.2.hex"},
+                 "browser_download_url": "https://github.com/Oui-Dev/Disled/releases/download/fw-v0.2.2/disled-fw-0.2.2.hex"},
                 {"name": "disled-fw-0.2.2.hex.sig", "size": 412,
-                 "browser_download_url": "https://github.com/Oui-Dev/DISLED/releases/download/fw-v0.2.2/disled-fw-0.2.2.hex.sig"}
+                 "browser_download_url": "https://github.com/Oui-Dev/Disled/releases/download/fw-v0.2.2/disled-fw-0.2.2.hex.sig"}
             ]
         }]"#;
         let releases: Vec<GitHubRelease> = serde_json::from_str(answer).expect("releases");

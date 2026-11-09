@@ -263,11 +263,11 @@ mod tests {
         for locale in [Locale::En, Locale::Fr] {
             for look in looks {
                 assert!(
-                    look.tooltip(locale).starts_with("DISLED"),
+                    look.tooltip(locale).starts_with("Disled"),
                     "{look:?} in {locale:?}"
                 );
             }
         }
-        assert_eq!(Look::On(3).tooltip(Locale::En), "DISLED: warm white");
+        assert_eq!(Look::On(3).tooltip(Locale::En), "Disled: warm white");
     }
 }

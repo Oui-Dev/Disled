@@ -94,7 +94,7 @@ const status = computed(() => {
   <main class="flex min-h-screen flex-col">
     <div ref="body" class="flex flex-col gap-4 p-4 pb-3">
       <header>
-        <h1 class="text-base font-bold tracking-wide text-highlighted">DISLED</h1>
+        <h1 class="text-base font-bold tracking-wide text-highlighted">Disled</h1>
         <p role="status" class="text-xs text-muted">{{ status }}</p>
       </header>
 

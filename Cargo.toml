@@ -16,7 +16,7 @@ members = [
 authors = ["The Disled contributors"]
 edition = "2024"
 license = "GPL-3.0-or-later"
-repository = "https://github.com/Oui-Dev/DISLED"
+repository = "https://github.com/Oui-Dev/Disled"
 publish = false
 
 [workspace.dependencies]
