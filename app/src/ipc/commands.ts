@@ -8,6 +8,7 @@ import { invoke } from '@tauri-apps/api/core';
 import type { Command } from '@/bindings/Command';
 import type { Connection } from '@/bindings/Connection';
 import type { FirmwareStatus } from '@/bindings/FirmwareStatus';
+import type { LampChoice } from '@/bindings/LampChoice';
 import type { Link } from '@/bindings/Link';
 import type { Locale } from '@/bindings/Locale';
 import type { Settings } from '@/bindings/Settings';
@@ -22,6 +23,11 @@ export function deviceConnection(): Promise<Connection> {
 /** Queues a command for the lamp; replies arrive as `device-message` events. */
 export function deviceSend(command: Command): Promise<void> {
   return invoke('device_send', { command });
+}
+
+/** Tells the backend what the user chose for the lamp: off, or a color slot. */
+export function lampChoose(choice: LampChoice): Promise<void> {
+  return invoke('lamp_choose', { choice });
 }
 
 /** Writes a recording to a `.csv` file chosen in a save dialog. */

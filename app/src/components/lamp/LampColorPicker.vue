@@ -43,9 +43,9 @@ function swatch(choice: Choice): { background: string } | undefined {
 
 function select(choice: Choice): void {
   if (choice === 'off') {
-    void lamp.setLamp({ on: false });
+    void lamp.choose({ on: false });
   } else if (typeof choice === 'number') {
-    void lamp.setLamp({ on: true, color: choice });
+    void lamp.choose({ on: true, slot: choice });
   }
 }
 </script>

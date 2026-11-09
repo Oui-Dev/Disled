@@ -10,9 +10,9 @@ import { computed, ref } from 'vue';
 import type { Command } from '@/bindings/Command';
 import type { Connection } from '@/bindings/Connection';
 import type { Info } from '@/bindings/Info';
+import type { LampChoice } from '@/bindings/LampChoice';
 import type { LampState } from '@/bindings/LampState';
-import type { SetState } from '@/bindings/SetState';
-import { deviceConnection, deviceSend } from '@/ipc/commands';
+import { deviceConnection, deviceSend, lampChoose } from '@/ipc/commands';
 import { follow, on } from '@/ipc/events';
 import { PROTOCOL_MAJOR } from '@/utils/lamp';
 import { useErrorStore } from './errors';
@@ -64,9 +64,17 @@ export const useLampStore = defineStore('lamp', () => {
     }
   }
 
-  /** Sets the power or the color, the lamp's own state, which this computer does not save. */
-  function setLamp(changes: Pick<SetState, 'on' | 'color'>): Promise<void> {
-    return send({ kind: 'set_state', ...changes });
+  /**
+   * The user turns the lamp off, or on with a color slot: the lamp's own
+   * state, which this computer does not save. A failure becomes the last error.
+   */
+  async function choose(choice: LampChoice): Promise<void> {
+    try {
+      await lampChoose(choice);
+      errors.clear();
+    } catch (error) {
+      errors.reportFailure(error);
+    }
   }
 
   function restart(): Promise<void> {
@@ -133,7 +141,7 @@ export const useLampStore = defineStore('lamp', () => {
     locked,
     ready,
     send,
-    setLamp,
+    choose,
     restart,
     start,
   };

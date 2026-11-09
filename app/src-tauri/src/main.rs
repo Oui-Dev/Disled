@@ -44,9 +44,31 @@ fn device_connection(device: State<'_, DeviceHandle>) -> Connection {
 }
 
 /// Queues a command for the lamp. Replies arrive as `device-message` events.
+/// Diagnostics sends its commands this way; the popup says what the user
+/// chose with `lamp_choose`.
 #[tauri::command]
 fn device_send(device: State<'_, DeviceHandle>, command: Command) -> Result<(), String> {
     device.send(command)
+}
+
+/// What the user chose for the lamp: off, or on, with a color slot or the
+/// color it keeps.
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[cfg_attr(test, derive(ts_rs::TS), ts(export, optional_fields))]
+struct LampChoice {
+    on: bool,
+    slot: Option<u8>,
+}
+
+/// A choice of the user for the lamp, from a tile of the popup. The backend
+/// hears of it, as the rules of the calls and the modes will need.
+#[tauri::command]
+fn lamp_choose(device: State<'_, DeviceHandle>, choice: LampChoice) -> Result<(), String> {
+    device.send(Command::SetState(SetState {
+        on: Some(choice.on),
+        color: choice.slot.filter(|_| choice.on),
+        ..SetState::default()
+    }))
 }
 
 /// Writes a recording chosen by the user in a save dialog. Async, so that
@@ -307,6 +329,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             device_connection,
             device_send,
+            lamp_choose,
             save_csv,
             settings_get,
             settings_set,
