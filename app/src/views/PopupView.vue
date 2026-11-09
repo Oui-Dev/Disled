@@ -18,6 +18,7 @@ import { useErrorText } from '@/composables/useErrorText';
 import { usePopupAutoSize } from '@/composables/usePopupAutoSize';
 import { useUpdateStatus } from '@/composables/useUpdateStatus';
 import { popupHide, quit } from '@/ipc/commands';
+import { useControlStore } from '@/stores/control';
 import { useErrorStore } from '@/stores/errors';
 import { useLampStore } from '@/stores/lamp';
 import { BUILT_IN_COLORS } from '@/utils/lamp';
@@ -26,6 +27,7 @@ type Page = 'lamp' | 'settings' | 'colors' | 'editor' | 'share' | 'import';
 
 const { t } = useI18n();
 const lamp = useLampStore();
+const control = useControlStore();
 const errors = useErrorStore();
 const errorText = useErrorText();
 const { offerLine } = useUpdateStatus();
@@ -137,9 +139,12 @@ const back = computed<Page | null>(() => {
 <template>
   <main class="flex min-h-screen flex-col">
     <div ref="body" class="flex flex-col gap-4 p-4 pb-3">
-      <header>
-        <h1 class="text-base font-bold tracking-wide text-highlighted">Disled</h1>
-        <p role="status" class="text-xs text-muted">{{ status }}</p>
+      <header class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h1 class="text-base font-bold tracking-wide text-highlighted">Disled</h1>
+          <p role="status" class="text-xs text-muted">{{ status }}</p>
+        </div>
+        <LampModeMenu v-if="page === 'lamp'" />
       </header>
 
       <section v-if="page === 'lamp'" class="flex flex-col gap-4">
@@ -148,7 +153,9 @@ const back = computed<Page | null>(() => {
           {{ t('lamp.unplugged') }}
         </p>
         <LampV1Warning />
-        <LampColorPicker @manage="show('colors')" @create="edit(null, 'lamp')" />
+        <!-- An integration picks the color: only the switch and its card stay. -->
+        <LampIntegrationRow v-if="control.status.mode" />
+        <LampColorPicker v-else @manage="show('colors')" @create="edit(null, 'lamp')" />
         <LampBrightness />
       </section>
 

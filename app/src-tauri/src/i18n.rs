@@ -259,6 +259,8 @@ mod tests {
             "lampInstall.others",
             "lampInstall.install",
             "lampInstall.reinstall",
+            "modes.manual",
+            "calls.mic",
             "diagnostics.restart",
             "selfTest.run",
             "telemetry.record",
@@ -321,6 +323,18 @@ mod tests {
                 "Réessayez, ou suivez le {guide}.",
             ),
             ("lampUpdate.guide", "guide de mise à jour"),
+            ("modes.label", "La lampe suit"),
+            ("modes.button", "La lampe suit\u{202f}: {source}"),
+            ("modes.manual", "Manuel"),
+            ("modes.manualHint", "Vous choisissez la couleur."),
+            ("modes.integrations", "Intégrations"),
+            ("modes.on", "Allumée\u{202f}: suit {name}"),
+            ("modes.turnOn", "Rallumer\u{202f}: suivre {name}"),
+            ("modes.clickToTurnOn", "Cliquez pour rallumer"),
+            ("modes.since", "depuis {time}"),
+            ("calls.title", "Appels"),
+            ("calls.manualOnly", "Seulement en mode Manuel"),
+            ("calls.mic", "Micro utilisé"),
         ];
         for (key, text) in reviewed {
             assert_eq!(Locale::Fr.t(key), text, "{key}");

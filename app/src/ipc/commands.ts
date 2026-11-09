@@ -7,6 +7,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { Command } from '@/bindings/Command';
 import type { Connection } from '@/bindings/Connection';
+import type { ControlStatus } from '@/bindings/ControlStatus';
 import type { FirmwareStatus } from '@/bindings/FirmwareStatus';
 import type { LampChoice } from '@/bindings/LampChoice';
 import type { Link } from '@/bindings/Link';
@@ -26,9 +27,22 @@ export function deviceSend(command: Command): Promise<void> {
   return invoke('device_send', { command });
 }
 
-/** Tells the backend what the user chose for the lamp: off, or a color slot. */
+/**
+ * Tells the backend what the user chose for the lamp: off, or on, with a
+ * color slot in manual mode, with the color of the integration otherwise.
+ */
 export function lampChoose(choice: LampChoice): Promise<void> {
   return invoke('lamp_choose', { choice });
+}
+
+/** What the windows show of the control, for a window that starts. */
+export function controlGet(): Promise<ControlStatus> {
+  return invoke('control_get');
+}
+
+/** The source the lamp follows: an integration on offer, or null for the user. */
+export function controlSetMode(mode: string | null): Promise<void> {
+  return invoke('control_set_mode', { mode });
 }
 
 export function colorsGet(): Promise<Palette> {

@@ -111,7 +111,7 @@ function select(choice: Choice): void {
           <span
             aria-hidden="true"
             class="block size-9 rounded-[20%] border border-accented ring-2 ring-transparent ring-offset-2 ring-offset-bg transition-shadow group-has-data-[state=checked]:ring-inverted"
-            :class="{ off: item.value === 'off' }"
+            :class="{ 'swatch-off': item.value === 'off' }"
             :style="swatch(item.value)"
           />
           <LampTileName :name="item.label" :narrow="narrowAt(item.value)" />
@@ -126,27 +126,3 @@ function select(choice: Choice): void {
     </div>
   </div>
 </template>
-
-<style scoped>
-/* Off is an unlit grey square, struck through, light grey in light mode
-   and dark grey in dark mode. */
-.off {
-  --off-fill: var(--ui-color-neutral-200);
-  --off-line: var(--ui-color-neutral-400);
-  background:
-    linear-gradient(
-      to top right,
-      transparent calc(50% - 0.75px),
-      var(--off-line) calc(50% - 0.75px) calc(50% + 0.75px),
-      transparent calc(50% + 0.75px)
-    ),
-    var(--off-fill);
-}
-
-/* The whole selector is global, because Vue keeps only the class of
-   `:global(.dark) .off`. */
-:global(.dark .off) {
-  --off-fill: var(--ui-color-neutral-800);
-  --off-line: var(--ui-color-neutral-600);
-}
-</style>

@@ -25,6 +25,8 @@ declare module 'vue' {
     DiagnosticsTelemetry: typeof import('./components/diagnostics/DiagnosticsTelemetry.vue')['default']
     LampBrightness: typeof import('./components/lamp/LampBrightness.vue')['default']
     LampColorPicker: typeof import('./components/lamp/LampColorPicker.vue')['default']
+    LampIntegrationRow: typeof import('./components/lamp/LampIntegrationRow.vue')['default']
+    LampModeMenu: typeof import('./components/lamp/LampModeMenu.vue')['default']
     LampMyColors: typeof import('./components/lamp/LampMyColors.vue')['default']
     LampTileName: typeof import('./components/lamp/LampTileName.vue')['default']
     LampV1Warning: typeof import('./components/lamp/LampV1Warning.vue')['default']

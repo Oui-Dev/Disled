@@ -11,6 +11,7 @@ import { useColorMode } from '@vueuse/core';
 import { type Component, computed, defineAsyncComponent, onMounted, watch, watchEffect } from 'vue';
 import { nuxtUiLocales, setLocale } from '@/i18n';
 import { useColorsStore } from '@/stores/colors';
+import { useControlStore } from '@/stores/control';
 import { useDiagnosticsStore } from '@/stores/diagnostics';
 import { useFirmwareStore } from '@/stores/firmware';
 import { useLampStore } from '@/stores/lamp';
@@ -27,7 +28,7 @@ interface WindowSetup {
 const WINDOWS: Record<string, WindowSetup> = {
   popup: {
     view: defineAsyncComponent(() => import('@/views/PopupView.vue')),
-    stores: [useLampStore, useColorsStore, useFirmwareStore, useUpdatesStore],
+    stores: [useLampStore, useColorsStore, useControlStore, useFirmwareStore, useUpdatesStore],
   },
   diagnostics: {
     view: defineAsyncComponent(() => import('@/views/DiagnosticsView.vue')),

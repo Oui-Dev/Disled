@@ -21,6 +21,31 @@
  * muted surface moves to ink-100, as in dark mode. `:root:not(.dark)` keeps
  * the light block out of dark mode, since <html> matches :root in both.
  */
+/*
+ * The "Off" tile, in the tiles and in the row of an integration: an unlit
+ * grey square, struck through, light grey in light mode and dark grey in
+ * dark mode.
+ */
+@layer components {
+  .swatch-off {
+    --off-fill: var(--ui-color-neutral-200);
+    --off-line: var(--ui-color-neutral-400);
+    background:
+      linear-gradient(
+        to top right,
+        transparent calc(50% - 0.75px),
+        var(--off-line) calc(50% - 0.75px) calc(50% + 0.75px),
+        transparent calc(50% + 0.75px)
+      ),
+      var(--off-fill);
+  }
+
+  .dark .swatch-off {
+    --off-fill: var(--ui-color-neutral-800);
+    --off-line: var(--ui-color-neutral-600);
+  }
+}
+
 @layer theme {
   :root:not(.dark),
   .light {

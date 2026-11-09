@@ -6,6 +6,7 @@
 import type { UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import type { Connection } from '@/bindings/Connection';
+import type { ControlStatus } from '@/bindings/ControlStatus';
 import type { FirmwareStatus } from '@/bindings/FirmwareStatus';
 import type { Frame } from '@/bindings/Frame';
 import type { Locale } from '@/bindings/Locale';
@@ -26,6 +27,8 @@ interface Events {
   'colors-changed': Palette;
   /** The language of the app changed, through a setting or the system's. */
   'locale-changed': Locale;
+  /** The source the lamp follows, the call, the integrations on offer (control.rs). */
+  'control-changed': ControlStatus;
   'update-status': UpdateStatus;
   'firmware-status': FirmwareStatus;
 }

@@ -43,6 +43,26 @@
       "noCorrection": "sans correction"
     }
   },
+  "modes": {
+    "label": "La lampe suit",
+    "button": "La lampe suit : {source}",
+    "manual": "Manuel",
+    "manualHint": "Vous choisissez la couleur.",
+    "integrations": "Intégrations",
+    "pluginTag": "plugin",
+    "on": "Allumée : suit {name}",
+    "turnOn": "Rallumer : suivre {name}",
+    "clickToTurnOn": "Cliquez pour rallumer",
+    "since": "depuis {time}"
+  },
+  "calls": {
+    "title": "Appels",
+    "manualOnly": "Seulement en mode Manuel",
+    "mic": "Micro utilisé"
+  },
+  "integrations": {
+    "noEvent": "Aucun événement reçu"
+  },
   "settings": {
     "autostart": "Lancer Disled à l’ouverture de session",
     "checkUpdates": "Rechercher les mises à jour chaque jour",

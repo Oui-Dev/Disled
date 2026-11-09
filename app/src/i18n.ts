@@ -34,6 +34,8 @@ const numberFormats = {
 
 const datetimeFormats = {
   short: { dateStyle: 'short', timeStyle: 'short' },
+  /** The local time of a day, as "10:42". */
+  time: { timeStyle: 'short' },
 } as const;
 
 /** French counts 0 as singular, as in "0 ligne"; messages are "one | other". */

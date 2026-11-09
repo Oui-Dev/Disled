@@ -43,6 +43,26 @@
       "noCorrection": "no correction"
     }
   },
+  "modes": {
+    "label": "The lamp follows",
+    "button": "The lamp follows: {source}",
+    "manual": "Manual",
+    "manualHint": "You choose the color.",
+    "integrations": "Integrations",
+    "pluginTag": "plugin",
+    "on": "On: follows {name}",
+    "turnOn": "Turn on: follow {name}",
+    "clickToTurnOn": "Click to turn on",
+    "since": "since {time}"
+  },
+  "calls": {
+    "title": "Calls",
+    "manualOnly": "Manual mode only",
+    "mic": "Microphone in use"
+  },
+  "integrations": {
+    "noEvent": "No event received"
+  },
   "settings": {
     "autostart": "Start Disled when I log in",
     "checkUpdates": "Check for updates every day",
