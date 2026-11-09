@@ -355,10 +355,17 @@ async fn firmware_check(app: AppHandle) {
     firmware::check(&app).await;
 }
 
-/// Starts a lamp update; `firmware-status` events follow it.
+/// Starts the update to the newest firmware 2.x, from the guided window;
+/// `firmware-status` events follow it.
 #[tauri::command]
 fn firmware_install(app: AppHandle) -> Result<(), String> {
     firmware::install(&app)
+}
+
+/// Starts the update to a version of the list, from the reinstall window.
+#[tauri::command]
+fn firmware_install_manual(app: AppHandle, version: String) -> Result<(), String> {
+    firmware::install_manual(&app, &version)
 }
 
 #[tauri::command]
@@ -378,6 +385,13 @@ async fn open_diagnostics(app: AppHandle) {
 async fn open_lamp_update(app: AppHandle) {
     firmware::clear_result(&app);
     windows::open_lamp_update(&app);
+}
+
+/// Async for the same reason as `open_diagnostics`.
+#[tauri::command]
+async fn open_lamp_install(app: AppHandle) {
+    firmware::clear_result(&app);
+    windows::open_lamp_install(&app);
 }
 
 /// The popup measures its content and asks for that height; it gets the
@@ -402,13 +416,18 @@ enum Link {
     Zadig,
     /// Flashing by hand, when the app cannot.
     FlashingGuide,
+    /// The release of a firmware version on GitHub.
+    ReleaseNotes { version: String },
 }
 
 #[tauri::command]
 fn open_link(app: AppHandle, link: Link) -> Result<(), String> {
     let url = match link {
-        Link::Zadig => "https://zadig.akeo.ie/",
-        Link::FlashingGuide => "https://github.com/Oui-Dev/Disled/blob/main/docs/flashing.md",
+        Link::Zadig => "https://zadig.akeo.ie/".to_owned(),
+        Link::FlashingGuide => {
+            "https://github.com/Oui-Dev/Disled/blob/main/docs/flashing.md".to_owned()
+        }
+        Link::ReleaseNotes { version } => firmware::release_page(&version)?,
     };
     app.opener()
         .open_url(url, None::<&str>)
@@ -522,9 +541,11 @@ fn main() {
             firmware_status,
             firmware_check,
             firmware_install,
+            firmware_install_manual,
             firmware_cancel,
             open_diagnostics,
             open_lamp_update,
+            open_lamp_install,
             popup_resize,
             popup_hide,
             open_link,

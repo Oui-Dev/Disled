@@ -279,7 +279,8 @@
   },
   "window": {
     "diagnostics": "Disled diagnostics",
-    "lampUpdate": "Disled lamp update"
+    "lampUpdate": "Disled lamp update",
+    "lampInstall": "Reinstall the firmware"
   },
   "lampV1": {
     "title": "Update required",

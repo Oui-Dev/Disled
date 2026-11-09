@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Disled contributors
 
-//! The windows: the popup under the tray icon for daily use, and two that
-//! open on demand, Diagnostics and the lamp update.
+//! The windows: the popup under the tray icon for daily use, and three that
+//! open on demand, Diagnostics and the two lamp updates.
 
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -20,12 +20,16 @@ use crate::i18n::{Locale, LocaleState};
 
 const POPUP: &str = "popup";
 pub const DIAGNOSTICS: &str = "diagnostics";
+/// The guided update, to the newest firmware.
 const LAMP_UPDATE: &str = "lamp-update";
+/// The reinstall of a version of the user's choice.
+const LAMP_INSTALL: &str = "lamp-install";
 
 /// The windows opened on demand, with the message key of their title.
-const TITLED: [(&str, &str); 2] = [
+const TITLED: [(&str, &str); 3] = [
     (DIAGNOSTICS, "window.diagnostics"),
     (LAMP_UPDATE, "window.lampUpdate"),
+    (LAMP_INSTALL, "window.lampInstall"),
 ];
 
 /// A click on the tray icon first takes the focus away from an open popup,
@@ -217,15 +221,34 @@ pub fn open_diagnostics(app: &AppHandle) {
     }
 }
 
-/// Opens the lamp update guide, a window rather than the popup, which hides
-/// as soon as the user turns to the lamp or to Zadig.
+/// Opens the guided lamp update.
 pub fn open_lamp_update(app: &AppHandle) {
+    open_update_window(app, LAMP_UPDATE, LAMP_INSTALL);
+}
+
+/// Opens the reinstall of a firmware version.
+pub fn open_lamp_install(app: &AppHandle) {
+    open_update_window(app, LAMP_INSTALL, LAMP_UPDATE);
+}
+
+/// Opens a lamp update window, a window rather than the popup, which hides
+/// as soon as the user turns to the lamp or to Zadig. One update at a time:
+/// while the other window runs one, it comes to the front instead, and when
+/// it does not, it closes, so that a single window follows the updates.
+fn open_update_window(app: &AppHandle, label: &str, other: &str) {
     hide_popup(app);
-    if raise(app, LAMP_UPDATE) {
+    if let Some(window) = app.get_webview_window(other) {
+        if firmware::running(app) {
+            raise(app, other);
+            return;
+        }
+        let _ = window.close();
+    }
+    if raise(app, label) {
         return;
     }
     // The longest step, the Windows driver in French, fits without scrolling.
-    let built = builder(app, LAMP_UPDATE)
+    let built = builder(app, label)
         .inner_size(480.0, 640.0)
         .resizable(false)
         .build();

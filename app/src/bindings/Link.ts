@@ -3,4 +3,4 @@
 /**
  * Pages the windows may open in the browser.
  */
-export type Link = "zadig" | "flashing_guide";
+export type Link = "zadig" | "flashing_guide" | { "release_notes": { version: string, } };

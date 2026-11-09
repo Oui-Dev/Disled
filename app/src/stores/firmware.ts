@@ -29,8 +29,10 @@ export const useFirmwareStore = defineStore('firmware', () => {
   const status = ref<FirmwareStatus>({
     checking: false,
     latest: null,
+    versions: [],
     error: null,
     checked_at: null,
+    target: null,
     flash: { step: 'idle' },
   });
 

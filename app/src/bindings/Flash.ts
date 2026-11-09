@@ -2,6 +2,6 @@
 import type { Stage } from "./Stage";
 
 /**
- * Where a lamp update stands, shown by the update window.
+ * Where a lamp update stands, shown by the update windows.
  */
 export type Flash = { "step": "idle" } | { "step": "downloading" } | { "step": "waiting_for_bootloader" } | { "step": "driver_missing" } | { "step": "no_permission" } | { "step": "several_bootloaders" } | { "step": "other_chip", chip: string, } | { "step": "flashing", stage: Stage, } | { "step": "waiting_for_lamp" } | { "step": "done", version: string, } | { "step": "failed", error: string, };
