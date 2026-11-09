@@ -75,7 +75,7 @@ export function useUpdateStatus() {
 
   /**
    * The offer in a few words, or the lamp to update, for the tooltip of the
-   * settings button in the popup footer.
+   * settings button in the popup footer: the line of a lamp update.
    */
   const offerLine = computed(() => {
     if (lamp.generation === 'v1') {
@@ -84,7 +84,7 @@ export function useUpdateStatus() {
     if (offer.value === 'app') {
       return t('updates.toApp', { version: updates.status.available });
     }
-    return offer.value === 'lamp' ? t('updates.toLamp') : null;
+    return offer.value === 'lamp' ? lampLine.value : null;
   });
 
   function checkAll(): Promise<unknown> {

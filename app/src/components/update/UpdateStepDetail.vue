@@ -11,7 +11,7 @@ import { useI18n } from 'vue-i18n';
 import type { Flash } from '@/bindings/Flash';
 import { openLink } from '@/ipc/commands';
 
-defineProps<{ flash: Flash; latest: string | null }>();
+defineProps<{ flash: Flash; version: string | null }>();
 
 const { t } = useI18n();
 </script>
@@ -19,7 +19,7 @@ const { t } = useI18n();
 <template>
   <div class="flex flex-col gap-2 pt-1 text-sm text-default">
     <p v-if="flash.step === 'downloading'" class="text-muted">
-      {{ t('lampUpdate.downloading', { version: latest }) }}
+      {{ t('lampUpdate.downloading', { version }) }}
     </p>
 
     <template v-else-if="flash.step === 'waiting_for_bootloader'">

@@ -78,8 +78,8 @@
     "lampAvailable": "Lamp firmware {version} is available.",
     "lampAfterApp": "Lamp firmware {version} is available. Install Disled {app} first.",
     "reinstall": "Reinstall the firmware",
-    "toApp": "Update to {version}",
-    "toLamp": "Update the lamp"
+    "reinstallHint": "Any version. The lamp has to be opened.",
+    "toApp": "Update to {version}"
   },
   "diagnostics": {
     "connected": "Connected",
@@ -218,11 +218,28 @@
     "waitingForLamp": "The lamp starts its new firmware: it takes a few seconds.",
     "done": "Done: the lamp runs firmware {version}. You can put it back together.",
     "failed": "The update stopped: {detail}",
-    "notDamaged": "The lamp is not damaged: its update mode always works. Try again, or follow the {guide}.",
-    "guide": "flashing guide",
+    "retryOrGuide": "Try again, or follow the {guide}.",
+    "guide": "update guide",
     "start": "Start the update",
     "reinstall": "Install it again",
     "retry": "Try again"
+  },
+  "lampInstall": {
+    "title": "Reinstall the firmware",
+    "intro": "A manual step is required: the lamp has to be opened, and every step is guided. It takes about a minute, with the lamp plugged into this computer.",
+    "version": "Version to install",
+    "notes": "Release notes {version}",
+    "notesTitle": "Opens in the browser",
+    "recommended": "Recommended",
+    "current": "Current",
+    "others": "Other versions",
+    "group": "Firmware v{major}",
+    "install": "Install {version}",
+    "reinstall": "Reinstall {version}",
+    "rollback": {
+      "title": "Back to firmware v1",
+      "text": "The lamp will only work with Disled v1."
+    }
   },
   "errors": {
     "backend": "Error: {detail}",

@@ -37,6 +37,10 @@ const WINDOWS: Record<string, WindowSetup> = {
     view: defineAsyncComponent(() => import('@/views/LampUpdateView.vue')),
     stores: [useLampStore, useFirmwareStore],
   },
+  'lamp-install': {
+    view: defineAsyncComponent(() => import('@/views/LampInstallView.vue')),
+    stores: [useLampStore, useFirmwareStore],
+  },
 };
 
 const current = WINDOWS[getCurrentWebviewWindow().label] ?? WINDOWS.diagnostics;

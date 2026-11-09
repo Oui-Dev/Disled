@@ -3,15 +3,15 @@
   SPDX-FileCopyrightText: 2026 The Disled contributors
 
   The "more" menu of the popup settings, for the rare actions: check for
-  updates, open Diagnostics, reinstall the lamp firmware. Its last lines
-  say where the updates stand.
+  updates, open Diagnostics, reinstall a lamp firmware of the user's
+  choice. Its last lines say where the updates stand.
 -->
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useUpdateStatus } from '@/composables/useUpdateStatus';
-import { openDiagnostics, openLampUpdate } from '@/ipc/commands';
+import { openDiagnostics, openLampInstall } from '@/ipc/commands';
 import { useLampStore } from '@/stores/lamp';
 
 const { t } = useI18n();
@@ -39,13 +39,14 @@ const items = computed(() => {
       disabled: lamp.locked,
       onSelect: () => void openDiagnostics(),
     },
-    // The lamp update window takes every case: a lamp up to date, one that
-    // no longer starts, which its update mode recovers, and no firmware known
-    // yet.
+    // The reinstall window takes every case: a lamp up to date, one that
+    // no longer starts, which its update mode recovers, a version 1 lamp,
+    // and no firmware known yet.
     {
       label: t('updates.reinstall'),
+      description: t('updates.reinstallHint'),
       icon: 'i-lucide-hard-drive-download',
-      onSelect: () => void openLampUpdate(),
+      onSelect: () => void openLampInstall(),
     },
   ];
   const status = [appLine.value, lampLine.value]
@@ -63,7 +64,11 @@ const items = computed(() => {
     :modal="false"
     :content="{ align: 'end' }"
     size="sm"
-    :ui="{ content: 'max-w-72', label: 'font-normal text-muted' }"
+    :ui="{
+      content: 'max-w-72',
+      label: 'font-normal text-muted',
+      itemDescription: 'whitespace-normal',
+    }"
   >
     <UButton
       color="neutral"

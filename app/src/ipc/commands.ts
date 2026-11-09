@@ -136,9 +136,14 @@ export function firmwareCheck(): Promise<void> {
   return invoke('firmware_check');
 }
 
-/** Starts a lamp update; `firmware-status` events follow it. */
+/** Starts the update to the newest firmware 2.x; `firmware-status` events follow it. */
 export function firmwareInstall(): Promise<void> {
   return invoke('firmware_install');
+}
+
+/** Starts the update to a version of the list, "X.Y.Z". */
+export function firmwareInstallManual(version: string): Promise<void> {
+  return invoke('firmware_install_manual', { version });
 }
 
 /** Stops an update that waits for the bootloader. */
@@ -150,8 +155,14 @@ export function openDiagnostics(): Promise<void> {
   return invoke('open_diagnostics');
 }
 
+/** The guided update, to the newest firmware 2.x. */
 export function openLampUpdate(): Promise<void> {
   return invoke('open_lamp_update');
+}
+
+/** The reinstall of a version of the user's choice. */
+export function openLampInstall(): Promise<void> {
+  return invoke('open_lamp_install');
 }
 
 /**
