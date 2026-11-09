@@ -9,6 +9,13 @@
 
 #include "time_utils.h"
 
+/* `permille` times (100 - percent) / 100, rounded: unchanged at 0. A drop
+ * never passes 1000 per mille, so neither does a threshold, nor the result. */
+static uint16_t corrected(uint16_t permille, int32_t percent)
+{
+    return (uint16_t)(((uint32_t)permille * (uint32_t)(100 - percent) + 50u) / 100u);
+}
+
 static void rebaseline(touch_detector_t *td)
 {
     td->baseline_q8 = (uint32_t)td->value << 8;
@@ -120,15 +127,32 @@ static int32_t max_i32(int32_t a, int32_t b)
     return a > b ? a : b;
 }
 
+/* The thresholds in force: those of the configuration, corrected by the
+ * sensitivity in force. */
+static uint16_t press_threshold(const touch_detector_t *td)
+{
+    return corrected(td->config->press_permille, td->sensitivity_applied);
+}
+
+static uint16_t release_threshold(const touch_detector_t *td)
+{
+    return corrected(td->config->release_permille, td->sensitivity_applied);
+}
+
+static uint16_t rise_threshold(const touch_detector_t *td)
+{
+    return corrected(td->config->press_rise_permille, td->sensitivity_applied);
+}
+
 /* Hysteresis and debounce. Returns true when the debounced contact flips. */
 static bool update_contact(touch_detector_t *td, uint32_t now_ms)
 {
     const touch_config_t *cfg = td->config;
     const bool contact = td->state == TOUCH_STATE_PRESSED;
-    const int32_t rise = (int32_t)cfg->press_rise_permille;
-    const int32_t press = max_i32((int32_t)cfg->press_permille, (int32_t)recent_floor(td) + rise);
+    const int32_t rise = (int32_t)rise_threshold(td);
+    const int32_t press = max_i32((int32_t)press_threshold(td), (int32_t)recent_floor(td) + rise);
     const int32_t release =
-        max_i32((int32_t)cfg->release_permille, (int32_t)td->press_floor + rise / 2);
+        max_i32((int32_t)release_threshold(td), (int32_t)td->press_floor + rise / 2);
     bool raw_contact = contact ? (td->delta_permille > release) : (td->delta_permille >= press);
 
     if (td->rearming) {
@@ -162,6 +186,12 @@ static bool update_contact(touch_detector_t *td, uint32_t now_ms)
 static touch_event_t process_window(touch_detector_t *td, uint32_t now_ms)
 {
     const touch_config_t *cfg = td->config;
+
+    /* A correction set during a press waits for its end: a higher release
+     * would end it with the finger still down, and fire a short press. */
+    if (td->state != TOUCH_STATE_PRESSED) {
+        td->sensitivity_applied = td->sensitivity;
+    }
 
     if (td->state == TOUCH_STATE_CALIBRATING) {
         td->calibration_sum += td->value;
@@ -265,4 +295,41 @@ void touch_detector_consume(touch_detector_t *td)
     if (td->state == TOUCH_STATE_PRESSED) {
         td->long_fired = true; /* no long press, no event at the release */
     }
+}
+
+void touch_detector_set_sensitivity(touch_detector_t *td, int8_t percent)
+{
+    const touch_config_t *cfg = td->config;
+    int32_t bounded = percent;
+    if (bounded < TOUCH_SENSITIVITY_MIN) {
+        bounded = TOUCH_SENSITIVITY_MIN;
+    } else if (bounded > TOUCH_SENSITIVITY_MAX) {
+        bounded = TOUCH_SENSITIVITY_MAX;
+    }
+    /* Only a positive correction lowers the release. It stays half a band above
+     * the proximity band, itself just above the idle noise, so that a press
+     * always ends once the finger leaves. */
+    const uint32_t release_floor = cfg->proximity_permille + cfg->proximity_permille / 2u;
+    while (bounded > 0 && corrected(cfg->release_permille, bounded) < release_floor) {
+        bounded--;
+    }
+    td->sensitivity = (int8_t)bounded;
+    if (td->state != TOUCH_STATE_PRESSED) {
+        td->sensitivity_applied = td->sensitivity;
+    }
+}
+
+int8_t touch_detector_sensitivity(const touch_detector_t *td)
+{
+    return td->sensitivity;
+}
+
+touch_thresholds_t touch_detector_thresholds(const touch_detector_t *td)
+{
+    const touch_thresholds_t thresholds = {
+        .press = press_threshold(td),
+        .release = release_threshold(td),
+        .rise = rise_threshold(td),
+    };
+    return thresholds;
 }

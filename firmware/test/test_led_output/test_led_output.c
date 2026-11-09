@@ -5,6 +5,7 @@
  */
 #include <unity.h>
 
+#include "alert.h"
 #include "led_output.h"
 
 #define PERIOD 3600u
@@ -28,25 +29,32 @@ static const power_config_t power = {
 };
 
 static const led_output_config_t config = {
-    .color = &colors,
     .power = &power,
     .fade_ms = 300,
     .pwm_period = PERIOD,
+    .alert_depth_permille = 300,
 };
 
 static led_output_t out;
 static uint16_t duty[LED_CHANNEL_COUNT];
 static led_output_inputs_t in;
 
+/* With custom colors, the lamp color reaches led_output as its RGB. */
+static void use_color(lamp_color_t color)
+{
+    in.color = colors.palette[color];
+}
+
 void setUp(void)
 {
     led_output_init(&out, &config);
     in.on = true;
-    in.color = LAMP_COLOR_GREEN;
+    use_color(LAMP_COLOR_GREEN);
     in.level_permille = 1000;
     in.link = USB_LINK_CONFIGURED;
     in.cap_override_ma = 0;
     in.show_override = false;
+    in.breath = 0;
 }
 
 void tearDown(void)
@@ -112,7 +120,7 @@ static void test_retarget_during_a_fade_does_not_jump(void)
     led_output_update(&out, &in, 150, duty);
     const uint16_t halfway = duty[LED_CHANNEL_GREEN];
 
-    in.color = LAMP_COLOR_RED;
+    use_color(LAMP_COLOR_RED);
     led_output_update(&out, &in, 151, duty);
     TEST_ASSERT_UINT16_WITHIN(60u * LED_DUTY_SUBTICKS, halfway, duty[LED_CHANNEL_GREEN]);
     led_output_update(&out, &in, 451, duty);
@@ -149,7 +157,7 @@ static void test_override_shows_a_raw_color_even_when_off(void)
 
 static void test_white_is_capped_by_the_usb_state(void)
 {
-    in.color = LAMP_COLOR_WARM_WHITE; /* full white in this palette */
+    use_color(LAMP_COLOR_WARM_WHITE); /* full white in this palette */
     led_output_update(&out, &in, 0, duty);
     led_output_update(&out, &in, 400, duty);
     TEST_ASSERT_TRUE(led_output_estimate_ma_x10(&out) <= 1250u);
@@ -162,12 +170,89 @@ static void test_white_is_capped_by_the_usb_state(void)
 
 static void test_cap_override_for_the_thermal_test(void)
 {
-    in.color = LAMP_COLOR_WARM_WHITE;
+    use_color(LAMP_COLOR_WARM_WHITE);
     in.cap_override_ma = 300;
     led_output_update(&out, &in, 0, duty);
     led_output_update(&out, &in, 400, duty);
     TEST_ASSERT_EQUAL_UINT16(FULL, duty[LED_CHANNEL_BLUE]);
     TEST_ASSERT_UINT32_WITHIN(1, 2740, led_output_estimate_ma_x10(&out));
+}
+
+/* Duties once a fade to the inputs has ended. */
+static void settle_on_inputs(void)
+{
+    led_output_init(&out, &config);
+    led_output_update(&out, &in, 0, duty);
+    led_output_update(&out, &in, 400, duty);
+}
+
+static void test_breath_raises_a_dim_lamp_to_the_alert_level(void)
+{
+    in.level_permille = 500; /* 200 + the depth of 300 */
+    settle_on_inputs();
+    const uint16_t expected = duty[LED_CHANNEL_GREEN];
+
+    in.level_permille = 200;
+    in.breath = ALERT_AMPLITUDE_MAX;
+    settle_on_inputs();
+    TEST_ASSERT_EQUAL_UINT16(expected, duty[LED_CHANNEL_GREEN]);
+    TEST_ASSERT_EQUAL_UINT16(0, duty[LED_CHANNEL_RED]);
+}
+
+static void test_breath_dims_a_bright_lamp(void)
+{
+    use_color(LAMP_COLOR_RED);
+    in.level_permille = 600; /* 900 - 300 */
+    settle_on_inputs();
+    const uint16_t expected = duty[LED_CHANNEL_RED];
+
+    in.level_permille = 900;
+    in.breath = ALERT_AMPLITUDE_MAX;
+    settle_on_inputs();
+    TEST_ASSERT_EQUAL_UINT16(expected, duty[LED_CHANNEL_RED]);
+}
+
+static void test_breath_at_zero_changes_nothing(void)
+{
+    in.level_permille = 300;
+    settle_on_inputs();
+    const uint16_t still = duty[LED_CHANNEL_GREEN];
+    in.breath = 0;
+    led_output_update(&out, &in, 500, duty);
+    TEST_ASSERT_EQUAL_UINT16(still, duty[LED_CHANNEL_GREEN]);
+}
+
+static void test_breath_stays_within_the_current_cap(void)
+{
+    /* Full white at 60 % rises to 90 %, far above the 70 mA without a host. */
+    use_color(LAMP_COLOR_WARM_WHITE);
+    in.link = USB_LINK_UNCONFIGURED;
+    in.level_permille = 600;
+    in.breath = ALERT_AMPLITUDE_MAX;
+    settle_on_inputs();
+    TEST_ASSERT_TRUE(led_output_estimate_ma_x10(&out) <= 700u);
+}
+
+static void test_settle_fades_back_from_the_breath_without_a_jump(void)
+{
+    in.level_permille = 200;
+    in.breath = ALERT_AMPLITUDE_MAX;
+    settle_on_inputs();
+    const uint16_t peak = duty[LED_CHANNEL_GREEN];
+
+    /* The alert stops at its peak: the light leaves from there. */
+    led_output_settle(&out, 500);
+    in.breath = 0;
+    led_output_update(&out, &in, 500, duty);
+    TEST_ASSERT_EQUAL_UINT16(peak, duty[LED_CHANNEL_GREEN]);
+    led_output_update(&out, &in, 650, duty);
+    TEST_ASSERT_TRUE(duty[LED_CHANNEL_GREEN] < peak);
+
+    in.level_permille = 200;
+    led_output_update(&out, &in, 800, duty);
+    const uint16_t settled = duty[LED_CHANNEL_GREEN];
+    settle_on_inputs();
+    TEST_ASSERT_EQUAL_UINT16(duty[LED_CHANNEL_GREEN], settled);
 }
 
 int main(void)
@@ -181,5 +266,10 @@ int main(void)
     RUN_TEST(test_override_shows_a_raw_color_even_when_off);
     RUN_TEST(test_white_is_capped_by_the_usb_state);
     RUN_TEST(test_cap_override_for_the_thermal_test);
+    RUN_TEST(test_breath_raises_a_dim_lamp_to_the_alert_level);
+    RUN_TEST(test_breath_dims_a_bright_lamp);
+    RUN_TEST(test_breath_at_zero_changes_nothing);
+    RUN_TEST(test_breath_stays_within_the_current_cap);
+    RUN_TEST(test_settle_fades_back_from_the_breath_without_a_jump);
     return UNITY_END();
 }

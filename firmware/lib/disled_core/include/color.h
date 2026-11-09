@@ -23,8 +23,12 @@ typedef struct {
 /* Perceived brightness (per mille of L*) to linear light. */
 uint16_t color_perceived_to_linear(uint16_t level_permille);
 
-/* Palette color scaled to a perceived brightness level. */
-rgb16_t color_compose(const color_config_t *config, lamp_color_t color, uint16_t level_permille);
+/* A color at full brightness scaled to a perceived brightness level. */
+rgb16_t color_shade(rgb16_t base, uint16_t level_permille);
+
+/* Every channel times num / den (den not 0), saturated: the same hue,
+ * brighter or dimmer. */
+rgb16_t color_gain(rgb16_t color, uint16_t num, uint16_t den);
 
 /* Linear interpolation; `t` = 0 gives `from`, 65535 gives `to`. */
 rgb16_t color_mix(rgb16_t from, rgb16_t to, uint16_t t);

@@ -5,6 +5,7 @@
  */
 #include "led_output.h"
 
+#include "alert.h"
 #include "disled_assert.h"
 #include "time_utils.h"
 
@@ -32,7 +33,29 @@ static rgb16_t target_for(const led_output_t *out, const led_output_inputs_t *in
     if (!in->on) {
         return black;
     }
-    return color_compose(out->config->color, in->color, in->level_permille);
+    (void)out;
+    return color_shade(in->color, in->level_permille);
+}
+
+/* The fade result with the alert breath: the lamp level moved along the breath
+ * in perceived brightness, the hue kept. shown x linear(breath level) /
+ * linear(level) is the lamp color at the breath level. */
+static rgb16_t breathe(const led_output_t *out, const led_output_inputs_t *in)
+{
+    const uint16_t base = color_perceived_to_linear(in->level_permille);
+    if (in->breath == 0u || base == 0u) {
+        return out->shown;
+    }
+    const uint16_t level =
+        alert_level_permille(in->level_permille, out->config->alert_depth_permille, in->breath);
+    return color_gain(out->shown, color_perceived_to_linear(level), base);
+}
+
+void led_output_settle(led_output_t *out, uint32_t now_ms)
+{
+    out->from = out->visible;
+    out->shown = out->visible;
+    out->fade_start_ms = now_ms;
 }
 
 /* period * 16 fits 16 bits, since init checks period <= PWM_DITHER_PERIOD_MAX. */
@@ -74,7 +97,8 @@ void led_output_update(led_output_t *out, const led_output_inputs_t *in, uint32_
     if (in->link == USB_LINK_SUSPENDED) {
         out->cap_ma = 0;
     }
-    const rgb16_t limited = power_limit(cfg->power, out->shown, out->cap_ma);
+    out->visible = breathe(out, in);
+    const rgb16_t limited = power_limit(cfg->power, out->visible, out->cap_ma);
     out->estimate_ma_x10 = power_estimate_ma_x10(cfg->power, limited);
 
     duty[LED_CHANNEL_RED] = to_duty(limited.r, cfg->pwm_period, cfg->pulse_loss[LED_CHANNEL_RED]);

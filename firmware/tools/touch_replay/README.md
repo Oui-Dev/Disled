@@ -27,3 +27,14 @@ gcc -std=c11 -O2 -I../../lib/disled_core/include \
 Settings: `press`, `release`, `rise`, `proximity` (per mille), `debounce`,
 `rearm`, `long`, `object` (ms). The defaults copy `app_touch_config` from
 `src/app/app_config.c`, so check that they still match.
+
+`sensitivity` (percent, −50 to 50) applies the correction of the desktop
+app's touch sensitivity setting to those thresholds, as the lamp does. The
+first line of the output gives the thresholds in force. To compare every
+step of the setting on one recording:
+
+```sh
+for s in -50 -40 -30 -20 -10 0 10 20 30 40 50; do
+    ./touch_replay recording.log sensitivity=$s | sed -n '1p;$p'
+done
+```

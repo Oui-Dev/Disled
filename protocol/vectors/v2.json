@@ -1,0 +1,771 @@
+{
+  "description": "DISLED USB protocol v2 test vectors (version 2.0, draft). 'bytes' is the start of the 63-byte payload (after the report ID); the rest is zero. 0x09 and 0x0F are reserved: a lamp answers them with an unknown command error. SET_TOUCH_SENSITIVITY (0x10, capability bit 11) takes an i8 percent from -50 to +50, which DIAGNOSTICS reports in its last byte (offset 36, 37 bytes in all).",
+  "protocol_version": [
+    2,
+    0
+  ],
+  "payload_size": 63,
+  "commands": [
+    {
+      "name": "get_info",
+      "bytes": "01 01 00",
+      "status": "ok",
+      "type": 1,
+      "seq": 1
+    },
+    {
+      "name": "get_state",
+      "bytes": "02 2a 00",
+      "status": "ok",
+      "type": 2,
+      "seq": 42
+    },
+    {
+      "name": "set_state_all_fields",
+      "bytes": "03 07 06 1f 01 09 01 2a 01",
+      "status": "ok",
+      "type": 3,
+      "seq": 7,
+      "set_state": {
+        "fields": 31,
+        "on": true,
+        "color": 9,
+        "brightness_mode": 1,
+        "manual_level": 42,
+        "touch_mode": 1
+      }
+    },
+    {
+      "name": "set_state_color_only_ignores_other_bytes",
+      "bytes": "03 08 06 02 ff 02 ff ff ff",
+      "status": "ok",
+      "type": 3,
+      "seq": 8,
+      "set_state": {
+        "fields": 2,
+        "color": 2
+      },
+      "canonical": false
+    },
+    {
+      "name": "set_state_power_off",
+      "bytes": "03 09 06 01 00 00 00 00 00",
+      "status": "ok",
+      "type": 3,
+      "seq": 9,
+      "set_state": {
+        "fields": 1,
+        "on": false
+      }
+    },
+    {
+      "name": "set_state_bad_color",
+      "bytes": "03 0a 06 02 00 10 00 00 00",
+      "status": "bad_value",
+      "type": 3,
+      "seq": 10
+    },
+    {
+      "name": "set_state_bad_level",
+      "bytes": "03 0b 06 08 00 00 00 65 00",
+      "status": "bad_value",
+      "type": 3,
+      "seq": 11
+    },
+    {
+      "name": "set_state_bad_power",
+      "bytes": "03 0c 06 01 02 00 00 00 00",
+      "status": "bad_value",
+      "type": 3,
+      "seq": 12
+    },
+    {
+      "name": "set_state_unknown_field",
+      "bytes": "03 0d 06 20 00 00 00 00 00",
+      "status": "bad_value",
+      "type": 3,
+      "seq": 13
+    },
+    {
+      "name": "set_state_bad_touch_mode",
+      "bytes": "03 0e 06 10 00 00 00 00 02",
+      "status": "bad_value",
+      "type": 3,
+      "seq": 14
+    },
+    {
+      "name": "set_state_body_of_version_1",
+      "bytes": "03 0f 05 0f 01 00 00 32",
+      "status": "bad_length",
+      "type": 3,
+      "seq": 15
+    },
+    {
+      "name": "set_telemetry_250ms",
+      "bytes": "04 10 02 fa 00",
+      "status": "ok",
+      "type": 4,
+      "seq": 16,
+      "telemetry_period_ms": 250
+    },
+    {
+      "name": "set_telemetry_too_fast",
+      "bytes": "04 11 02 0a 00",
+      "status": "bad_value",
+      "type": 4,
+      "seq": 17
+    },
+    {
+      "name": "reset",
+      "bytes": "05 12 00",
+      "status": "ok",
+      "type": 5,
+      "seq": 18
+    },
+    {
+      "name": "set_auto_bias_minus_50",
+      "bytes": "06 13 01 ce",
+      "status": "ok",
+      "type": 6,
+      "seq": 19,
+      "auto_bias": -50
+    },
+    {
+      "name": "set_auto_bias_too_high",
+      "bytes": "06 14 01 33",
+      "status": "bad_value",
+      "type": 6,
+      "seq": 20
+    },
+    {
+      "name": "get_diagnostics",
+      "bytes": "07 15 00",
+      "status": "ok",
+      "type": 7,
+      "seq": 21
+    },
+    {
+      "name": "self_test",
+      "bytes": "08 16 00",
+      "status": "ok",
+      "type": 8,
+      "seq": 22
+    },
+    {
+      "name": "reserved_09",
+      "bytes": "09 17 00",
+      "status": "unknown_command",
+      "type": 9,
+      "seq": 23
+    },
+    {
+      "name": "unknown_command",
+      "bytes": "7f 18 00",
+      "status": "unknown_command",
+      "type": 127,
+      "seq": 24
+    },
+    {
+      "name": "set_color",
+      "bytes": "0a 19 07 04 ff ff 00 80 00 00",
+      "status": "ok",
+      "type": 10,
+      "seq": 25,
+      "set_color": {
+        "slot": 4,
+        "rgb": [
+          65535,
+          32768,
+          0
+        ]
+      }
+    },
+    {
+      "name": "set_color_black_empties_the_slot",
+      "bytes": "0a 1a 07 0f 00 00 00 00 00 00",
+      "status": "ok",
+      "type": 10,
+      "seq": 26,
+      "set_color": {
+        "slot": 15,
+        "rgb": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "set_color_of_a_built_in_slot",
+      "bytes": "0a 1b 07 02 ff ff 00 00 00 00",
+      "status": "bad_value",
+      "type": 10,
+      "seq": 27
+    },
+    {
+      "name": "set_color_not_normalized",
+      "bytes": "0a 1c 07 05 00 80 00 00 00 00",
+      "status": "bad_value",
+      "type": 10,
+      "seq": 28
+    },
+    {
+      "name": "set_color_bad_slot",
+      "bytes": "0a 1d 07 10 ff ff 00 00 00 00",
+      "status": "bad_value",
+      "type": 10,
+      "seq": 29
+    },
+    {
+      "name": "set_color_short_body",
+      "bytes": "0a 1e 06 04 ff ff 00 00 00",
+      "status": "bad_length",
+      "type": 10,
+      "seq": 30
+    },
+    {
+      "name": "get_color",
+      "bytes": "0b 1f 01 03",
+      "status": "ok",
+      "type": 11,
+      "seq": 31,
+      "color_slot": 3
+    },
+    {
+      "name": "get_color_bad_slot",
+      "bytes": "0b 20 01 10",
+      "status": "bad_value",
+      "type": 11,
+      "seq": 32
+    },
+    {
+      "name": "get_color_without_body",
+      "bytes": "0b 21 00",
+      "status": "bad_length",
+      "type": 11,
+      "seq": 33
+    },
+    {
+      "name": "set_touch_cycle",
+      "bytes": "0c 22 05 04 00 01 02 09",
+      "status": "ok",
+      "type": 12,
+      "seq": 34,
+      "touch_cycle": {
+        "count": 4,
+        "slots": [
+          0,
+          1,
+          2,
+          9
+        ]
+      }
+    },
+    {
+      "name": "set_touch_cycle_of_nine_colors",
+      "bytes": "0c 30 0a 09 00 01 02 03 04 05 06 07 08",
+      "status": "ok",
+      "type": 12,
+      "seq": 48,
+      "touch_cycle": {
+        "count": 9,
+        "slots": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ]
+      }
+    },
+    {
+      "name": "set_touch_cycle_empty",
+      "bytes": "0c 23 01 00",
+      "status": "bad_value",
+      "type": 12,
+      "seq": 35
+    },
+    {
+      "name": "set_touch_cycle_too_long",
+      "bytes": "0c 24 0b 0a 00 01 02 03 04 05 06 07 08 09",
+      "status": "bad_value",
+      "type": 12,
+      "seq": 36
+    },
+    {
+      "name": "set_touch_cycle_with_a_color_twice",
+      "bytes": "0c 25 04 03 00 01 00",
+      "status": "bad_value",
+      "type": 12,
+      "seq": 37
+    },
+    {
+      "name": "set_touch_cycle_bad_slot",
+      "bytes": "0c 26 02 01 10",
+      "status": "bad_value",
+      "type": 12,
+      "seq": 38
+    },
+    {
+      "name": "set_touch_cycle_short_body",
+      "bytes": "0c 27 03 03 00 01",
+      "status": "bad_length",
+      "type": 12,
+      "seq": 39
+    },
+    {
+      "name": "get_touch_cycle",
+      "bytes": "0d 28 00",
+      "status": "ok",
+      "type": 13,
+      "seq": 40
+    },
+    {
+      "name": "alert_3_breaths_of_1300ms",
+      "bytes": "0e 29 03 03 14 05",
+      "status": "ok",
+      "type": 14,
+      "seq": 41,
+      "alert": {
+        "count": 3,
+        "period_ms": 1300
+      }
+    },
+    {
+      "name": "alert_stop",
+      "bytes": "0e 2a 03 00 00 00",
+      "status": "ok",
+      "type": 14,
+      "seq": 42,
+      "alert": {
+        "count": 0,
+        "period_ms": 0
+      }
+    },
+    {
+      "name": "alert_period_too_short",
+      "bytes": "0e 2b 03 03 f3 01",
+      "status": "bad_value",
+      "type": 14,
+      "seq": 43
+    },
+    {
+      "name": "alert_period_too_long",
+      "bytes": "0e 2c 03 03 89 13",
+      "status": "bad_value",
+      "type": 14,
+      "seq": 44
+    },
+    {
+      "name": "alert_too_many_breaths",
+      "bytes": "0e 2d 03 0b 14 05",
+      "status": "bad_value",
+      "type": 14,
+      "seq": 45
+    },
+    {
+      "name": "alert_short_body",
+      "bytes": "0e 2e 02 03 14",
+      "status": "bad_length",
+      "type": 14,
+      "seq": 46
+    },
+    {
+      "name": "reserved_0f",
+      "bytes": "0f 2f 00",
+      "status": "unknown_command",
+      "type": 15,
+      "seq": 47
+    },
+    {
+      "name": "set_touch_sensitivity_plus_30",
+      "bytes": "10 31 01 1e",
+      "status": "ok",
+      "type": 16,
+      "seq": 49,
+      "touch_sensitivity": 30
+    },
+    {
+      "name": "set_touch_sensitivity_minus_50",
+      "bytes": "10 32 01 ce",
+      "status": "ok",
+      "type": 16,
+      "seq": 50,
+      "touch_sensitivity": -50
+    },
+    {
+      "name": "set_touch_sensitivity_plus_50",
+      "bytes": "10 33 01 32",
+      "status": "ok",
+      "type": 16,
+      "seq": 51,
+      "touch_sensitivity": 50
+    },
+    {
+      "name": "set_touch_sensitivity_too_high",
+      "bytes": "10 34 01 33",
+      "status": "bad_value",
+      "type": 16,
+      "seq": 52
+    },
+    {
+      "name": "set_touch_sensitivity_too_low",
+      "bytes": "10 35 01 cd",
+      "status": "bad_value",
+      "type": 16,
+      "seq": 53
+    },
+    {
+      "name": "set_touch_sensitivity_short_body",
+      "bytes": "10 36 00",
+      "status": "bad_length",
+      "type": 16,
+      "seq": 54
+    },
+    {
+      "name": "set_touch_sensitivity_ignores_extra_bytes",
+      "bytes": "10 37 02 f6 ff",
+      "status": "ok",
+      "type": 16,
+      "seq": 55,
+      "touch_sensitivity": -10,
+      "canonical": false
+    }
+  ],
+  "messages": [
+    {
+      "name": "state_after_touch",
+      "kind": "state",
+      "seq": 0,
+      "state": {
+        "state_seq": 4660,
+        "on": true,
+        "color": 1,
+        "brightness_mode": 0,
+        "manual_level": 50,
+        "applied_percent": 30,
+        "link": 1,
+        "source": 1,
+        "touch_mode": 0,
+        "rgb": [
+          65535,
+          29000,
+          0
+        ]
+      },
+      "bytes": "82 00 10 34 12 01 01 00 32 1e 01 01 00 ff ff 48 71 00 00"
+    },
+    {
+      "name": "state_custom_color_power_only",
+      "kind": "state",
+      "seq": 9,
+      "state": {
+        "state_seq": 7,
+        "on": true,
+        "color": 9,
+        "brightness_mode": 1,
+        "manual_level": 100,
+        "applied_percent": 100,
+        "link": 1,
+        "source": 2,
+        "touch_mode": 1,
+        "rgb": [
+          12000,
+          0,
+          65535
+        ]
+      },
+      "bytes": "82 09 10 07 00 01 09 01 64 64 01 02 01 e0 2e 00 00 ff ff"
+    },
+    {
+      "name": "state_touch_back_to_normal_after_host_silence",
+      "kind": "state",
+      "seq": 0,
+      "state": {
+        "state_seq": 8,
+        "on": true,
+        "color": 0,
+        "brightness_mode": 0,
+        "manual_level": 50,
+        "applied_percent": 42,
+        "link": 1,
+        "source": 5,
+        "touch_mode": 0,
+        "rgb": [
+          0,
+          65535,
+          0
+        ]
+      },
+      "bytes": "82 00 10 08 00 01 00 00 32 2a 01 05 00 00 00 ff ff 00 00"
+    },
+    {
+      "name": "info",
+      "kind": "info",
+      "seq": 1,
+      "info": {
+        "fw_major": 2,
+        "fw_minor": 0,
+        "fw_patch": 0,
+        "board_revision": 4,
+        "uid": "0102030405060708090a0b0c",
+        "capabilities": 3037,
+        "reset_cause": 1,
+        "flags": 0,
+        "fault_mcause": 0,
+        "fault_mepc": 0,
+        "fw_version": "2.0.0"
+      },
+      "bytes": "81 01 38 02 00 02 00 00 04 01 02 03 04 05 06 07 08 09 0a 0b 0c dd 0b 00 00 01 00 00 00 00 00 00 00 00 00 32 2e 30 2e 30"
+    },
+    {
+      "name": "telemetry",
+      "kind": "telemetry",
+      "seq": 0,
+      "telemetry": {
+        "uptime_ms": 123456,
+        "touch_raw": 2003,
+        "touch_value": 1990,
+        "touch_baseline": 2000,
+        "touch_delta_permille": -5,
+        "touch_state": 1,
+        "lux_centi": 35120,
+        "als_raw": 653,
+        "duty": [
+          0,
+          7200,
+          0
+        ],
+        "led_current_ma_x10": 630,
+        "cap_ma": 125,
+        "link": 1,
+        "level_permille": 812
+      },
+      "bytes": "83 00 20 40 e2 01 00 d3 07 c6 07 d0 07 fb ff 01 30 89 00 00 8d 02 00 00 20 1c 00 00 76 02 7d 00 01 2c 03"
+    },
+    {
+      "name": "diagnostics",
+      "kind": "diagnostics",
+      "seq": 21,
+      "diagnostics": {
+        "uptime_ms": 3600000,
+        "boots": 3,
+        "watchdog_resets": 1,
+        "faults": 1,
+        "fault_mcause": 5,
+        "fault_mepc": 6700,
+        "fault_mtval": 536881152,
+        "stack_free_min": 312,
+        "i2c_errors": 2,
+        "light_sensor_probes": 1,
+        "touch_samples_lost": 0,
+        "touch_recalibrations": 4,
+        "usb_suspends": 2,
+        "auto_bias": -20,
+        "flags": 3,
+        "touch_sensitivity": 30
+      },
+      "bytes": "84 15 25 80 ee 36 00 03 00 01 00 01 00 05 00 00 00 2c 1a 00 00 00 28 00 20 38 01 02 00 01 00 00 00 04 00 02 00 ec 03 1e"
+    },
+    {
+      "name": "diagnostics_with_a_less_sensitive_touch",
+      "kind": "diagnostics",
+      "seq": 21,
+      "diagnostics": {
+        "uptime_ms": 3600000,
+        "boots": 3,
+        "watchdog_resets": 1,
+        "faults": 1,
+        "fault_mcause": 5,
+        "fault_mepc": 6700,
+        "fault_mtval": 536881152,
+        "stack_free_min": 312,
+        "i2c_errors": 2,
+        "light_sensor_probes": 1,
+        "touch_samples_lost": 0,
+        "touch_recalibrations": 4,
+        "usb_suspends": 2,
+        "auto_bias": 0,
+        "flags": 3,
+        "touch_sensitivity": -40
+      },
+      "bytes": "84 15 25 80 ee 36 00 03 00 01 00 01 00 05 00 00 00 2c 1a 00 00 00 28 00 20 38 01 02 00 01 00 00 00 04 00 02 00 00 03 d8"
+    },
+    {
+      "name": "self_test_result",
+      "kind": "self_test_result",
+      "seq": 22,
+      "self_test_result": {
+        "flags": 15,
+        "lux_centi": 35120,
+        "touch_baseline": 2620,
+        "touch_peak_permille": 52
+      },
+      "bytes": "85 16 09 0f 30 89 00 00 3c 0a 34 00"
+    },
+    {
+      "name": "color",
+      "kind": "color",
+      "seq": 31,
+      "color": {
+        "slot": 9,
+        "rgb": [
+          65535,
+          32768,
+          0
+        ]
+      },
+      "bytes": "86 1f 07 09 ff ff 00 80 00 00"
+    },
+    {
+      "name": "color_of_an_empty_slot",
+      "kind": "color",
+      "seq": 31,
+      "color": {
+        "slot": 12,
+        "rgb": [
+          0,
+          0,
+          0
+        ]
+      },
+      "bytes": "86 1f 07 0c 00 00 00 00 00 00"
+    },
+    {
+      "name": "touch_cycle_default",
+      "kind": "touch_cycle",
+      "seq": 40,
+      "touch_cycle": {
+        "count": 3,
+        "slots": [
+          0,
+          1,
+          2
+        ]
+      },
+      "bytes": "87 28 0a 03 00 01 02 00 00 00 00 00 00"
+    },
+    {
+      "name": "touch_cycle_with_a_custom_color",
+      "kind": "touch_cycle",
+      "seq": 40,
+      "touch_cycle": {
+        "count": 4,
+        "slots": [
+          0,
+          1,
+          2,
+          9
+        ]
+      },
+      "bytes": "87 28 0a 04 00 01 02 09 00 00 00 00 00"
+    },
+    {
+      "name": "touch_cycle_of_nine_colors",
+      "kind": "touch_cycle",
+      "seq": 40,
+      "touch_cycle": {
+        "count": 9,
+        "slots": [
+          4,
+          0,
+          5,
+          1,
+          6,
+          2,
+          7,
+          3,
+          8
+        ]
+      },
+      "bytes": "87 28 0a 09 04 00 05 01 06 02 07 03 08"
+    },
+    {
+      "name": "alert_done_completed",
+      "kind": "alert_done",
+      "seq": 41,
+      "reason": 0,
+      "bytes": "88 29 01 00"
+    },
+    {
+      "name": "alert_done_lamp_off",
+      "kind": "alert_done",
+      "seq": 41,
+      "reason": 1,
+      "bytes": "88 29 01 01"
+    },
+    {
+      "name": "ack_set_color",
+      "kind": "ack",
+      "seq": 25,
+      "command": 10,
+      "bytes": "8e 19 01 0a"
+    },
+    {
+      "name": "ack_set_touch_sensitivity",
+      "kind": "ack",
+      "seq": 49,
+      "command": 16,
+      "bytes": "8e 31 01 10"
+    },
+    {
+      "name": "error_unknown_command",
+      "kind": "error",
+      "seq": 24,
+      "command": 127,
+      "error": 1,
+      "bytes": "8f 18 02 7f 01"
+    },
+    {
+      "name": "error_alert_during_self_test",
+      "kind": "error",
+      "seq": 41,
+      "command": 14,
+      "error": 4,
+      "bytes": "8f 29 02 0e 04"
+    },
+    {
+      "name": "error_alert_with_the_lamp_off",
+      "kind": "error",
+      "seq": 41,
+      "command": 14,
+      "error": 5,
+      "bytes": "8f 29 02 0e 05"
+    },
+    {
+      "name": "error_set_touch_sensitivity_out_of_range",
+      "kind": "error",
+      "seq": 52,
+      "command": 16,
+      "error": 3,
+      "bytes": "8f 34 02 10 03"
+    },
+    {
+      "name": "state_with_a_longer_body",
+      "kind": "state",
+      "seq": 0,
+      "state": {
+        "state_seq": 4660,
+        "on": true,
+        "color": 1,
+        "brightness_mode": 0,
+        "manual_level": 50,
+        "applied_percent": 30,
+        "link": 1,
+        "source": 1,
+        "touch_mode": 0,
+        "rgb": [
+          65535,
+          29000,
+          0
+        ]
+      },
+      "bytes": "82 00 11 34 12 01 01 00 32 1e 01 01 00 ff ff 48 71 00 00 ab",
+      "canonical": false
+    }
+  ]
+}

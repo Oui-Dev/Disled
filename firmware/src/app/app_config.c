@@ -17,7 +17,10 @@
  * Thresholds, in per mille below the baseline, through the closed lid. A tap
  * reads 77 to 188, a hand held 1 cm above 60 to 80, idle noise under 25. A
  * finger lands faster than a hand nears, so the rise above the floor (50)
- * tells them apart. A 60 ms debounce misses light taps over the ring's hole. */
+ * tells them apart. A 60 ms debounce misses light taps over the ring's hole.
+ * The touch sensitivity setting of the desktop app scales press, release and
+ * rise from 50 to 150 %, and never takes the release under 1.5 times the
+ * proximity band. */
 const tkey_config_t app_tkey_config = {
     .charge_time = 3,
     .discharge_time = 8,

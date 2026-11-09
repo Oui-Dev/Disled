@@ -21,6 +21,7 @@ typedef struct {
     lamp_state_t lamp;
     uint8_t applied_percent;
     usb_link_t link;
+    rgb16_t rgb; /* changes alone when the host redefines the current color */
 } state_content_t;
 
 /* s_seen: the state of the last pass, s_sent: that of the last STATE message. The
@@ -38,6 +39,11 @@ static uint32_t s_telemetry_next_ms;
 static bool s_reset_pending;
 static uint32_t s_reset_at_ms;
 
+static bool same_rgb(rgb16_t a, rgb16_t b)
+{
+    return a.r == b.r && a.g == b.g && a.b == b.b;
+}
+
 static uint16_t subticks_to_ticks(uint16_t subticks)
 {
     return (uint16_t)((subticks + LED_DUTY_SUBTICKS / 2u) / LED_DUTY_SUBTICKS);
@@ -49,14 +55,25 @@ static state_content_t observe(void)
         .lamp = app.lamp,
         .applied_percent = brightness_level_percent(&app.brightness),
         .link = app.link,
+        .rgb = app_lamp_rgb(),
     };
     return content;
 }
 
 static bool same_content(const state_content_t *a, const state_content_t *b)
 {
-    return lamp_state_equal(&a->lamp, &b->lamp) && a->applied_percent == b->applied_percent &&
-           a->link == b->link;
+    return same_rgb(a->rgb, b->rgb) && lamp_state_equal(&a->lamp, &b->lamp) &&
+           a->applied_percent == b->applied_percent && a->link == b->link;
+}
+
+/* Power-only touch needs a host that drives the lamp (APP_HOST_SILENCE_MS). */
+static void check_touch_mode(uint32_t now_ms)
+{
+    change_source_t cause;
+    if (lamp_fsm_touch_fallback(&app.lamp, app.link, time_elapsed_ms(now_ms, app.host_seen_ms),
+                                APP_HOST_SILENCE_MS, &cause)) {
+        app.source = cause;
+    }
 }
 
 /* Records the cause of the latest change, and stops the telemetry when the
@@ -70,6 +87,7 @@ static void observe_changes(void)
     if (now.link == USB_LINK_UNCONFIGURED) {
         /* A suspended host still waits for the result; the next one never asked. */
         app.self_test_report = false;
+        app.alert_report = false;
     }
     if (!lamp_state_equal(&now.lamp, &s_seen.lamp)) {
         s_source = app.source;
@@ -77,6 +95,8 @@ static void observe_changes(void)
         s_source = CHANGE_SOURCE_USB;
     } else if (now.applied_percent != s_seen.applied_percent) {
         s_source = CHANGE_SOURCE_AUTO_BRIGHTNESS;
+    } else if (!same_rgb(now.rgb, s_seen.rgb)) {
+        s_source = CHANGE_SOURCE_HOST; /* only the host redefines a color */
     }
     s_seen = now;
 }
@@ -89,7 +109,8 @@ static bool notification_pending(void)
 /* Only the automatic brightness changed since the last STATE message. */
 static bool only_level_pending(void)
 {
-    return lamp_state_equal(&s_seen.lamp, &s_sent.lamp) && s_seen.link == s_sent.link;
+    return same_rgb(s_seen.rgb, s_sent.rgb) && lamp_state_equal(&s_seen.lamp, &s_sent.lamp) &&
+           s_seen.link == s_sent.link;
 }
 
 /* Sends the current state; `seq` is the request it answers (0: none). */
@@ -103,6 +124,7 @@ static bool send_state(uint8_t seq)
         .applied_percent = s_seen.applied_percent,
         .link = s_seen.link,
         .source = s_source,
+        .rgb = s_seen.rgb,
     };
     uint8_t payload[PROTO_REPORT_SIZE];
     proto_encode_state(payload, seq, &state);
@@ -114,6 +136,16 @@ static bool send_state(uint8_t seq)
     return true;
 }
 
+static uint32_t capabilities(void)
+{
+    /* No ENTER_BOOTLOADER: the CH32V203 cannot start its ROM bootloader
+     * from software. */
+    return PROTO_CAP_TELEMETRY | PROTO_CAP_AUTO_BIAS | PROTO_CAP_DIAGNOSTICS | PROTO_CAP_SELF_TEST |
+           PROTO_CAP_CUSTOM_COLORS | PROTO_CAP_TOUCH_CYCLE | PROTO_CAP_TOUCH_MODE |
+           PROTO_CAP_ALERT | PROTO_CAP_TOUCH_SENSITIVITY |
+           (DISLED_DEBUG ? PROTO_CAP_DEBUG_CONSOLE : 0u);
+}
+
 static void send_info(uint8_t seq)
 {
     proto_info_t info = {
@@ -121,10 +153,7 @@ static void send_info(uint8_t seq)
         .fw_minor = DISLED_FW_VERSION_MINOR,
         .fw_patch = DISLED_FW_VERSION_PATCH,
         .board_revision = BOARD_REVISION,
-        /* No ENTER_BOOTLOADER: the CH32V203 cannot start its ROM
-         * bootloader from software. */
-        .capabilities = PROTO_CAP_TELEMETRY | PROTO_CAP_AUTO_BIAS | PROTO_CAP_DIAGNOSTICS |
-                        PROTO_CAP_SELF_TEST | (DISLED_DEBUG ? PROTO_CAP_DEBUG_CONSOLE : 0u),
+        .capabilities = capabilities(),
         .reset_cause = app.reset_cause,
         .flags = (uint8_t)((DISLED_DEBUG ? PROTO_INFO_FLAG_DEBUG_BUILD : 0u) |
                            (app.fault.valid ? PROTO_INFO_FLAG_FAULT : 0u)),
@@ -169,6 +198,9 @@ _Static_assert(SELF_TEST_LIGHT_OK == PROTO_SELF_TEST_LIGHT_OK &&
 _Static_assert(BRIGHTNESS_BIAS_MIN == PROTO_AUTO_BIAS_MIN &&
                    BRIGHTNESS_BIAS_MAX == PROTO_AUTO_BIAS_MAX,
                "the bias limits are part of the protocol");
+_Static_assert(TOUCH_SENSITIVITY_MIN == PROTO_TOUCH_SENSITIVITY_MIN &&
+                   TOUCH_SENSITIVITY_MAX == PROTO_TOUCH_SENSITIVITY_MAX,
+               "the touch sensitivity limits are part of the protocol");
 
 static void send_self_test_result(void)
 {
@@ -186,16 +218,47 @@ static void send_self_test_result(void)
     }
 }
 
-/* Commands that change what the lamp shows wait for the self-test. */
+static void send_alert_done(void)
+{
+    uint8_t payload[PROTO_REPORT_SIZE];
+    proto_encode_alert_done(payload, app.alert_done_seq, app.alert_done_reason);
+    if (usb_hid_send(payload)) {
+        app.alert_report = false;
+    }
+}
+
+/* Commands that change what the lamp shows wait for the self-test. Version 2
+ * adds a color redefined in place and the alert. */
 static bool busy_with_self_test(uint8_t type)
 {
-    return self_test_running(&app.self_test) &&
-           (type == PROTO_CMD_SET_STATE || type == PROTO_CMD_SET_AUTO_BIAS ||
-            type == PROTO_CMD_SELF_TEST);
+    if (!self_test_running(&app.self_test)) {
+        return false;
+    }
+    switch (type) {
+        case PROTO_CMD_SET_STATE:
+        case PROTO_CMD_SET_AUTO_BIAS:
+        case PROTO_CMD_SELF_TEST:
+        case PROTO_CMD_SET_COLOR:
+        case PROTO_CMD_ALERT:
+            return true;
+        default:
+            return false;
+    }
+}
+
+/* ACK, or the error of a command the lamp refused. */
+static void send_outcome(const proto_command_t *command, proto_status_t status)
+{
+    if (status == PROTO_OK) {
+        send_ack(command->seq, command->type);
+    } else {
+        send_error(command->seq, command->type, status);
+    }
 }
 
 static void handle_command(const uint8_t payload[PROTO_REPORT_SIZE], uint32_t now_ms)
 {
+    app.host_seen_ms = now_ms; /* any command is a heartbeat */
     proto_command_t command;
     const proto_status_t status = proto_decode_command(payload, &command);
     if (status != PROTO_OK) {
@@ -216,11 +279,43 @@ static void handle_command(const uint8_t payload[PROTO_REPORT_SIZE], uint32_t no
             (void)send_state(command.seq);
             break;
         case PROTO_CMD_SET_STATE:
+            if (!app_request_allowed(&command.body.set_state)) {
+                send_error(command.seq, command.type, PROTO_ERR_BAD_VALUE);
+                break;
+            }
             app_apply_request(&command.body.set_state);
             /* The answer is the new state; it also serves as the
              * notification of the change. */
             observe_changes();
             (void)send_state(command.seq);
+            break;
+        case PROTO_CMD_SET_COLOR:
+            send_outcome(&command,
+                         app_set_color(command.body.set_color.slot, command.body.set_color.color)
+                             ? PROTO_OK
+                             : PROTO_ERR_BAD_VALUE);
+            break;
+        case PROTO_CMD_GET_COLOR: {
+            uint8_t reply[PROTO_REPORT_SIZE];
+            proto_encode_color(reply, command.seq, command.body.color_slot,
+                               palette_color(&app.palette, command.body.color_slot));
+            (void)usb_hid_send(reply);
+            break;
+        }
+        case PROTO_CMD_SET_TOUCH_CYCLE:
+            send_outcome(&command, app_set_touch_cycle(&command.body.touch_cycle)
+                                       ? PROTO_OK
+                                       : PROTO_ERR_BAD_VALUE);
+            break;
+        case PROTO_CMD_GET_TOUCH_CYCLE: {
+            uint8_t reply[PROTO_REPORT_SIZE];
+            proto_encode_touch_cycle(reply, command.seq, &app.cycle);
+            (void)usb_hid_send(reply);
+            break;
+        }
+        case PROTO_CMD_ALERT:
+            send_outcome(&command, app_alert(command.seq, command.body.alert.count,
+                                             command.body.alert.period_ms));
             break;
         case PROTO_CMD_SET_TELEMETRY:
             s_telemetry_period_ms = command.body.telemetry_period_ms;
@@ -236,6 +331,12 @@ static void handle_command(const uint8_t payload[PROTO_REPORT_SIZE], uint32_t no
             brightness_set_auto_bias(&app.brightness, command.body.auto_bias);
             send_ack(command.seq, command.type);
             break;
+        case PROTO_CMD_SET_TOUCH_SENSITIVITY:
+            /* Never busy: it changes nothing the lamp shows, and the
+             * self-test then judges the touch as the user set it. */
+            touch_detector_set_sensitivity(&app.touch, command.body.touch_sensitivity);
+            send_ack(command.seq, command.type);
+            break;
         case PROTO_CMD_GET_DIAGNOSTICS:
             send_diagnostics(command.seq);
             break;
@@ -244,8 +345,7 @@ static void handle_command(const uint8_t payload[PROTO_REPORT_SIZE], uint32_t no
             send_ack(command.seq, command.type);
             break;
         default:
-            /* Optional version 1.1 commands this firmware does not announce
-             * in INFO: the specification asks for "unknown command". */
+            /* Unreachable: every command the decoder accepts has its case. */
             send_error(command.seq, command.type, PROTO_ERR_UNKNOWN_COMMAND);
             break;
     }
@@ -298,6 +398,7 @@ void app_host_task(uint32_t now_ms)
         handle_command(payload, now_ms);
     }
 
+    check_touch_mode(now_ms);
     observe_changes();
     /* Until the way is clear, the changes add up in s_seen and go out as one STATE. */
     if (notification_pending() && usb_hid_idle()) {
@@ -313,6 +414,9 @@ void app_host_task(uint32_t now_ms)
 
     if (app.self_test_report && app.link == USB_LINK_CONFIGURED) {
         send_self_test_result();
+    }
+    if (app.alert_report && app.link == USB_LINK_CONFIGURED) {
+        send_alert_done();
     }
 
     if (s_reset_pending && time_reached(now_ms, s_reset_at_ms)) {

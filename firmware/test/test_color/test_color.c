@@ -56,23 +56,23 @@ static void test_dimmest_manual_level_stays_visible(void)
     TEST_ASSERT_TRUE(ticks >= 3);
 }
 
-static void test_compose_applies_the_level(void)
+static void test_shade_applies_the_level(void)
 {
-    const rgb16_t full = color_compose(&config, LAMP_COLOR_GREEN, 1000);
+    const rgb16_t full = color_shade(config.palette[LAMP_COLOR_GREEN], 1000);
     TEST_ASSERT_EQUAL_UINT16(0, full.r);
     TEST_ASSERT_EQUAL_UINT16(65535, full.g);
     TEST_ASSERT_EQUAL_UINT16(color_perceived_to_linear(500),
-                             color_compose(&config, LAMP_COLOR_GREEN, 500).g);
+                             color_shade(config.palette[LAMP_COLOR_GREEN], 500).g);
     TEST_ASSERT_EQUAL_UINT16(0, full.b);
 
-    const rgb16_t dark = color_compose(&config, LAMP_COLOR_RED, 0);
+    const rgb16_t dark = color_shade(config.palette[LAMP_COLOR_RED], 0);
     TEST_ASSERT_EQUAL_UINT16(0, dark.r);
 }
 
-static void test_compose_keeps_the_hue_when_dimming(void)
+static void test_shade_keeps_the_hue_when_dimming(void)
 {
-    const rgb16_t bright = color_compose(&config, LAMP_COLOR_WARM_WHITE, 1000);
-    const rgb16_t dim = color_compose(&config, LAMP_COLOR_WARM_WHITE, 500);
+    const rgb16_t bright = color_shade(config.palette[LAMP_COLOR_WARM_WHITE], 1000);
+    const rgb16_t dim = color_shade(config.palette[LAMP_COLOR_WARM_WHITE], 500);
     /* Same red/blue ratio within rounding. */
     const uint32_t lhs = (uint32_t)bright.r * dim.b;
     const uint32_t rhs = (uint32_t)dim.r * bright.b;
@@ -107,8 +107,8 @@ int main(void)
     RUN_TEST(test_perceived_mid_grey_is_18_percent);
     RUN_TEST(test_perceived_scale_is_strictly_increasing);
     RUN_TEST(test_dimmest_manual_level_stays_visible);
-    RUN_TEST(test_compose_applies_the_level);
-    RUN_TEST(test_compose_keeps_the_hue_when_dimming);
+    RUN_TEST(test_shade_applies_the_level);
+    RUN_TEST(test_shade_keeps_the_hue_when_dimming);
     RUN_TEST(test_mix_ends_and_middle);
     RUN_TEST(test_scale);
     return UNITY_END();

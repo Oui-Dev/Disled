@@ -39,6 +39,17 @@
 
 #define APP_WATCHDOG_MS 1000u
 
+/* Alert breath: perceived swing, per mille of L*, up from a lamp below 70 %
+ * and down from a brighter one. Not tuned on a board yet. */
+#define APP_ALERT_DEPTH_PERMILLE 300u
+/* The console's alert, and what the app should send: 3 breaths of 1.3 s. */
+#define APP_ALERT_DEFAULT_COUNT     3u
+#define APP_ALERT_DEFAULT_PERIOD_MS 1300u
+
+/* Power-only touch falls back to normal after this long without a command.
+ * The app sends one every few seconds (GET_STATE does). */
+#define APP_HOST_SILENCE_MS 10000u
+
 extern const tkey_config_t app_tkey_config;
 extern const touch_config_t app_touch_config;
 extern const brightness_config_t app_brightness_config;
