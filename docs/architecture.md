@@ -8,7 +8,7 @@ DISLED has three parts that share one protocol:
  │ light ─┼─> lamp state ─> LED output (PWM)   │<──────>│ Vue: controls, telemetry, CSV       │
  │ host ──┘        └─> notifications           │  HID   │                                     │
  └─────────────────────────────────────────────┘        └─────────────────────────────────────┘
-                      protocol/README.md + protocol/vectors/v1.json
+                      protocol/README.md + protocol/vectors/v2.json
 ```
 
 The lamp owns its state. The touch changes it locally, the host reads and
@@ -153,7 +153,7 @@ time, so that it cannot drift under the hand and blunt the next touch.
   cap, output fades and pulse loss, PWM dithering, self-test, scheduler,
   formatter and the protocol codec.
 - The protocol tests check the codec byte for byte against
-  `protocol/vectors/v1.json`, the same file the app tests use.
+  `protocol/vectors/v2.json`, the same file the app tests use.
 - `pio check` runs cppcheck on `src/` and the core at every severity.
 - [bringup.md](bringup.md) lists the checks on a real board.
 

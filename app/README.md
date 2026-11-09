@@ -103,7 +103,7 @@ To add a language:
 
 | Path                                | Content                                                                             |
 | ----------------------------------- | ----------------------------------------------------------------------------------- |
-| `../crates/disled-protocol`         | Protocol codec (shared with the tools), tested against `protocol/vectors/v1.json`   |
+| `../crates/disled-protocol`         | Protocol codec (shared with the tools), tested against `protocol/vectors/v2.json`   |
 | `../crates/disled-flash`            | Signed firmware files and wchisp, run as a separate program (shared with the tools) |
 | `src-tauri/src/device.rs`           | USB worker thread: discovery, reconnection, settings applied on INFO, tray updates  |
 | `src-tauri/src/settings.rs`         | Settings saved on the computer (store plugin) and the commands that apply them      |
