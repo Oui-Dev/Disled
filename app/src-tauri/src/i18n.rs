@@ -149,6 +149,126 @@ mod tests {
         }
     }
 
+    /// Every message of a language, with its dotted key.
+    fn messages(locale: Locale) -> Vec<(String, String)> {
+        let mut found = BTreeSet::new();
+        keys(locale.messages(), "", &mut found);
+        found
+            .into_iter()
+            .map(|key| {
+                let text = locale.t(&key);
+                (key, text)
+            })
+            .collect()
+    }
+
+    /// The writing rules of the French texts: no semicolon, typographic
+    /// apostrophes, and nothing done "manuellement", since every update of
+    /// the lamp is.
+    #[test]
+    fn the_french_texts_follow_the_writing_rules() {
+        for (key, text) in messages(Locale::Fr) {
+            assert!(!text.contains(';'), "{key}: a semicolon in {text}");
+            assert!(
+                !text.contains('\''),
+                "{key}: a straight apostrophe in {text}"
+            );
+            assert!(!text.contains("manuellement"), "{key}: {text}");
+        }
+    }
+
+    /// The menus and settings speak no jargon: BOOT and RESET belong to the
+    /// update guide. The window that reinstalls a firmware names no driver
+    /// tool either.
+    #[test]
+    fn the_menus_use_no_jargon() {
+        for locale in [Locale::En, Locale::Fr] {
+            for (key, text) in messages(locale) {
+                let section = key.split('.').next().unwrap_or_default();
+                if matches!(section, "updates" | "settings") {
+                    assert!(
+                        !text.contains("BOOT") && !text.contains("RESET"),
+                        "{key}: {text}"
+                    );
+                }
+                if section == "lampInstall" {
+                    for word in ["Zadig", "pilote", "driver"] {
+                        assert!(!text.contains(word), "{key}: {text}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_texts_name_the_app_disled() {
+        for locale in [Locale::En, Locale::Fr] {
+            for (key, text) in messages(locale) {
+                assert!(!text.contains("DISLED"), "{key}: {text}");
+            }
+        }
+    }
+
+    /// Buttons and menus show no ellipsis; the messages that wait keep theirs.
+    #[test]
+    fn button_and_menu_labels_have_no_ellipsis() {
+        const LABELS: &[&str] = &[
+            "common.settings",
+            "common.back",
+            "common.quit",
+            "common.cancel",
+            "common.close",
+            "settings.diagnostics",
+            "settings.more",
+            "updates.install",
+            "updates.updateLamp",
+            "updates.check",
+            "updates.reinstall",
+            "lampV1.action",
+            "lampUpdate.start",
+            "lampUpdate.reinstall",
+            "lampUpdate.retry",
+            "diagnostics.restart",
+            "selfTest.run",
+            "telemetry.record",
+            "telemetry.stop",
+            "telemetry.export",
+            "tray.open",
+            "tray.diagnostics",
+            "tray.quit",
+        ];
+        for locale in [Locale::En, Locale::Fr] {
+            for key in LABELS {
+                let text = locale.t(key);
+                assert_ne!(text, *key, "no message {key}");
+                assert!(
+                    !text.ends_with('…') && !text.ends_with("..."),
+                    "{key}: {text}"
+                );
+            }
+        }
+    }
+
+    /// The French texts that the owner reviewed, word for word.
+    #[test]
+    fn the_reviewed_texts_stay_as_reviewed() {
+        let reviewed = [
+            ("lampV1.title", "Mise à jour nécessaire"),
+            (
+                "lampV1.text",
+                "Cette lampe a encore le firmware v1, et Disled v2 a besoin du firmware v2.",
+            ),
+            ("lampV1.action", "Mettre à jour"),
+            (
+                "lampV1.line",
+                "Cette lampe a le firmware v1, et Disled v2 a besoin du firmware v2.",
+            ),
+        ];
+        for (key, text) in reviewed {
+            assert_eq!(Locale::Fr.t(key), text, "{key}");
+        }
+    }
+
     #[test]
     fn a_missing_message_falls_back_to_its_key() {
         assert_eq!(Locale::Fr.t("tray.open"), "Ouvrir Disled");

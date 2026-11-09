@@ -48,13 +48,13 @@
     },
     "language": "Langue",
     "systemLanguage": "Système",
-    "diagnostics": "Ouvrir les diagnostics…",
+    "diagnostics": "Ouvrir les diagnostics",
     "versions": "App {app} · firmware de la lampe {firmware}",
     "more": "Plus d’actions"
   },
   "updates": {
     "install": "Installer et redémarrer",
-    "updateLamp": "Mettre à jour la lampe…",
+    "updateLamp": "Mettre à jour",
     "check": "Rechercher les mises à jour",
     "downloading": "Téléchargement de {version}… {progress}",
     "checking": "Recherche des mises à jour…",
@@ -64,7 +64,7 @@
     "lampError": "Erreur de recherche du firmware de la lampe : {detail}",
     "lampAvailable": "Le firmware {version} de la lampe est disponible.",
     "lampAfterApp": "Le firmware {version} de la lampe est disponible. Installez d’abord Disled {app}.",
-    "reinstall": "Réinstaller le firmware de la lampe…",
+    "reinstall": "Réinstaller le firmware",
     "toApp": "Mettre à jour en {version}",
     "toLamp": "Mettre à jour la lampe"
   },
@@ -152,7 +152,7 @@
     "record": "Enregistrer",
     "stop": "Arrêter",
     "rows": "{n} ligne | {n} lignes",
-    "export": "Exporter en CSV…",
+    "export": "Exporter en CSV",
     "saveTitle": "Exporter l’enregistrement",
     "permille": "{value} ‰",
     "lux": "{value} lx",
@@ -253,7 +253,7 @@
   },
   "tray": {
     "open": "Ouvrir Disled",
-    "diagnostics": "Diagnostics…",
+    "diagnostics": "Diagnostics",
     "quit": "Quitter Disled",
     "tooltip": {
       "noLamp": "Disled : aucune lampe",
