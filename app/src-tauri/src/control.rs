@@ -9,8 +9,8 @@
 //!
 //! A pure core, `Control::step`, decides from what happens to the lamp, in
 //! the windows, in the plugins and on the microphone; the functions around
-//! it carry out what it decides. Until the plugins and the microphone have
-//! their modules, no integration and no call reach it.
+//! it carry out what it decides. Until the microphone has its module, no
+//! call reaches it.
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -106,16 +106,8 @@ pub enum Input {
     /// The source the lamp follows: an integration, or none for manual.
     Follow(Option<String>),
     /// The integrations on offer, from the plugins.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "the plugins feed it, in their own module")
-    )]
     Integrations(Vec<Integration>),
     /// The state of an integration, none when it has none.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "the plugins feed it, in their own module")
-    )]
     Announce {
         id: String,
         state: Option<IntegrationState>,
@@ -142,10 +134,6 @@ pub enum Input {
     /// After a deletion, the color the lamp gets back after the call.
     CallBack(Option<u8>),
     /// A plugin asks for an alert.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "the plugins feed it, in their own module")
-    )]
     Alert {
         plugin: String,
     },

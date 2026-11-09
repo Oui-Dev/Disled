@@ -6,7 +6,8 @@
     "popup",
     "diagnostics",
     "lamp-update",
-    "lamp-install"
+    "lamp-install",
+    "integrations"
   ],
   "permissions": [
     "core:event:allow-listen",

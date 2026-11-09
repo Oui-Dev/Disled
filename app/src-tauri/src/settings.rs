@@ -26,6 +26,8 @@ use crate::colors::{ColorsState, Palette};
 const STORE_FILE: &str = "settings.json";
 const KEY: &str = "settings";
 const COLORS_KEY: &str = "colors";
+/// The mode and the plugins, which a damaged value resets alone.
+const INTEGRATIONS_KEY: &str = "integrations";
 /// The version of the app that ran last, kept next to the settings.
 const VERSION_KEY: &str = "version";
 /// The store writes its file once the changes stop for this long, and at
@@ -283,6 +285,22 @@ pub fn save_palette(app: &AppHandle, palette: Palette) -> Result<(), String> {
     store(app)
         .map_err(|e| e.to_string())?
         .set(COLORS_KEY, value);
+    Ok(())
+}
+
+/// The saved key of the integrations, as it is, which the plugins read
+/// field by field: the mode and what the app keeps of each plugin.
+pub fn load_integrations(app: &AppHandle) -> Value {
+    store(app)
+        .ok()
+        .and_then(|store| store.get(INTEGRATIONS_KEY))
+        .unwrap_or(Value::Null)
+}
+
+pub fn save_integrations(app: &AppHandle, value: Value) -> Result<(), String> {
+    store(app)
+        .map_err(|e| e.to_string())?
+        .set(INTEGRATIONS_KEY, value);
     Ok(())
 }
 

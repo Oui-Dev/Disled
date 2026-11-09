@@ -3,8 +3,8 @@
 
 //! Disled desktop app: a tray icon with a popup for daily use, a
 //! Diagnostics window, the USB worker behind both, the control of the lamp
-//! beyond the choices of the user, the app updates and the lamp firmware
-//! updates.
+//! beyond the choices of the user, the plugins and their integrations
+//! window, the app updates and the lamp firmware updates.
 
 // Prevents an additional console window on Windows in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
@@ -14,6 +14,7 @@ mod control;
 mod device;
 mod firmware;
 mod i18n;
+mod plugins;
 mod settings;
 mod tray;
 mod updates;
@@ -25,6 +26,8 @@ use device::{Connection, DeviceHandle};
 use disled_protocol::{Command, SetState};
 use firmware::{FirmwareState, FirmwareStatus};
 use i18n::{Locale, LocaleState};
+use plugins::PluginsState;
+use plugins::manifest::Reason;
 use serde::Deserialize;
 use settings::{Language, Settings, SettingsPatch, SettingsState};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, State};
@@ -98,7 +101,79 @@ fn control_set_mode(app: AppHandle, mode: Option<String>) -> Result<(), String> 
     {
         return Err(format!("no integration {id}"));
     }
-    control::input(&app, Input::Follow(mode))
+    control::input(&app, Input::Follow(mode.clone()))?;
+    plugins::remember_mode(&app, mode);
+    Ok(())
+}
+
+/// The plugins, read again from their folder, for the integrations window.
+/// Async, as are the other commands of the plugins, since stopping a
+/// program can take two seconds.
+#[tauri::command]
+async fn plugins_list(app: AppHandle) -> Vec<plugins::PluginView> {
+    plugins::list(&app)
+}
+
+/// The block of the installation note, with the address and the token,
+/// for the integrations window only: no event carries a token.
+#[tauri::command]
+async fn plugin_note(app: AppHandle, id: String) -> Option<plugins::FilledBlock> {
+    plugins::note(&app, &id)
+}
+
+/// "Copy": the backend writes the block in the clipboard.
+#[tauri::command]
+async fn plugin_copy_note(app: AppHandle, id: String) -> Result<(), String> {
+    plugins::copy_note(&app, &id)
+}
+
+/// "Enable" in the question, for the fingerprint it showed.
+#[tauri::command]
+async fn plugin_approve(app: AppHandle, id: String, fingerprint: String) -> Result<(), String> {
+    plugins::approve(&app, &id, &fingerprint)
+}
+
+#[tauri::command]
+async fn plugin_set_enabled(app: AppHandle, id: String, enabled: bool) -> Result<(), String> {
+    plugins::set_enabled(&app, &id, enabled)
+}
+
+/// The color of a state of a plugin.
+#[tauri::command]
+async fn plugin_set_color(
+    app: AppHandle,
+    id: String,
+    state: String,
+    slot: u8,
+) -> Result<(), String> {
+    plugins::set_color(&app, &id, &state, slot)
+}
+
+#[tauri::command]
+async fn plugin_regenerate_token(app: AppHandle, id: String) -> Result<(), String> {
+    plugins::regenerate_token(&app, &id)
+}
+
+#[tauri::command]
+async fn plugin_remove(app: AppHandle, id: String) -> Result<(), String> {
+    plugins::remove(&app, &id)
+}
+
+/// Imports the plugin of a zip file that the user picked; its approval
+/// follows. A refusal gives its reason.
+#[tauri::command]
+async fn plugins_import(app: AppHandle, path: String) -> Result<String, Reason> {
+    plugins::import(&app, std::path::Path::new(&path))
+}
+
+/// Opens the folder of the plugins in the file manager.
+#[tauri::command]
+fn plugins_open_folder(app: AppHandle) -> Result<(), String> {
+    let folder = plugins::folder(&app).ok_or("the plugins are not ready")?;
+    let _ = std::fs::create_dir_all(&folder);
+    app.opener()
+        .open_path(folder.to_string_lossy(), None::<&str>)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -135,6 +210,8 @@ fn apply_change(app: &AppHandle, change: PaletteChange) -> Result<(), String> {
     if call_color {
         let _ = control::input(app, Input::CallSettings(settings.calls));
     }
+    // A state whose color left takes its default one.
+    plugins::colors_changed(app);
     Ok(())
 }
 
@@ -146,7 +223,7 @@ fn around(app: &AppHandle) -> Around {
         lamp: app.state::<DeviceHandle>().state().map(|state| state.color),
         call_color: app.state::<SettingsState>().get().calls.color,
         call_then: control.call_back(),
-        integration: control.integration_slot(),
+        integration: control.integration_slot().and(plugins::fallback_color(app)),
     }
 }
 
@@ -341,6 +418,7 @@ fn apply_language(app: &AppHandle, language: Language) {
     if app.state::<LocaleState>().replace(locale) != locale {
         tray::relabel(app, locale);
         windows::retitle(app, locale);
+        plugins::relabel(app);
         let _ = app.emit(EVENT_LOCALE, locale);
     }
 }
@@ -428,6 +506,12 @@ async fn open_lamp_update(app: AppHandle) {
 
 /// Async for the same reason as `open_diagnostics`.
 #[tauri::command]
+async fn open_integrations(app: AppHandle) {
+    windows::open_integrations(&app);
+}
+
+/// Async for the same reason as `open_diagnostics`.
+#[tauri::command]
 async fn open_lamp_install(app: AppHandle) {
     firmware::clear_result(&app);
     windows::open_lamp_install(&app);
@@ -483,6 +567,7 @@ fn quit(app: AppHandle) {
 /// menu: the lamp first gets its own behavior back.
 fn quit_app(app: &AppHandle) {
     control::release(app);
+    plugins::shutdown(app);
     app.exit(0);
 }
 
@@ -529,6 +614,7 @@ fn main() {
         .manage(windows::PopupState::default())
         .manage(UpdateState::default())
         .manage(FirmwareState::default())
+        .manage(PluginsState::default())
         .setup(move |app| {
             // No Dock icon, since the app lives in the menu bar.
             #[cfg(target_os = "macos")]
@@ -554,6 +640,7 @@ fn main() {
             #[cfg(target_os = "macos")]
             windows::make_popup_a_panel(&handle);
             app.manage(DeviceHandle::spawn(handle.clone()));
+            plugins::start(&handle);
             // A new version most often follows an update, whose restart keeps
             // the arguments, `--autostart` included. It checks again at once
             // and shows the popup, so that a lamp update shows next.
@@ -570,6 +657,17 @@ fn main() {
             lamp_choose,
             control_get,
             control_set_mode,
+            plugins_list,
+            plugin_note,
+            plugin_copy_note,
+            plugin_approve,
+            plugin_set_enabled,
+            plugin_set_color,
+            plugin_regenerate_token,
+            plugin_remove,
+            plugins_import,
+            plugins_open_folder,
+            open_integrations,
             colors_get,
             colors_save_custom,
             colors_rename_original,

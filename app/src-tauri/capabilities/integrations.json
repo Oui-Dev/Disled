@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "integrations",
+  "description": "Integrations window: the dialog that picks a plugin to import",
+  "windows": [
+    "integrations"
+  ],
+  "permissions": [
+    "dialog:allow-open"
+  ]
+}

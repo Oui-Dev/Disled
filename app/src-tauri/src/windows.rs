@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Disled contributors
 
-//! The windows: the popup under the tray icon for daily use, and three that
-//! open on demand, Diagnostics and the two lamp updates.
+//! The windows: the popup under the tray icon for daily use, and four that
+//! open on demand: Diagnostics, the integrations and the two lamp updates.
 
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -20,14 +20,17 @@ use crate::i18n::{Locale, LocaleState};
 
 const POPUP: &str = "popup";
 pub const DIAGNOSTICS: &str = "diagnostics";
+/// The plugins, which bring the integrations.
+const INTEGRATIONS: &str = "integrations";
 /// The guided update, to the newest firmware.
 const LAMP_UPDATE: &str = "lamp-update";
 /// The reinstall of a version of the user's choice.
 const LAMP_INSTALL: &str = "lamp-install";
 
 /// The windows opened on demand, with the message key of their title.
-const TITLED: [(&str, &str); 3] = [
+const TITLED: [(&str, &str); 4] = [
     (DIAGNOSTICS, "window.diagnostics"),
+    (INTEGRATIONS, "window.integrations"),
     (LAMP_UPDATE, "window.lampUpdate"),
     (LAMP_INSTALL, "window.lampInstall"),
 ];
@@ -217,6 +220,21 @@ pub fn open_diagnostics(app: &AppHandle) {
                 let _ = device.send(Command::SetTelemetry { period_ms: 0 });
             }
         });
+        let _ = window.set_focus();
+    }
+}
+
+/// Opens the integrations window, from the mode menu of the popup.
+pub fn open_integrations(app: &AppHandle) {
+    hide_popup(app);
+    if raise(app, INTEGRATIONS) {
+        return;
+    }
+    let built = builder(app, INTEGRATIONS)
+        .inner_size(880.0, 680.0)
+        .min_inner_size(760.0, 560.0)
+        .build();
+    if let Ok(window) = built {
         let _ = window.set_focus();
     }
 }
