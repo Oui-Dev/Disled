@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Disled contributors
 
-//! Command encoder and message decoder of the DISLED USB HID protocol v1.1,
+//! Command encoder and message decoder of the Disled USB HID protocol 2.0,
 //! which `protocol/README.md` specifies. The functions do no I/O; the desktop
-//! app and the production tool share them.
+//! app and the production tool share them. INFO keeps the layout of version
+//! 1, so the decoder reads the INFO of a version 1 lamp too: its protocol
+//! major tells the two apart.
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -29,12 +31,32 @@ pub const REPORT_ID_MESSAGE: u8 = 2;
 /// Payload bytes of one report, after the report ID.
 pub const PAYLOAD_SIZE: usize = 63;
 const HEADER_SIZE: usize = 3;
-pub const PROTOCOL_MAJOR: u8 = 1;
-pub const PROTOCOL_MINOR: u8 = 1;
+const MAX_BODY_SIZE: usize = PAYLOAD_SIZE - HEADER_SIZE;
+pub const PROTOCOL_MAJOR: u8 = 2;
+pub const PROTOCOL_MINOR: u8 = 0;
 
 /// Automatic brightness bias limits, percent.
 pub const AUTO_BIAS_MIN: i8 = -50;
 pub const AUTO_BIAS_MAX: i8 = 50;
+/// Touch sensitivity correction limits, percent: positive for a more
+/// sensitive lid.
+pub const TOUCH_SENSITIVITY_MIN: i8 = -50;
+pub const TOUCH_SENSITIVITY_MAX: i8 = 50;
+
+/// Palette slots. The first four hold the built-in colors, which never
+/// change; the host defines the custom ones, from `FIRST_CUSTOM_SLOT` on.
+pub const SLOT_COUNT: u8 = 16;
+pub const SLOT_GREEN: u8 = 0;
+pub const SLOT_ORANGE: u8 = 1;
+pub const SLOT_RED: u8 = 2;
+pub const SLOT_WARM_WHITE: u8 = 3;
+pub const FIRST_CUSTOM_SLOT: u8 = 4;
+/// Most slots in the touch cycle.
+pub const TOUCH_CYCLE_MAX: usize = 9;
+/// Limits of an alert: breaths, and the period of one breath.
+pub const ALERT_COUNT_MAX: u8 = 10;
+pub const ALERT_PERIOD_MIN_MS: u16 = 500;
+pub const ALERT_PERIOD_MAX_MS: u16 = 5000;
 
 const CMD_GET_INFO: u8 = 0x01;
 const CMD_GET_STATE: u8 = 0x02;
@@ -44,13 +66,22 @@ const CMD_RESET: u8 = 0x05;
 const CMD_SET_AUTO_BIAS: u8 = 0x06;
 const CMD_GET_DIAGNOSTICS: u8 = 0x07;
 const CMD_SELF_TEST: u8 = 0x08;
-const CMD_ENTER_BOOTLOADER: u8 = 0x09;
+// 0x09 and 0x0F are reserved.
+const CMD_SET_COLOR: u8 = 0x0A;
+const CMD_GET_COLOR: u8 = 0x0B;
+const CMD_SET_TOUCH_CYCLE: u8 = 0x0C;
+const CMD_GET_TOUCH_CYCLE: u8 = 0x0D;
+const CMD_ALERT: u8 = 0x0E;
+const CMD_SET_TOUCH_SENSITIVITY: u8 = 0x10;
 
 const MSG_INFO: u8 = 0x81;
 const MSG_STATE: u8 = 0x82;
 const MSG_TELEMETRY: u8 = 0x83;
 const MSG_DIAGNOSTICS: u8 = 0x84;
 const MSG_SELF_TEST_RESULT: u8 = 0x85;
+const MSG_COLOR: u8 = 0x86;
+const MSG_TOUCH_CYCLE: u8 = 0x87;
+const MSG_ALERT_DONE: u8 = 0x88;
 const MSG_ACK: u8 = 0x8E;
 const MSG_ERROR: u8 = 0x8F;
 
@@ -58,15 +89,31 @@ const FIELD_POWER: u8 = 0x01;
 const FIELD_COLOR: u8 = 0x02;
 const FIELD_BRIGHTNESS_MODE: u8 = 0x04;
 const FIELD_MANUAL_LEVEL: u8 = 0x08;
+const FIELD_TOUCH_MODE: u8 = 0x10;
+
+// INFO capability bits. Bits 5 and 10 are reserved.
+const CAP_TELEMETRY: u32 = 1 << 0;
+const CAP_DEBUG_CONSOLE: u32 = 1 << 1;
+const CAP_AUTO_BIAS: u32 = 1 << 2;
+const CAP_DIAGNOSTICS: u32 = 1 << 3;
+const CAP_SELF_TEST: u32 = 1 << 4;
+const CAP_CUSTOM_COLORS: u32 = 1 << 6;
+const CAP_TOUCH_CYCLE: u32 = 1 << 7;
+const CAP_TOUCH_MODE: u32 = 1 << 8;
+const CAP_ALERT: u32 = 1 << 9;
+const CAP_TOUCH_SENSITIVITY: u32 = 1 << 11;
 
 /// An enum whose discriminant is its byte on the wire.
 macro_rules! wire_enum {
-    ($(#[$meta:meta])* $name:ident { $($variant:ident = $value:expr),+ $(,)? }) => {
+    (
+        $(#[$meta:meta])*
+        $name:ident { $($(#[$variant_meta:meta])* $variant:ident = $value:expr),+ $(,)? }
+    ) => {
         $(#[$meta])*
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
         #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export))]
         #[serde(rename_all = "snake_case")]
-        pub enum $name { $($variant = $value),+ }
+        pub enum $name { $($(#[$variant_meta])* $variant = $value),+ }
 
         impl $name {
             pub fn from_wire(value: u8) -> Result<Self, DecodeError> {
@@ -79,10 +126,22 @@ macro_rules! wire_enum {
     };
 }
 
-wire_enum!(LampColor { Green = 0, Orange = 1, Red = 2, WarmWhite = 3 });
 wire_enum!(BrightnessMode { Auto = 0, Manual = 1 });
+wire_enum!(
+    /// What the touch does. Integrations drive the color in power-only mode,
+    /// where a long press still turns the lamp on and off.
+    TouchMode { Normal = 0, PowerOnly = 1 }
+);
 wire_enum!(UsbLink { Unconfigured = 0, Configured = 1, Suspended = 2 });
-wire_enum!(ChangeSource { Boot = 0, Touch = 1, Host = 2, AutoBrightness = 3, Usb = 4 });
+wire_enum!(ChangeSource {
+    Boot = 0,
+    Touch = 1,
+    Host = 2,
+    AutoBrightness = 3,
+    Usb = 4,
+    /// Power-only touch back to normal: no command for too long.
+    HostSilence = 5,
+});
 wire_enum!(ResetCause {
     Unknown = 0,
     PowerOn = 1,
@@ -98,17 +157,45 @@ wire_enum!(ProtocolError {
     BadLength = 2,
     BadValue = 3,
     Busy = 4,
+    /// No alert while the lamp is off.
+    LampOff = 5,
 });
+wire_enum!(
+    /// Why an alert ended.
+    AlertDoneReason {
+        /// Every breath shown.
+        Completed = 0,
+        LampOff = 1,
+        /// USB suspend; the message comes after the wake-up.
+        Suspended = 2,
+        /// Stopped by an ALERT with a count of 0.
+        Cancelled = 3,
+        /// The self-test took the LED.
+        SelfTest = 4,
+    }
+);
+
+/// Linear light of a color at full brightness, its largest channel at 65535.
+/// Black, three zeros, empties a custom slot.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export))]
+pub struct LinearRgb {
+    pub r: u16,
+    pub g: u16,
+    pub b: u16,
+}
 
 /// Lamp settings to change; `None` leaves a setting as it is.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, optional_fields))]
 pub struct SetState {
     pub on: Option<bool>,
-    pub color: Option<LampColor>,
+    /// A palette slot that holds a color.
+    pub color: Option<u8>,
     pub brightness_mode: Option<BrightnessMode>,
     /// Percent, 1 to 100.
     pub manual_level: Option<u8>,
+    pub touch_mode: Option<TouchMode>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -122,14 +209,38 @@ pub enum Command {
         period_ms: u16,
     },
     Reset,
-    /// Percent, `AUTO_BIAS_MIN` to `AUTO_BIAS_MAX`, for a lamp that announces
-    /// `auto_bias`.
+    /// Percent, `AUTO_BIAS_MIN` to `AUTO_BIAS_MAX`.
     SetAutoBias {
         bias: i8,
     },
     GetDiagnostics,
     SelfTest,
-    EnterBootloader,
+    /// Defines a custom slot, `FIRST_CUSTOM_SLOT` to `SLOT_COUNT` - 1, or
+    /// empties it with black.
+    SetColor {
+        slot: u8,
+        rgb: LinearRgb,
+    },
+    /// Any slot, 0 to `SLOT_COUNT` - 1.
+    GetColor {
+        slot: u8,
+    },
+    /// 1 to `TOUCH_CYCLE_MAX` slots that hold a color, none twice.
+    SetTouchCycle {
+        slots: Vec<u8>,
+    },
+    GetTouchCycle,
+    /// `count` breaths (1 to `ALERT_COUNT_MAX`) of `period_ms`
+    /// (`ALERT_PERIOD_MIN_MS` to `ALERT_PERIOD_MAX_MS`); a count of 0 stops
+    /// the alert and ignores the period.
+    Alert {
+        count: u8,
+        period_ms: u16,
+    },
+    /// Percent, `TOUCH_SENSITIVITY_MIN` to `TOUCH_SENSITIVITY_MAX`.
+    SetTouchSensitivity {
+        percent: i8,
+    },
 }
 
 impl Command {
@@ -152,14 +263,18 @@ impl Command {
                 if s.manual_level.is_some() {
                     fields |= FIELD_MANUAL_LEVEL;
                 }
+                if s.touch_mode.is_some() {
+                    fields |= FIELD_TOUCH_MODE;
+                }
                 (
                     CMD_SET_STATE,
                     vec![
                         fields,
                         u8::from(s.on.unwrap_or(false)),
-                        s.color.map_or(0, |c| c as u8),
+                        s.color.unwrap_or(0),
                         s.brightness_mode.map_or(0, |m| m as u8),
                         s.manual_level.unwrap_or(0),
+                        s.touch_mode.map_or(0, |m| m as u8),
                     ],
                 )
             }
@@ -170,7 +285,32 @@ impl Command {
             Command::SetAutoBias { bias } => (CMD_SET_AUTO_BIAS, bias.to_le_bytes().to_vec()),
             Command::GetDiagnostics => (CMD_GET_DIAGNOSTICS, vec![]),
             Command::SelfTest => (CMD_SELF_TEST, vec![]),
-            Command::EnterBootloader => (CMD_ENTER_BOOTLOADER, vec![]),
+            Command::SetColor { slot, rgb } => {
+                let mut body = vec![*slot];
+                for channel in [rgb.r, rgb.g, rgb.b] {
+                    body.extend_from_slice(&channel.to_le_bytes());
+                }
+                (CMD_SET_COLOR, body)
+            }
+            Command::GetColor { slot } => (CMD_GET_COLOR, vec![*slot]),
+            Command::SetTouchCycle { slots } => {
+                // A longer cycle goes out with its true count, which the lamp
+                // refuses, but never past the report.
+                let count = u8::try_from(slots.len()).unwrap_or(u8::MAX);
+                let kept = slots.len().min(MAX_BODY_SIZE - 1);
+                let mut body = vec![count];
+                body.extend_from_slice(&slots[..kept]);
+                (CMD_SET_TOUCH_CYCLE, body)
+            }
+            Command::GetTouchCycle => (CMD_GET_TOUCH_CYCLE, vec![]),
+            Command::Alert { count, period_ms } => {
+                let mut body = vec![*count];
+                body.extend_from_slice(&period_ms.to_le_bytes());
+                (CMD_ALERT, body)
+            }
+            Command::SetTouchSensitivity { percent } => {
+                (CMD_SET_TOUCH_SENSITIVITY, percent.to_le_bytes().to_vec())
+            }
         };
         let mut payload = [0u8; PAYLOAD_SIZE];
         payload[0] = kind;
@@ -188,9 +328,14 @@ pub struct Fault {
     pub mepc: u32,
 }
 
+/// INFO, whose layout is the same in versions 1 and 2. Capabilities that a
+/// lamp does not announce read false: a version 1 lamp announces none of
+/// version 2, and a version 2 lamp all of them but the debug console, which
+/// only debug builds have.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export))]
 pub struct Info {
+    /// Major and minor version of the protocol the lamp speaks.
     pub protocol: [u8; 2],
     pub firmware: [u8; 3],
     pub firmware_version: String,
@@ -199,11 +344,14 @@ pub struct Info {
     pub uid: String,
     pub telemetry: bool,
     pub debug_console: bool,
-    // Optional commands, each announced by its capability bit.
     pub auto_bias: bool,
     pub diagnostics: bool,
     pub self_test: bool,
-    pub enter_bootloader: bool,
+    pub custom_colors: bool,
+    pub touch_cycle: bool,
+    pub touch_mode: bool,
+    pub alert: bool,
+    pub touch_sensitivity: bool,
     pub reset_cause: ResetCause,
     pub debug_build: bool,
     pub fault: Option<Fault>,
@@ -214,13 +362,17 @@ pub struct Info {
 pub struct State {
     pub state_seq: u16,
     pub on: bool,
-    pub color: LampColor,
+    /// Palette slot of the color, shown while on and kept while off.
+    pub color: u8,
     pub brightness_mode: BrightnessMode,
     pub manual_level: u8,
     /// Brightness in use, percent.
     pub applied_level: u8,
     pub link: UsbLink,
     pub source: ChangeSource,
+    pub touch_mode: TouchMode,
+    /// The color of the slot at full brightness.
+    pub rgb: LinearRgb,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -263,6 +415,8 @@ pub struct Diagnostics {
     pub auto_bias: i8,
     pub light_sensor_present: bool,
     pub crystal_running: bool,
+    /// Touch sensitivity correction in force, percent.
+    pub touch_sensitivity: i8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -301,8 +455,25 @@ pub enum Message {
     Telemetry(Telemetry),
     Diagnostics(Diagnostics),
     SelfTestResult(SelfTestResult),
-    Ack { command: u8 },
-    Error { command: u8, error: ProtocolError },
+    /// A slot and its color, black when the slot is empty.
+    Color {
+        slot: u8,
+        rgb: LinearRgb,
+    },
+    TouchCycle {
+        slots: Vec<u8>,
+    },
+    /// Carries the sequence number of the ALERT that started the alert.
+    AlertDone {
+        reason: AlertDoneReason,
+    },
+    Ack {
+        command: u8,
+    },
+    Error {
+        command: u8,
+        error: ProtocolError,
+    },
 }
 
 /// A decoded message and the sequence number it answers, 0 when unsolicited.
@@ -323,6 +494,7 @@ pub enum DecodeError {
     /// specification asks, so callers usually skip this error.
     #[error("unknown message type 0x{0:02x}")]
     UnknownType(u8),
+    /// Also the STATE of a version 1 lamp, 9 bytes long.
     #[error("message 0x{0:02x}: body of {1} bytes, expected at least {2}")]
     BodyTooShort(u8, usize, usize),
     #[error("invalid {0} value {1}")]
@@ -362,6 +534,14 @@ impl Reader<'_> {
         let slice = &self.bytes[self.pos..self.pos + count];
         self.pos += count;
         slice
+    }
+
+    fn rgb(&mut self) -> LinearRgb {
+        LinearRgb {
+            r: self.u16(),
+            g: self.u16(),
+            b: self.u16(),
+        }
     }
 }
 
@@ -403,34 +583,41 @@ pub fn decode_message(payload: &[u8]) -> Result<Frame, DecodeError> {
             let (mcause, mepc) = (r.u32(), r.u32());
             let text = r.bytes(24);
             let end = text.iter().position(|&b| b == 0).unwrap_or(text.len());
+            let has = |capability: u32| capabilities & capability != 0;
             Message::Info(Info {
                 protocol,
                 firmware,
                 firmware_version: String::from_utf8_lossy(&text[..end]).into_owned(),
                 board_revision,
                 uid,
-                telemetry: capabilities & (1 << 0) != 0,
-                debug_console: capabilities & (1 << 1) != 0,
-                auto_bias: capabilities & (1 << 2) != 0,
-                diagnostics: capabilities & (1 << 3) != 0,
-                self_test: capabilities & (1 << 4) != 0,
-                enter_bootloader: capabilities & (1 << 5) != 0,
+                telemetry: has(CAP_TELEMETRY),
+                debug_console: has(CAP_DEBUG_CONSOLE),
+                auto_bias: has(CAP_AUTO_BIAS),
+                diagnostics: has(CAP_DIAGNOSTICS),
+                self_test: has(CAP_SELF_TEST),
+                custom_colors: has(CAP_CUSTOM_COLORS),
+                touch_cycle: has(CAP_TOUCH_CYCLE),
+                touch_mode: has(CAP_TOUCH_MODE),
+                alert: has(CAP_ALERT),
+                touch_sensitivity: has(CAP_TOUCH_SENSITIVITY),
                 reset_cause,
                 debug_build: flags & 0x1 != 0,
                 fault: (flags & 0x2 != 0).then_some(Fault { mcause, mepc }),
             })
         }
         MSG_STATE => {
-            expect_size(kind, body, 9)?;
+            expect_size(kind, body, 16)?;
             Message::State(State {
                 state_seq: r.u16(),
                 on: r.u8() != 0,
-                color: LampColor::from_wire(r.u8())?,
+                color: r.u8(),
                 brightness_mode: BrightnessMode::from_wire(r.u8())?,
                 manual_level: r.u8(),
                 applied_level: r.u8(),
                 link: UsbLink::from_wire(r.u8())?,
                 source: ChangeSource::from_wire(r.u8())?,
+                touch_mode: TouchMode::from_wire(r.u8())?,
+                rgb: r.rgb(),
             })
         }
         MSG_TELEMETRY => {
@@ -452,7 +639,7 @@ pub fn decode_message(payload: &[u8]) -> Result<Frame, DecodeError> {
             })
         }
         MSG_DIAGNOSTICS => {
-            expect_size(kind, body, 36)?;
+            expect_size(kind, body, 37)?;
             let uptime_ms = r.u32();
             let (boots, watchdog_resets, faults) = (r.u16(), r.u16(), r.u16());
             let (mcause, mepc, mtval) = (r.u32(), r.u32(), r.u32());
@@ -464,6 +651,7 @@ pub fn decode_message(payload: &[u8]) -> Result<Frame, DecodeError> {
             let usb_suspends = r.u16();
             let auto_bias = r.i8();
             let flags = r.u8();
+            let touch_sensitivity = r.i8();
             Message::Diagnostics(Diagnostics {
                 uptime_ms,
                 boots,
@@ -485,6 +673,7 @@ pub fn decode_message(payload: &[u8]) -> Result<Frame, DecodeError> {
                 auto_bias,
                 light_sensor_present: flags & 0x1 != 0,
                 crystal_running: flags & 0x2 != 0,
+                touch_sensitivity,
             })
         }
         MSG_SELF_TEST_RESULT => {
@@ -499,6 +688,29 @@ pub fn decode_message(payload: &[u8]) -> Result<Frame, DecodeError> {
                 touch_baseline: r.u16(),
                 touch_peak_permille: r.i16(),
             })
+        }
+        MSG_COLOR => {
+            expect_size(kind, body, 7)?;
+            Message::Color {
+                slot: r.u8(),
+                rgb: r.rgb(),
+            }
+        }
+        MSG_TOUCH_CYCLE => {
+            expect_size(kind, body, 1 + TOUCH_CYCLE_MAX)?;
+            let count = r.u8();
+            if usize::from(count) > TOUCH_CYCLE_MAX {
+                return Err(DecodeError::BadValue("touch cycle length", count));
+            }
+            Message::TouchCycle {
+                slots: r.bytes(usize::from(count)).to_vec(),
+            }
+        }
+        MSG_ALERT_DONE => {
+            expect_size(kind, body, 1)?;
+            Message::AlertDone {
+                reason: AlertDoneReason::from_wire(r.u8())?,
+            }
         }
         MSG_ACK => {
             expect_size(kind, body, 1)?;
@@ -524,9 +736,9 @@ mod tests {
     fn vectors() -> Value {
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../protocol/vectors/v1.json"
+            "/../../protocol/vectors/v2.json"
         );
-        let text = std::fs::read_to_string(path).expect("protocol/vectors/v1.json");
+        let text = std::fs::read_to_string(path).expect("protocol/vectors/v2.json");
         serde_json::from_str(&text).expect("valid JSON")
     }
 
@@ -544,6 +756,30 @@ mod tests {
 
     fn i(v: &Value, key: &str) -> i64 {
         v[key].as_i64().unwrap_or_else(|| panic!("number {key}"))
+    }
+
+    fn rgb(v: &Value) -> LinearRgb {
+        let channels: Vec<u16> = v
+            .as_array()
+            .expect("rgb")
+            .iter()
+            .map(|c| c.as_u64().expect("channel") as u16)
+            .collect();
+        LinearRgb {
+            r: channels[0],
+            g: channels[1],
+            b: channels[2],
+        }
+    }
+
+    fn slots(cycle: &Value) -> Vec<u8> {
+        let all: Vec<u8> = cycle["slots"]
+            .as_array()
+            .expect("slots")
+            .iter()
+            .map(|s| s.as_u64().expect("slot") as u8)
+            .collect();
+        all[..u(cycle, "count") as usize].to_vec()
     }
 
     #[test]
@@ -573,7 +809,7 @@ mod tests {
                 CMD_RESET => Command::Reset,
                 CMD_GET_DIAGNOSTICS => Command::GetDiagnostics,
                 CMD_SELF_TEST => Command::SelfTest,
-                CMD_ENTER_BOOTLOADER => Command::EnterBootloader,
+                CMD_GET_TOUCH_CYCLE => Command::GetTouchCycle,
                 CMD_SET_AUTO_BIAS => Command::SetAutoBias {
                     bias: i(v, "auto_bias") as i8,
                 },
@@ -585,15 +821,40 @@ mod tests {
                     let fields = u(s, "fields") as u8;
                     Command::SetState(SetState {
                         on: (fields & FIELD_POWER != 0).then(|| s["on"].as_bool().expect("on")),
-                        color: (fields & FIELD_COLOR != 0)
-                            .then(|| LampColor::from_wire(u(s, "color") as u8).expect("color")),
+                        color: (fields & FIELD_COLOR != 0).then(|| u(s, "color") as u8),
                         brightness_mode: (fields & FIELD_BRIGHTNESS_MODE != 0).then(|| {
                             BrightnessMode::from_wire(u(s, "brightness_mode") as u8).expect("mode")
                         }),
                         manual_level: (fields & FIELD_MANUAL_LEVEL != 0)
                             .then(|| u(s, "manual_level") as u8),
+                        touch_mode: (fields & FIELD_TOUCH_MODE != 0).then(|| {
+                            TouchMode::from_wire(u(s, "touch_mode") as u8).expect("touch mode")
+                        }),
                     })
                 }
+                CMD_SET_COLOR => {
+                    let c = &v["set_color"];
+                    Command::SetColor {
+                        slot: u(c, "slot") as u8,
+                        rgb: rgb(&c["rgb"]),
+                    }
+                }
+                CMD_GET_COLOR => Command::GetColor {
+                    slot: u(v, "color_slot") as u8,
+                },
+                CMD_SET_TOUCH_CYCLE => Command::SetTouchCycle {
+                    slots: slots(&v["touch_cycle"]),
+                },
+                CMD_ALERT => {
+                    let a = &v["alert"];
+                    Command::Alert {
+                        count: u(a, "count") as u8,
+                        period_ms: u(a, "period_ms") as u16,
+                    }
+                }
+                CMD_SET_TOUCH_SENSITIVITY => Command::SetTouchSensitivity {
+                    percent: i(v, "touch_sensitivity") as i8,
+                },
                 other => panic!("unexpected command type {other}"),
             };
             let name = v["name"].as_str().unwrap_or("?");
@@ -601,7 +862,7 @@ mod tests {
             assert_eq!(command.encode(u(v, "seq") as u8), expected, "{name}");
             checked += 1;
         }
-        assert!(checked >= 10, "too few command vectors checked: {checked}");
+        assert!(checked >= 20, "too few command vectors checked: {checked}");
     }
 
     #[test]
@@ -609,15 +870,22 @@ mod tests {
         let doc = vectors();
         for v in doc["messages"].as_array().expect("messages") {
             let name = v["name"].as_str().unwrap_or("?");
-            let frame = decode_message(&payload(v["bytes"].as_str().expect("bytes")))
-                .unwrap_or_else(|e| panic!("{name}: {e}"));
+            let decoded = decode_message(&payload(v["bytes"].as_str().expect("bytes")));
+            // Messages of a version 1 lamp that this version refuses.
+            if let Some(error) = v["decode_error"].as_str() {
+                match (error, &decoded) {
+                    ("body_too_short", Err(DecodeError::BodyTooShort(..))) => continue,
+                    _ => panic!("{name}: expected {error}, got {decoded:?}"),
+                }
+            }
+            let frame = decoded.unwrap_or_else(|e| panic!("{name}: {e}"));
             assert_eq!(u64::from(frame.seq), u(v, "seq"), "{name}");
             match (v["kind"].as_str(), &frame.message) {
                 (Some("state"), Message::State(s)) => {
                     let e = &v["state"];
                     assert_eq!(u64::from(s.state_seq), u(e, "state_seq"), "{name}");
                     assert_eq!(s.on, e["on"].as_bool().unwrap_or(false), "{name}");
-                    assert_eq!(s.color as u64, u(e, "color"), "{name}");
+                    assert_eq!(u64::from(s.color), u(e, "color"), "{name}");
                     assert_eq!(s.brightness_mode as u64, u(e, "brightness_mode"), "{name}");
                     assert_eq!(u64::from(s.manual_level), u(e, "manual_level"), "{name}");
                     assert_eq!(
@@ -627,17 +895,26 @@ mod tests {
                     );
                     assert_eq!(s.link as u64, u(e, "link"), "{name}");
                     assert_eq!(s.source as u64, u(e, "source"), "{name}");
+                    assert_eq!(s.touch_mode as u64, u(e, "touch_mode"), "{name}");
+                    assert_eq!(s.rgb, rgb(&e["rgb"]), "{name}");
                 }
                 (Some("info"), Message::Info(info)) => {
                     let e = &v["info"];
-                    assert_eq!(info.protocol, [PROTOCOL_MAJOR, PROTOCOL_MINOR], "{name}");
+                    let protocol: Vec<u8> = e["protocol"]
+                        .as_array()
+                        .expect("protocol")
+                        .iter()
+                        .map(|part| part.as_u64().expect("version") as u8)
+                        .collect();
+                    assert_eq!(info.protocol.to_vec(), protocol, "{name}");
                     assert_eq!(
                         info.firmware,
                         [
                             u(e, "fw_major") as u8,
                             u(e, "fw_minor") as u8,
                             u(e, "fw_patch") as u8
-                        ]
+                        ],
+                        "{name}"
                     );
                     assert_eq!(u64::from(info.board_revision), u(e, "board_revision"));
                     assert_eq!(info.uid, e["uid"].as_str().unwrap_or("").to_uppercase());
@@ -646,10 +923,22 @@ mod tests {
                         e["fw_version"].as_str().unwrap_or("")
                     );
                     assert_eq!(info.reset_cause as u64, u(e, "reset_cause"));
-                    let capabilities = u(e, "capabilities");
-                    assert_eq!(info.telemetry, capabilities & 1 != 0);
-                    assert_eq!(info.debug_console, capabilities & 2 != 0);
-                    assert_eq!(info.auto_bias, capabilities & 4 != 0);
+                    let capabilities = u(e, "capabilities") as u32;
+                    let announced = [
+                        (info.telemetry, CAP_TELEMETRY),
+                        (info.debug_console, CAP_DEBUG_CONSOLE),
+                        (info.auto_bias, CAP_AUTO_BIAS),
+                        (info.diagnostics, CAP_DIAGNOSTICS),
+                        (info.self_test, CAP_SELF_TEST),
+                        (info.custom_colors, CAP_CUSTOM_COLORS),
+                        (info.touch_cycle, CAP_TOUCH_CYCLE),
+                        (info.touch_mode, CAP_TOUCH_MODE),
+                        (info.alert, CAP_ALERT),
+                        (info.touch_sensitivity, CAP_TOUCH_SENSITIVITY),
+                    ];
+                    for (flag, bit) in announced {
+                        assert_eq!(flag, capabilities & bit != 0, "{name}: bit {bit:#x}");
+                    }
                     let flags = u(e, "flags");
                     assert_eq!(info.debug_build, flags & 1 != 0);
                     assert_eq!(
@@ -718,6 +1007,11 @@ mod tests {
                     let flags = u(e, "flags");
                     assert_eq!(d.light_sensor_present, flags & 1 != 0);
                     assert_eq!(d.crystal_running, flags & 2 != 0);
+                    assert_eq!(
+                        i64::from(d.touch_sensitivity),
+                        i(e, "touch_sensitivity"),
+                        "{name}"
+                    );
                 }
                 (Some("self_test_result"), Message::SelfTestResult(t)) => {
                     let e = &v["self_test_result"];
@@ -732,6 +1026,17 @@ mod tests {
                         i64::from(t.touch_peak_permille),
                         i(e, "touch_peak_permille")
                     );
+                }
+                (Some("color"), Message::Color { slot, rgb: color }) => {
+                    let e = &v["color"];
+                    assert_eq!(u64::from(*slot), u(e, "slot"), "{name}");
+                    assert_eq!(*color, rgb(&e["rgb"]), "{name}");
+                }
+                (Some("touch_cycle"), Message::TouchCycle { slots: cycle }) => {
+                    assert_eq!(*cycle, slots(&v["touch_cycle"]), "{name}");
+                }
+                (Some("alert_done"), Message::AlertDone { reason }) => {
+                    assert_eq!(*reason as u64, u(v, "reason"), "{name}");
                 }
                 (Some("ack"), Message::Ack { command }) => {
                     assert_eq!(u64::from(*command), u(v, "command"), "{name}");
@@ -752,19 +1057,42 @@ mod tests {
         p[0] = 0x82;
         p[2] = 61;
         assert_eq!(decode_message(&p), Err(DecodeError::BadLength(61)));
-        p[2] = 8;
+        p[2] = 9;
         assert_eq!(
             decode_message(&p),
-            Err(DecodeError::BodyTooShort(0x82, 8, 9))
+            Err(DecodeError::BodyTooShort(0x82, 9, 16))
         );
         p[0] = 0x42;
         assert_eq!(decode_message(&p), Err(DecodeError::UnknownType(0x42)));
-        let state = [0x82, 0, 9, 0, 0, 1, 9, 0, 50, 50, 1, 1];
+
+        // A STATE with a brightness mode of 9.
+        let state = [
+            0x82, 0, 16, 0, 0, 1, 4, 9, 50, 50, 1, 1, 0, 0, 0xFF, 0xFF, 0, 0, 0,
+        ];
         let mut p = [0u8; PAYLOAD_SIZE];
         p[..state.len()].copy_from_slice(&state);
         assert_eq!(
             decode_message(&p),
-            Err(DecodeError::BadValue("LampColor", 9))
+            Err(DecodeError::BadValue("BrightnessMode", 9))
+        );
+
+        // A TOUCH_CYCLE of 10 slots, one more than a cycle holds.
+        let mut p = [0u8; PAYLOAD_SIZE];
+        p[..4].copy_from_slice(&[0x87, 0, 10, 10]);
+        assert_eq!(
+            decode_message(&p),
+            Err(DecodeError::BadValue("touch cycle length", 10))
+        );
+    }
+
+    #[test]
+    fn a_touch_cycle_too_long_still_fits_the_report() {
+        let slots: Vec<u8> = (0..100).map(|s| s as u8).collect();
+        let payload = Command::SetTouchCycle { slots }.encode(1);
+        assert_eq!(payload[2] as usize, MAX_BODY_SIZE);
+        assert_eq!(
+            payload[HEADER_SIZE], 100,
+            "the true count, which the lamp refuses"
         );
     }
 
@@ -786,14 +1114,16 @@ mod tests {
 
     #[test]
     fn commands_deserialize_from_the_frontend_shape() {
-        let command: Command =
-            serde_json::from_str(r#"{"kind":"set_state","color":"warm_white","manual_level":40}"#)
-                .expect("set_state");
+        let command: Command = serde_json::from_str(
+            r#"{"kind":"set_state","color":4,"manual_level":40,"touch_mode":"power_only"}"#,
+        )
+        .expect("set_state");
         assert_eq!(
             command,
             Command::SetState(SetState {
-                color: Some(LampColor::WarmWhite),
+                color: Some(4),
                 manual_level: Some(40),
+                touch_mode: Some(TouchMode::PowerOnly),
                 ..SetState::default()
             })
         );
@@ -805,6 +1135,42 @@ mod tests {
         assert_eq!(command, Command::SetAutoBias { bias: -20 });
         let command: Command = serde_json::from_str(r#"{"kind":"self_test"}"#).expect("self_test");
         assert_eq!(command, Command::SelfTest);
+        let command: Command = serde_json::from_str(
+            r#"{"kind":"set_color","slot":5,"rgb":{"r":65535,"g":32768,"b":0}}"#,
+        )
+        .expect("set_color");
+        assert_eq!(
+            command,
+            Command::SetColor {
+                slot: 5,
+                rgb: LinearRgb {
+                    r: 65535,
+                    g: 32768,
+                    b: 0
+                }
+            }
+        );
+        let command: Command =
+            serde_json::from_str(r#"{"kind":"set_touch_cycle","slots":[0,5,1]}"#).expect("cycle");
+        assert_eq!(
+            command,
+            Command::SetTouchCycle {
+                slots: vec![0, 5, 1]
+            }
+        );
+        let command: Command =
+            serde_json::from_str(r#"{"kind":"alert","count":3,"period_ms":1300}"#).expect("alert");
+        assert_eq!(
+            command,
+            Command::Alert {
+                count: 3,
+                period_ms: 1300
+            }
+        );
+        let command: Command =
+            serde_json::from_str(r#"{"kind":"set_touch_sensitivity","percent":-15}"#)
+                .expect("sensitivity");
+        assert_eq!(command, Command::SetTouchSensitivity { percent: -15 });
     }
 
     #[test]

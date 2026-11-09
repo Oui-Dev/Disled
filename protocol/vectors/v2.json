@@ -1,5 +1,5 @@
 {
-  "description": "DISLED USB protocol v2 test vectors (version 2.0, draft). 'bytes' is the start of the 63-byte payload (after the report ID); the rest is zero. 0x09 and 0x0F are reserved: a lamp answers them with an unknown command error. SET_TOUCH_SENSITIVITY (0x10, capability bit 11) takes an i8 percent from -50 to +50, which DIAGNOSTICS reports in its last byte (offset 36, 37 bytes in all).",
+  "description": "Disled USB protocol v2 test vectors (version 2.0). 'bytes' is the start of the 63-byte payload (after the report ID); the rest is zero. A vector with \"canonical\": false is read but never sent as it is, and one with \"decode_error\" is a message of a version 1 lamp, which version 2 refuses. See protocol/README.md.",
   "protocol_version": [
     2,
     0
@@ -508,6 +508,10 @@
       "kind": "info",
       "seq": 1,
       "info": {
+        "protocol": [
+          2,
+          0
+        ],
         "fw_major": 2,
         "fw_minor": 0,
         "fw_patch": 0,
@@ -766,6 +770,48 @@
       },
       "bytes": "82 00 11 34 12 01 01 00 32 1e 01 01 00 ff ff 48 71 00 00 ab",
       "canonical": false
+    },
+    {
+      "name": "info_of_a_version_1_lamp",
+      "kind": "info",
+      "seq": 1,
+      "info": {
+        "protocol": [
+          1,
+          1
+        ],
+        "fw_major": 0,
+        "fw_minor": 1,
+        "fw_patch": 2,
+        "board_revision": 4,
+        "uid": "0102030405060708090a0b0c",
+        "capabilities": 3,
+        "reset_cause": 1,
+        "flags": 3,
+        "fault_mcause": 5,
+        "fault_mepc": 6700,
+        "fw_version": "0.1.2-3-gabcdef0"
+      },
+      "bytes": "81 01 38 01 01 00 01 02 04 01 02 03 04 05 06 07 08 09 0a 0b 0c 03 00 00 00 01 03 05 00 00 00 2c 1a 00 00 30 2e 31 2e 32 2d 33 2d 67 61 62 63 64 65 66 30 00 00 00 00 00 00 00 00",
+      "canonical": false
+    },
+    {
+      "name": "state_of_a_version_1_lamp",
+      "kind": "state",
+      "seq": 0,
+      "state": {
+        "state_seq": 4660,
+        "on": true,
+        "color": 1,
+        "brightness_mode": 0,
+        "manual_level": 50,
+        "applied_percent": 30,
+        "link": 1,
+        "source": 1
+      },
+      "bytes": "82 00 09 34 12 01 01 00 32 1e 01 01",
+      "canonical": false,
+      "decode_error": "body_too_short"
     }
   ]
 }
