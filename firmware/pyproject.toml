@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 The DISLED contributors
+# SPDX-FileCopyrightText: 2026 The Disled contributors
 #
 # Build and check tools of the firmware, at the versions the CI uses:
 # `uv sync` installs them in .venv, `uv run pio ...` runs them. uv.lock pins

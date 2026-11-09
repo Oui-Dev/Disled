@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 // Lamp diagnostics (GET_DIAGNOSTICS), asked every REFRESH_MS while the
 // Diagnostics window is open, and the production self-test (SELF_TEST).

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 // The last thing that failed, shown until something the user asked for
 // succeeds, the lamp comes back, or the user closes it. The window words

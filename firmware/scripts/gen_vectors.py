@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 The DISLED contributors
+# SPDX-FileCopyrightText: 2026 The Disled contributors
 # Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
 """Turn protocol/vectors/v1.json and v2.json into C headers for the unit tests.
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! The windows: the popup under the tray icon for daily use, and two that
 //! open on demand, Diagnostics and the lamp update.

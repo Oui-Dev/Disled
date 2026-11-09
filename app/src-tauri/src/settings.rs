@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! Settings kept on this computer. The lamp starts in automatic brightness and forgets
 //! its bias at each power-up, so the app applies the brightness ones at every

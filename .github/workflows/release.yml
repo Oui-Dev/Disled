@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 The DISLED contributors
+# SPDX-FileCopyrightText: 2026 The Disled contributors
 #
 # Releases (docs/releasing.md). On every push to main, release-please keeps
 # the release pull request up to date. Merging it tags fw-vX.Y.Z, app-vX.Y.Z

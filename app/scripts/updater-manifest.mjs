@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 // Writes the latest.json of an app release from the signatures of its installers:
 //   node scripts/updater-manifest.mjs <version> <download URL> <signature dir> [notes file]

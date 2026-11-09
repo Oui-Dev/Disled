@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   The Diagnostics window: the lamp's identity and its restart on top; its
   controls, its health and the self-test in tabs on the left; the live

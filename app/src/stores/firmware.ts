@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 // Lamp firmware updates. The backend looks for a new firmware along with the
 // app updates and runs the update; the popup offers it, and the lamp update

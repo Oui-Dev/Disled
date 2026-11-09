@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   Top of the Diagnostics window: connection, firmware and identity of the
   lamp, its restart, the last crash and the last error.

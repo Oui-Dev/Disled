@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   Self-test tab of the Diagnostics window (SELF_TEST): the lamp shows its
   colors, checks its light sensor and its touch, and reports. The checks are

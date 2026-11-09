@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   Off, then the four lamp colors, as a radio group whose choice the arrow
   keys move. The lamp owns its state, so the selection is its last STATE

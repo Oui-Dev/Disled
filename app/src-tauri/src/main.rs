@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! DISLED desktop app: a tray icon with a popup for daily use, a
 //! Diagnostics window, the USB worker behind both, the app updates and the

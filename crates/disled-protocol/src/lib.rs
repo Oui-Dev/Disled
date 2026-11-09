@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! Command encoder and message decoder of the DISLED USB HID protocol v1.1,
 //! which `protocol/README.md` specifies. The functions do no I/O; the desktop

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! The wchisp flasher, GPL-2.0, which this code cannot link: it runs as a separate
 //! program, read through its log lines. Those below are of wchisp 0.3.0, which the

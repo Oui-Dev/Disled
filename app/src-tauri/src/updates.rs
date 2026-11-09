@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! App updates: the signed `latest.json` of the latest release, checked at start-up
 //! and then daily with the lamp firmware. The popup offers the update, installed only

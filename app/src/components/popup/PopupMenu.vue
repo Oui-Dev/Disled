@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   The "more" menu of the popup settings, for the rare actions: check for
   updates, open Diagnostics, reinstall the lamp firmware. Its last lines

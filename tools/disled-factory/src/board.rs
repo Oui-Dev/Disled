@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! One board on the station: its bootloader, the flash, what the lamp then
 //! reports, the self-test with the operator, and its row in the log.

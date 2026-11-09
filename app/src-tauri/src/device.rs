@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! Connection to the lamp on a worker thread: discovery and reconnection,
 //! command writes, message reads. Results reach the frontend as events.

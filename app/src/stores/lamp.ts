@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 // The lamp as one window sees it: the connection, its identity (INFO) and
 // its state (STATE). The lamp owns its state, so the window only shows the

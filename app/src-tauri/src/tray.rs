@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! The tray icon, in the menu bar on macOS and the notification area on
 //! Windows: a square in the color of the lamp, a short menu, and the click

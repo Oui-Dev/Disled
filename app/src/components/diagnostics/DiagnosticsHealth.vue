@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   Health tab of the Diagnostics window: the lamp diagnostics (GET_DIAGNOSTICS)
   by theme, one value per row, and a warning on the rows that need a look.

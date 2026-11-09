@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   The lamp update window. It guides the user through a firmware update, with
   the BOOT and RESET buttons and the Windows driver, while the backend

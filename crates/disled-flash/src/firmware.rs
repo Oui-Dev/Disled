@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! The firmware files of the releases: the release build `disled-fw-X.Y.Z.hex`,
 //! signed with the update key, its name and version in the signed comment, since

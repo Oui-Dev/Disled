@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   The active step of a lamp update: what it does, or what it needs from the
   user, such as the BOOT and RESET buttons, the Windows driver or a device

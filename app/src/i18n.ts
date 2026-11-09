@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 // Translations of the windows. The messages live in src/locales, shared
 // with the backend (src-tauri/src/i18n.rs), which also picks the language

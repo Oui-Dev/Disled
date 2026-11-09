@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! Lamp firmware updates: the newest firmware release, looked for with the app updates,
 //! then on request its download and signature check, the wait for the ROM bootloader

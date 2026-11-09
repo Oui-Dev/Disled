@@ -17,7 +17,7 @@ Third-party code keeps its own license:
 
 ## Software notice
 
-Copyright (C) 2026 The DISLED contributors
+Copyright (C) 2026 The Disled contributors
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the Free
@@ -52,7 +52,7 @@ Every source file points to this permission with a header like:
 
 ```
 SPDX-License-Identifier: GPL-3.0-or-later
-SPDX-FileCopyrightText: 2026 The DISLED contributors
+SPDX-FileCopyrightText: 2026 The Disled contributors
 Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
 ```
 

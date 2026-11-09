@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   The last telemetry sample as four tiles: touch, light, LED current and
   level, each with a detail. Two columns, four when the panel is wide.

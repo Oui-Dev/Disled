@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   Live telemetry for tuning the touch, the light sensor and the heat: the
   stream period, the last figures, three charts, and CSV recordings at the

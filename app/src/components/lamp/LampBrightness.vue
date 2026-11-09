@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   Brightness, automatic with a "darker / brighter" correction, or a fixed level, with
   an Auto switch. The slider moves only under the user's hand, and the level in use

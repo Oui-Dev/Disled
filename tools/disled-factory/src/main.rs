@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! DISLED production tool (docs/production.md). For each board, it flashes the
 //! release build with wchisp, checks what the lamp reports, runs its self-test
