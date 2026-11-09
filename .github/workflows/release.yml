@@ -112,6 +112,21 @@ jobs:
           npx --yes "@tauri-apps/cli@$cli" signer sign --app-version "$version" "dist/disled-fw-$version.hex"
           gh release upload "$TAG" dist/* --clobber
 
+  firmware-publish:
+    # When the app releases too, only once its installers are built and
+    # attached: a failed app build must not leave a new firmware published
+    # alone, since the app before it would offer it to every lamp.
+    needs: [release-please, firmware, app]
+    if: >-
+      always()
+      && needs.firmware.result == 'success'
+      && (needs.app.result == 'success' || needs.app.result == 'skipped')
+    runs-on: ubuntu-24.04
+    env:
+      TAG: ${{ needs.release-please.outputs.firmware-tag }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
       - name: Publish the release
         # Never as the latest release, which is the app's.
         run: gh release edit "$TAG" --draft=false --latest=false
@@ -194,7 +209,7 @@ jobs:
       - name: Check the macOS signature
         if: runner.os == 'macOS'
         working-directory: target/release/bundle/macos
-        run: codesign --verify --deep --strict --verbose=2 DISLED.app
+        run: codesign --verify --deep --strict --verbose=2 Disled.app
 
       # The disk image window shows its background, with the first-launch
       # steps, only if Finder saved its layout into the image.
@@ -203,7 +218,7 @@ jobs:
         working-directory: target/release/bundle/dmg
         run: |
           mount=$(mktemp -d)
-          hdiutil attach -readonly -nobrowse -mountpoint "$mount" DISLED_*.dmg
+          hdiutil attach -readonly -nobrowse -mountpoint "$mount" Disled_*.dmg
           trap 'hdiutil detach "$mount"' EXIT
           grep -q backgroundImageAlias "$mount/.DS_Store"
 
@@ -212,9 +227,9 @@ jobs:
         run: |
           # The macOS updater archive has neither version nor architecture
           # in its name.
-          if [ -f macos/DISLED.app.tar.gz ]; then
+          if [ -f macos/Disled.app.tar.gz ]; then
             for ext in "" .sig; do
-              mv "macos/DISLED.app.tar.gz$ext" "macos/DISLED_${TAG#app-v}_aarch64.app.tar.gz$ext"
+              mv "macos/Disled.app.tar.gz$ext" "macos/Disled_${TAG#app-v}_aarch64.app.tar.gz$ext"
             done
           fi
           find . -type f \
@@ -227,6 +242,9 @@ jobs:
     # follows.
     needs: [release-please, app]
     if: needs.release-please.outputs.app-released == 'true'
+    # Waits for the approval of a maintainer, who gives it once the firmware
+    # of the same day is published (docs/releasing.md).
+    environment: app-publish
     runs-on: ubuntu-24.04
     env:
       TAG: ${{ needs.release-please.outputs.app-tag }}
