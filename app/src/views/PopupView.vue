@@ -155,7 +155,10 @@ const back = computed<Page | null>(() => {
         <LampV1Warning />
         <!-- An integration picks the color: only the switch and its card stay. -->
         <LampIntegrationRow v-if="control.status.mode" />
-        <LampColorPicker v-else @manage="show('colors')" @create="edit(null, 'lamp')" />
+        <div v-else class="flex flex-col gap-2">
+          <LampColorPicker @manage="show('colors')" @create="edit(null, 'lamp')" />
+          <LampCallLine />
+        </div>
         <LampBrightness />
       </section>
 

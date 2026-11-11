@@ -60,7 +60,15 @@
   "calls": {
     "title": "Calls",
     "manualOnly": "Manual mode only",
-    "mic": "Microphone in use"
+    "mic": "Microphone in use",
+    "during": "During a call:",
+    "colorLabel": "Color during a call: {name}",
+    "popoverTitle": "During a call",
+    "popoverLabel": "Color during a call",
+    "inCall": "In a call",
+    "then": "· then {name}",
+    "detected": "Call detected by the microphone",
+    "micPrefix": "Microphone in use:"
   },
   "integrations": {
     "noEvent": "No event received",

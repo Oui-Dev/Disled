@@ -31,6 +31,7 @@ declare module 'vue' {
     IntegrationsNote: typeof import('./components/integrations/IntegrationsNote.vue')['default']
     IntegrationsPermissions: typeof import('./components/integrations/IntegrationsPermissions.vue')['default']
     LampBrightness: typeof import('./components/lamp/LampBrightness.vue')['default']
+    LampCallLine: typeof import('./components/lamp/LampCallLine.vue')['default']
     LampColorPicker: typeof import('./components/lamp/LampColorPicker.vue')['default']
     LampIntegrationRow: typeof import('./components/lamp/LampIntegrationRow.vue')['default']
     LampModeMenu: typeof import('./components/lamp/LampModeMenu.vue')['default']
