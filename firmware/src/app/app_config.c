@@ -97,10 +97,11 @@ const color_config_t app_color_config = {
  * white at 10 % gives light only with its 58 ns. */
 const uint16_t app_led_pulse_loss_ns[LED_CHANNEL_COUNT] = { 63, 42, 58 };
 
-/* The white of the custom colors: the light of #EAFF8C at 2 % on a lamp with
- * no balance, which looked neutral through the PLA, its duties of 137, 175
- * and 100 sub-ticks less the pulse losses. Equal duties show violet. */
-const rgb16_t app_led_white_balance = { 33025, 65535, 17029 };
+/* The white of the custom colors, judged by eye through the PLA: the light
+ * of #EAFF8C at 2 % on a lamp with no balance (its duties less the pulse
+ * losses), then that of #FFFDE0 on the balanced lamp, which looked more
+ * neutral. Equal duties show violet. */
+const rgb16_t app_led_white_balance = { 33622, 65535, 12922 };
 
 /* Worst-case LED currents at 100 % duty, at 5.25 V and the lowest forward
  * voltage (constraint N2 in hardware/README.md). 70 mA plus about 25 mA for
