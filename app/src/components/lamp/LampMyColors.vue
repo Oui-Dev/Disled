@@ -7,12 +7,15 @@
   The popover lists the custom colors in the order they were made, then
   "New" while there are fewer than five, with "Manage" toward the library.
   In the Diagnostics window, `standalone` leaves out the links to the pages
-  of the popup.
+  of the popup. While an integration picks the color, which only that window
+  shows, the tile takes no color of the lamp, and a choice takes the lamp
+  back to the manual mode.
 -->
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useColorsStore } from '@/stores/colors';
+import { useControlStore } from '@/stores/control';
 import { useLampStore } from '@/stores/lamp';
 import { BUILT_IN_COLORS } from '@/utils/lamp';
 
@@ -25,13 +28,14 @@ const emit = defineEmits<{ manage: []; create: [] }>();
 const { t } = useI18n();
 const lamp = useLampStore();
 const colors = useColorsStore();
+const control = useControlStore();
 
 const open = ref(false);
 
-/** The custom color the lamp shows, which the tile takes. */
+/** The custom color the lamp shows, which the tile takes, in manual mode. */
 const current = computed(() => {
   const state = lamp.state;
-  return state?.on && state.color >= BUILT_IN_COLORS.length
+  return control.status.mode === null && state?.on && state.color >= BUILT_IN_COLORS.length
     ? colors.custom.find((color) => color.slot === state.color)
     : undefined;
 });
@@ -44,12 +48,15 @@ const tileLabel = computed(() =>
 
 const chosen = computed(() => current.value?.slot);
 
-function choose(slot: number | string): void {
+async function choose(slot: number | string): Promise<void> {
   if (typeof slot !== 'number') {
     return;
   }
   open.value = false;
-  void lamp.choose({ on: true, slot });
+  if (control.status.mode !== null) {
+    await control.setMode(null);
+  }
+  await lamp.choose({ on: true, slot });
 }
 
 function go(page: 'manage' | 'create'): void {

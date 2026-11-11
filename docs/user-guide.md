@@ -375,7 +375,8 @@ sees, and helps to report a problem.
   the lamp last restarted. **Restart** restarts the lamp, which comes back
   green in a few seconds.
 - **Lamp.** The controls of the popup. While the lamp follows an
-  integration, the colors only turn it on and off.
+  integration, no color is checked there, and choosing one, or **Off**,
+  takes the lamp back to manual.
 - **Health.** The lamp's counters: restarts, crashes, light sensor, touch,
   USB sleeps, and both corrections. A badge on the tab shows when something
   needs a look.

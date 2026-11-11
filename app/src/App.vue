@@ -33,7 +33,7 @@ const WINDOWS: Record<string, WindowSetup> = {
   },
   diagnostics: {
     view: defineAsyncComponent(() => import('@/views/DiagnosticsView.vue')),
-    stores: [useLampStore, useColorsStore, useTelemetryStore, useDiagnosticsStore],
+    stores: [useLampStore, useColorsStore, useControlStore, useTelemetryStore, useDiagnosticsStore],
   },
   integrations: {
     view: defineAsyncComponent(() => import('@/views/IntegrationsView.vue')),

@@ -8,13 +8,16 @@
   the row 8 px wider on each side. The lamp owns its state, so the selection
   is its last STATE message: a custom color checks no radio, and the sixth
   tile takes it. In the Diagnostics window, `standalone` leaves out the links
-  to the pages of the popup.
+  to the pages of the popup. That window also shows the tiles while an
+  integration picks the color: then no tile is checked, and a choice, off
+  included, takes the lamp back to the manual mode.
 -->
 <script setup lang="ts">
 import { computed, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useTileNames } from '@/composables/useTileNames';
 import { useColorsStore } from '@/stores/colors';
+import { useControlStore } from '@/stores/control';
 import { useLampStore } from '@/stores/lamp';
 import { BUILT_IN_COLORS } from '@/utils/lamp';
 
@@ -27,6 +30,10 @@ type Choice = number | 'off' | 'other';
 const { t } = useI18n();
 const lamp = useLampStore();
 const colors = useColorsStore();
+const control = useControlStore();
+
+/** An integration picks the color. */
+const following = computed(() => control.status.mode !== null);
 
 // A radio group emits the type of its items' values.
 const items = computed<{ value: Choice; label: string }[]>(() => [
@@ -38,6 +45,11 @@ const selected = computed<Choice | undefined>(() => {
   const state = lamp.state;
   if (!state) {
     return undefined;
+  }
+  // The color is the integration's: every tile, the lit one included, is a
+  // choice that takes the lamp back.
+  if (following.value) {
+    return 'other';
   }
   if (!state.on) {
     return 'off';
@@ -71,11 +83,17 @@ function swatch(choice: Choice): { background: string } | undefined {
   return color ? { background: color.swatch } : undefined;
 }
 
-function select(choice: Choice): void {
+async function select(choice: Choice): Promise<void> {
+  if (choice === 'other') {
+    return;
+  }
+  if (following.value) {
+    await control.setMode(null);
+  }
   if (choice === 'off') {
-    void lamp.choose({ on: false });
-  } else if (typeof choice === 'number') {
-    void lamp.choose({ on: true, slot: choice });
+    await lamp.choose({ on: false });
+  } else {
+    await lamp.choose({ on: true, slot: choice });
   }
 }
 </script>
