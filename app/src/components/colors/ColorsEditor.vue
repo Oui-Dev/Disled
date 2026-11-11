@@ -67,6 +67,14 @@ const canSave = computed(() => name.value.trim().length > 0);
 const suggestion = computed(
   () => SUGGESTIONS.find((candidate) => candidate.hex === hex.value)?.hex,
 );
+// Null among the values, which the group takes when the color is none of
+// the suggestions.
+const suggestions = computed<{ value: string | null; label: string }[]>(() =>
+  SUGGESTIONS.map((item) => ({
+    value: item.hex,
+    label: t(`colors.editor.suggestion.${item.key}`),
+  })),
+);
 
 /** A code the user typed or picked: the sliders follow it, a grey keeps the hue. */
 function take(code: string): void {
@@ -193,15 +201,12 @@ defineExpose({ save, canSave });
       />
     </div>
 
+    <!-- Never without a value: a radio group mounted without one keeps its
+         own selection, through Reka's passive v-model, and one mounted again
+         at each choice would lose the focus of the arrow keys. -->
     <URadioGroup
-      :key="suggestion ?? 'none'"
-      :model-value="suggestion"
-      :items="
-        SUGGESTIONS.map((item) => ({
-          value: item.hex,
-          label: t(`colors.editor.suggestion.${item.key}`),
-        }))
-      "
+      :model-value="suggestion ?? null"
+      :items="suggestions"
       :legend="t('colors.editor.suggestions')"
       orientation="horizontal"
       indicator="hidden"
