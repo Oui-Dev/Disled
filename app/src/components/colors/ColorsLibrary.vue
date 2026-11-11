@@ -112,7 +112,7 @@ const groups = computed(() => [colors.builtIn, colors.custom].filter((group) => 
             </span>
             <button
               type="button"
-              class="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-[11px] font-semibold tabular-nums"
+              class="flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums"
               :class="
                 place(color.slot)
                   ? 'bg-inverted text-inverted'
@@ -151,7 +151,7 @@ const groups = computed(() => [colors.builtIn, colors.custom].filter((group) => 
       <button
         v-if="!colors.full"
         type="button"
-        class="flex h-8 cursor-pointer items-center gap-2.5 text-start text-sm text-muted hover:text-default"
+        class="flex h-8 items-center gap-2.5 text-start text-sm text-muted hover:text-default"
         @click="emit('create')"
       >
         <span
@@ -178,7 +178,7 @@ const groups = computed(() => [colors.builtIn, colors.custom].filter((group) => 
 
     <button
       type="button"
-      class="flex cursor-pointer items-center gap-2 py-1 text-start text-sm text-default"
+      class="flex items-center gap-2 py-1 text-start text-sm text-default"
       @click="emit('share')"
     >
       <UIcon name="i-lucide-share-2" class="size-4 shrink-0 text-muted" />

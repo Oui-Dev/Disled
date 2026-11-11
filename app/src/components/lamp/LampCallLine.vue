@@ -86,7 +86,7 @@ function choose(slot: unknown): void {
       >
         <button
           type="button"
-          class="inline-flex min-w-0 cursor-pointer items-center gap-0.5 rounded font-medium text-highlighted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75"
+          class="inline-flex min-w-0 items-center gap-0.5 rounded font-medium text-highlighted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75"
           :disabled="lamp.locked"
           :aria-label="t('calls.colorLabel', { name: callColor?.name ?? '' })"
           aria-haspopup="dialog"

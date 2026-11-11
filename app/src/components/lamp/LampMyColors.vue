@@ -71,7 +71,7 @@ function go(page: 'manage' | 'create'): void {
   >
     <button
       type="button"
-      class="group flex min-w-0 flex-1 cursor-pointer flex-col items-center gap-1.5 rounded-lg py-1 disabled:cursor-not-allowed disabled:opacity-75"
+      class="group flex min-w-0 flex-1 flex-col items-center gap-1.5 rounded-lg py-1 disabled:cursor-not-allowed disabled:opacity-75"
       :disabled="lamp.locked"
       :aria-label="tileLabel"
       aria-haspopup="dialog"
@@ -145,7 +145,7 @@ function go(page: 'manage' | 'create'): void {
           <button
             v-if="!standalone && !colors.full"
             type="button"
-            class="group flex min-w-0 cursor-pointer flex-col items-center gap-1.5 rounded-lg py-1"
+            class="group flex min-w-0 flex-col items-center gap-1.5 rounded-lg py-1"
             @click="go('create')"
           >
             <span
