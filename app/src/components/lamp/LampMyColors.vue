@@ -14,6 +14,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useArrowChoice } from '@/composables/useArrowChoice';
 import { useColorsStore } from '@/stores/colors';
 import { useControlStore } from '@/stores/control';
 import { useLampStore } from '@/stores/lamp';
@@ -31,6 +32,7 @@ const colors = useColorsStore();
 const control = useControlStore();
 
 const open = ref(false);
+const { listeners, closes } = useArrowChoice(open);
 
 /** The custom color the lamp shows, which the tile takes, in manual mode. */
 const current = computed(() => {
@@ -48,11 +50,18 @@ const tileLabel = computed(() =>
 
 const chosen = computed(() => current.value?.slot);
 
-async function choose(slot: number | string): Promise<void> {
+// Null among the values, which the group takes when no color is chosen.
+const items = computed<{ value: number | null; label: string }[]>(() =>
+  colors.custom.map((color) => ({ value: color.slot, label: color.name })),
+);
+
+async function choose(slot: number | null): Promise<void> {
   if (typeof slot !== 'number') {
     return;
   }
-  open.value = false;
+  if (closes()) {
+    open.value = false;
+  }
   if (control.status.mode !== null) {
     await control.setMode(null);
   }
@@ -108,7 +117,12 @@ function go(page: 'manage' | 'create'): void {
     </UButton>
 
     <template #content>
-      <div role="dialog" :aria-label="t('colors.mine.title')" class="flex flex-col gap-3">
+      <div
+        role="dialog"
+        :aria-label="t('colors.mine.title')"
+        class="flex flex-col gap-3"
+        v-bind="listeners"
+      >
         <div class="flex items-center justify-between gap-2">
           <p class="text-sm font-semibold text-highlighted">{{ t('colors.mine.title') }}</p>
           <UButton
@@ -123,11 +137,13 @@ function go(page: 'manage' | 'create'): void {
           </UButton>
         </div>
         <div class="grid grid-cols-4 gap-x-2 gap-y-3">
+          <!-- Never without a value, null when the lamp shows none of these
+               colors: a radio group mounted without one keeps its own
+               selection, through Reka's passive v-model. -->
           <URadioGroup
             v-if="colors.custom.length"
-            :key="chosen ?? 'none'"
-            :model-value="chosen"
-            :items="colors.custom.map((color) => ({ value: color.slot, label: color.name }))"
+            :model-value="chosen ?? null"
+            :items="items"
             :legend="t('colors.mine.title')"
             orientation="horizontal"
             indicator="hidden"
@@ -152,7 +168,7 @@ function go(page: 'manage' | 'create'): void {
                 class="block size-9 rounded-[20%] border border-accented ring-2 ring-transparent ring-offset-2 ring-offset-bg transition-shadow group-has-data-[state=checked]:ring-inverted"
                 :style="{ background: colors.color(Number(item.value))?.hex }"
               />
-              <LampTileName :name="item.label ?? ''" />
+              <LampTileName :name="item.label ?? ''" :named="false" />
             </template>
           </URadioGroup>
           <UButton

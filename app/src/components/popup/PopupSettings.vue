@@ -64,7 +64,12 @@ const cards = { legend: 'text-sm', fieldset: 'flex-nowrap gap-2', item: 'min-w-0
     </div>
     <PopupTouchSensitivity />
 
+    <!-- Reka names each radio once, from its label: the group mounts again
+         in a new language. Not the group of the languages, which would lose
+         the focus of the keyboard that changes it; only its "System" keeps
+         the former language, until the page closes. -->
     <URadioGroup
+      :key="settingsStore.locale"
       :model-value="settings?.color_mode"
       :items="colorModes"
       :legend="t('settings.colorMode')"

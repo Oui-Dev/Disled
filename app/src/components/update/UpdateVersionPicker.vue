@@ -28,7 +28,7 @@ const chosen = defineModel<string | null>({ required: true });
 /** More versions than this, and the others go to the menu. */
 const MAX_ROWS = 4;
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const crowded = computed(() => props.versions.length > MAX_ROWS);
 /** The version last picked in the menu, which stays in the list. */
@@ -121,7 +121,10 @@ async function closeAutoFocus(event: Event): Promise<void> {
     </div>
 
     <div ref="list" class="flex flex-col">
+      <!-- Reka names each radio once, from its label and its badges: the
+           group mounts again when they change. -->
       <URadioGroup
+        :key="`${latest}|${current}|${locale}`"
         :model-value="chosen ?? undefined"
         :items="rows"
         variant="table"

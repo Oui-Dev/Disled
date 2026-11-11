@@ -13,6 +13,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useArrowChoice } from '@/composables/useArrowChoice';
 import { useColorsStore } from '@/stores/colors';
 import { useControlStore } from '@/stores/control';
 import { useLampStore } from '@/stores/lamp';
@@ -25,6 +26,7 @@ const colors = useColorsStore();
 const settingsStore = useSettingsStore();
 
 const open = ref(false);
+const { listeners, closes } = useArrowChoice(open);
 
 const calls = computed(() => settingsStore.settings?.calls);
 const shown = computed(
@@ -51,12 +53,15 @@ const items = computed(() => {
   }));
 });
 
-/** Saves the color of the calls, and closes the popover, as "My colors" does. */
+/** Saves the color of the calls, and closes the popover unless the arrow
+ * keys moved the choice, as "My colors" does. */
 function choose(slot: unknown): void {
   if (typeof slot !== 'number') {
     return;
   }
-  open.value = false;
+  if (closes()) {
+    open.value = false;
+  }
   void settingsStore.update({ calls_color: slot });
 }
 </script>
@@ -97,7 +102,7 @@ function choose(slot: unknown): void {
         />
 
         <template #content>
-          <div role="dialog" :aria-label="t('calls.popoverLabel')">
+          <div role="dialog" :aria-label="t('calls.popoverLabel')" v-bind="listeners">
             <div class="flex h-6 items-center justify-between gap-2 px-1 text-xs font-medium">
               <span class="text-highlighted">{{ t('calls.popoverTitle') }}</span>
               <span class="truncate text-muted">{{ callColor?.name }}</span>

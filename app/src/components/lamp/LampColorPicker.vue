@@ -40,6 +40,7 @@ const items = computed<{ value: Choice; label: string }[]>(() => [
   { value: 'off', label: t('lamp.colors.off') },
   ...colors.builtIn.map((color) => ({ value: color.slot, label: color.name })),
 ]);
+const names = computed(() => items.value.map((item) => item.label).join('\n'));
 
 const selected = computed<Choice | undefined>(() => {
   const state = lamp.state;
@@ -106,9 +107,11 @@ async function select(choice: Choice): Promise<void> {
     <div ref="row" class="-mx-2 flex">
       <!-- A radio group mounted without a value keeps its own selection for
            good, through Reka's passive v-model. It mounts again once the state
-           is known, so a command the lamp did not apply never shows as chosen. -->
+           is known, so a command the lamp did not apply never shows as chosen.
+           It also mounts again with new names, since Reka names each radio
+           once, from its label. -->
       <URadioGroup
-        :key="selected === undefined ? 'unknown' : 'known'"
+        :key="`${selected === undefined ? 'unknown' : 'known'}:${names}`"
         :model-value="selected"
         :items="items"
         :legend="t('lamp.colors.legend')"
@@ -135,7 +138,7 @@ async function select(choice: Choice): Promise<void> {
             :class="{ 'swatch-off': item.value === 'off' }"
             :style="swatch(item.value)"
           />
-          <LampTileName :name="item.label" :narrow="narrowAt(item.value)" />
+          <LampTileName :name="item.label" :narrow="narrowAt(item.value)" :named="false" />
         </template>
       </URadioGroup>
       <LampMyColors
