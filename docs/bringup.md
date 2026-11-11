@@ -57,9 +57,9 @@ Equipment:
       `app_color_config`, and the self-test repeats its warm white in
       `app_self_test_config.white`.
 - [ ] Warm white keeps the same hue at 3, 10, 30 and 100 % (`set level`).
-      If the low levels drift, yellow when blue is missing or pink when
-      green is, raise the pulse loss of the missing channel,
-      `app_led_pulse_loss_ns`, starting at 3 %.
+      If the low levels drift, yellow-green when red is missing, yellow
+      when blue is or pink when green is, raise the pulse loss of the
+      missing channel, `app_led_pulse_loss_ns`, starting at 3 %.
 - [ ] `set level 1` is still visible in a dark room, and `set level 100` is
       bright.
 - [ ] `state` shows sensible duties and the estimated current.

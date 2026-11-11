@@ -89,11 +89,13 @@ const color_config_t app_color_config = {
 };
 /* clang-format on */
 
-/* Light lost per pulse by the driver edges, in ns, tuned by eye on warm
- * white. A tick lasts 14 ns at 72 MHz. Without it, the 1-tick blue of warm
- * white at 10 % gives no light and the color turns yellow. With the
- * dithering, a blue of 4 3/16 ticks suits both 3 and 10 %. */
-const uint16_t app_led_pulse_loss_ns[LED_CHANNEL_COUNT] = { 28, 42, 58 };
+/* Light lost per pulse by the driver edges, in ns; a tick lasts 14 ns at
+ * 72 MHz. Measured with a camera on two whites, yellow, cyan and magenta,
+ * from 1 to 30 %: with 28 ns of red, every color with red lost it at the
+ * bottom, a warm white at 3 % about a fifth, and turned yellow-green. The
+ * green and the blue keep their hue together: the 1-tick blue of a warm
+ * white at 10 % gives light only with its 58 ns. */
+const uint16_t app_led_pulse_loss_ns[LED_CHANNEL_COUNT] = { 63, 42, 58 };
 
 /* Worst-case LED currents at 100 % duty, at 5.25 V and the lowest forward
  * voltage (constraint N2 in hardware/README.md). 70 mA plus about 25 mA for
