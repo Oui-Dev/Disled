@@ -56,10 +56,12 @@ Equipment:
       closed enclosure, because the PLA shifts them. The palette is
       `app_color_config`, and the self-test repeats its warm white in
       `app_self_test_config.white`.
-- [ ] Warm white keeps the same hue at 3, 10, 30 and 100 % (`set level`).
-      If the low levels drift, yellow-green when red is missing, yellow
-      when blue is or pink when green is, raise the pulse loss of the
-      missing channel, `app_led_pulse_loss_ns`, starting at 3 %.
+- [ ] Warm white keeps the same hue at 1, 3, 10, 30 and 100 %
+      (`set level`), and so does a custom white from 2 to 30 %. If a low
+      level drifts, yellow-green when red is missing, yellow when blue is or
+      pink when green is, raise the pulse loss of the missing channel in
+      `app_led_pulse_loss`, at the light of its pulses there; lower the
+      loss of a channel that is too strong.
 - [ ] A custom white, `#FFFFFF` from the app, looks neutral through the
       closed enclosure at 30 % and keeps its hue from 2 to 100 %. If it
       leans to a hue, pick the hex that looks neutral in the color editor:

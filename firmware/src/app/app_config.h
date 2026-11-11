@@ -12,6 +12,7 @@
 #include "brightness.h"
 #include "color.h"
 #include "drivers/tkey.h"
+#include "led_output.h"
 #include "power_limiter.h"
 #include "self_test.h"
 #include "touch_detector.h"
@@ -58,8 +59,13 @@ extern const touch_config_t app_touch_config;
 extern const brightness_config_t app_brightness_config;
 extern const color_config_t app_color_config;
 extern const power_config_t app_power_config;
-/* Light lost per PWM pulse, per channel (see led_output_config_t). */
-extern const uint16_t app_led_pulse_loss_ns[LED_CHANNEL_COUNT];
+/* Light lost per PWM pulse, per channel, in ns: points of the pulse that the
+ * light needs and of the loss added to it (led_loss_curve_t). */
+typedef struct {
+    uint16_t signal_ns[LED_LOSS_POINTS];
+    uint16_t loss_ns[LED_LOSS_POINTS];
+} app_loss_curve_t;
+extern const app_loss_curve_t app_led_pulse_loss[LED_CHANNEL_COUNT];
 /* Gains of the custom colors, fractions of 65535 (palette_light). */
 extern const rgb16_t app_led_white_balance;
 extern const self_test_config_t app_self_test_config;

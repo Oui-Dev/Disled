@@ -89,13 +89,30 @@ const color_config_t app_color_config = {
 };
 /* clang-format on */
 
-/* Light lost per pulse by the driver edges, in ns; a tick lasts 14 ns at
- * 72 MHz. Measured with a camera on two whites, yellow, cyan and magenta,
- * from 1 to 30 %: with 28 ns of red, every color with red lost it at the
- * bottom, a warm white at 3 % about a fifth, and turned yellow-green. The
- * green and the blue keep their hue together: the 1-tick blue of a warm
- * white at 10 % gives light only with its 58 ns. */
-const uint16_t app_led_pulse_loss_ns[LED_CHANNEL_COUNT] = { 63, 42, 58 };
+/* Light lost per pulse by the driver edges, in ns, by the light the pulse
+ * should give; a tick lasts 14 ns at 72 MHz. The gates of the MOSFETs charge
+ * through 100 Ω (R7 to R9) and take about 100 ns to switch: a pulse of a few
+ * ticks gives no light, the next ticks give up to twice the light of the
+ * ticks of a long pulse. One loss per channel, right for the shortest
+ * pulses, made a white pink from 3 to 20 % and a warm white red at 1 and
+ * 2 %. Measured with a camera, each LED alone and with another, then set by
+ * eye through the PLA. */
+/* clang-format off: keep the table readable */
+const app_loss_curve_t app_led_pulse_loss[LED_CHANNEL_COUNT] = {
+    [LED_CHANNEL_RED] = {
+        .signal_ns = { 56, 170, 289, 521, 868, 868, 868, 868 },
+        .loss_ns =   { 63,  47,  33,  19,  15,  15,  15,  15 },
+    },
+    [LED_CHANNEL_GREEN] = {
+        .signal_ns = { 25,  55, 111, 222, 222, 222, 222, 222 },
+        .loss_ns =   { 52,  48,  45,  42,  42,  42,  42,  42 },
+    },
+    [LED_CHANNEL_BLUE] = {
+        .signal_ns = { 22,  64, 111, 294, 294, 294, 294, 294 },
+        .loss_ns =   { 58,  50,  44,  40,  40,  40,  40,  40 },
+    },
+};
+/* clang-format on */
 
 /* The white of the custom colors, judged by eye through the PLA: the light
  * of #EAFF8C at 2 % on a lamp with no balance (its duties less the pulse

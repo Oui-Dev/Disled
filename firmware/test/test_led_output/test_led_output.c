@@ -61,13 +61,33 @@ void tearDown(void)
 {
 }
 
+/* A loss of `loss` sub-ticks whatever the pulse. */
+static led_loss_curve_t flat_loss(uint16_t loss)
+{
+    led_loss_curve_t curve = { 0 };
+    for (size_t i = 0; i < LED_LOSS_POINTS; i++) {
+        curve.loss[i] = loss;
+    }
+    return curve;
+}
+
+/* The green duty at a level, with or without its loss curve. */
+static uint16_t green_duty(const led_output_config_t *cfg, uint16_t level_permille)
+{
+    led_output_init(&out, cfg);
+    in.level_permille = level_permille;
+    led_output_update(&out, &in, 0, duty);
+    led_output_update(&out, &in, 1000, duty);
+    return duty[LED_CHANNEL_GREEN];
+}
+
 static void test_pulse_loss_is_added_to_lit_channels_only(void)
 {
     static led_output_config_t lossy;
     lossy = config;
     lossy.fade_ms = 0;
-    lossy.pulse_loss[LED_CHANNEL_GREEN] = 80;
-    lossy.pulse_loss[LED_CHANNEL_BLUE] = 80;
+    lossy.pulse_loss[LED_CHANNEL_GREEN] = flat_loss(80);
+    lossy.pulse_loss[LED_CHANNEL_BLUE] = flat_loss(80);
     led_output_init(&out, &lossy);
 
     /* Green at a low level gains the loss; blue stays dark. */
@@ -87,6 +107,38 @@ static void test_pulse_loss_is_added_to_lit_channels_only(void)
     led_output_update(&out, &in, 0, duty);
     led_output_update(&out, &in, 10, duty);
     TEST_ASSERT_EQUAL_UINT16(FULL, duty[LED_CHANNEL_GREEN]);
+}
+
+static void test_short_pulses_lose_more_along_the_curve(void)
+{
+    /* 90 sub-ticks up to a signal of 100, 60 at 200, 40 from 400 on. */
+    static led_output_config_t lossy;
+    lossy = config;
+    lossy.pulse_loss[LED_CHANNEL_GREEN] = (led_loss_curve_t){
+        .signal = { 100, 200, 400, 400, 400, 400, 400, 400 },
+        .loss = { 90, 60, 40, 40, 40, 40, 40, 40 },
+    };
+    /* The signal is the duty with no loss: levels 1, 3, 5 and 15 % give 64,
+     * 191, 319 and 1036 sub-ticks. */
+    const uint16_t levels[] = { 10, 30, 50, 150 };
+    for (size_t i = 0; i < sizeof levels / sizeof levels[0]; i++) {
+        const uint16_t signal = green_duty(&config, levels[i]);
+        const uint16_t lossy_duty = green_duty(&lossy, levels[i]);
+        uint16_t expected = 40;
+        if (signal <= 100u) {
+            expected = 90;
+        } else if (signal < 200u) {
+            expected = (uint16_t)(90 - (30 * (signal - 100)) / 100);
+        } else if (signal < 400u) {
+            expected = (uint16_t)(60 - (20 * (signal - 200)) / 200);
+        }
+        TEST_ASSERT_EQUAL_UINT16(signal + expected, lossy_duty);
+    }
+    /* Each level of the list falls in a different stretch of the curve. */
+    TEST_ASSERT_LESS_OR_EQUAL_UINT16(100, green_duty(&config, 10));
+    TEST_ASSERT_UINT16_WITHIN(99, 150, green_duty(&config, 30));
+    TEST_ASSERT_UINT16_WITHIN(199, 300, green_duty(&config, 50));
+    TEST_ASSERT_GREATER_OR_EQUAL_UINT16(400, green_duty(&config, 150));
 }
 
 static void test_fade_in_from_dark(void)
@@ -259,6 +311,7 @@ int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_pulse_loss_is_added_to_lit_channels_only);
+    RUN_TEST(test_short_pulses_lose_more_along_the_curve);
     RUN_TEST(test_fade_in_from_dark);
     RUN_TEST(test_turning_off_fades_out);
     RUN_TEST(test_retarget_during_a_fade_does_not_jump);

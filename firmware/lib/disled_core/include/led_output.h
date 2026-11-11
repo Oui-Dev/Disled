@@ -21,13 +21,25 @@
 /* Duties in sub-ticks, 1/16 of a tick: at low levels, whole ticks make visible steps. */
 #define LED_DUTY_SUBTICKS PWM_DITHER_SUBTICKS
 
+/* The light a pulse loses to the driver edges, added to the pulse of any lit
+ * channel, or the few ticks of blue in a dim warm white give no light. A
+ * short pulse loses more than a long one: points of the signal, the pulse
+ * that the light needs, with the loss at that signal, both in sub-ticks.
+ * Between two points the loss is interpolated; below the first and beyond
+ * the last, it is the loss of that point. Equal signals end a curve early. */
+#define LED_LOSS_POINTS 8u
+#define LED_LOSS_MAX    4096u /* sub-ticks, so that the interpolation fits 32 bits */
+
+typedef struct {
+    uint16_t signal[LED_LOSS_POINTS]; /* never decreasing */
+    uint16_t loss[LED_LOSS_POINTS];   /* <= LED_LOSS_MAX */
+} led_loss_curve_t;
+
 typedef struct {
     const power_config_t *power;
     uint16_t fade_ms;
     uint16_t pwm_period; /* timer ticks for 100 % duty, <= PWM_DITHER_PERIOD_MAX */
-    /* Sub-ticks of each pulse lost to the driver edges, added to any lit
-     * channel, or the few ticks of blue in a dim warm white give no light. */
-    uint16_t pulse_loss[LED_CHANNEL_COUNT];
+    led_loss_curve_t pulse_loss[LED_CHANNEL_COUNT];
     /* Perceived swing of an alert breath (alert.h), per mille. */
     uint16_t alert_depth_permille;
 } led_output_config_t;

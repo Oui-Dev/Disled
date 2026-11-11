@@ -370,6 +370,24 @@ void app_set_alert_depth(uint16_t depth_permille)
     output_config.alert_depth_permille = depth_permille;
 }
 
+static uint16_t to_subticks(uint16_t ns)
+{
+    const uint32_t timer_mhz = bsp_apb1_timer_clock_hz() / 1000000u;
+    return (uint16_t)((ns * timer_mhz * LED_DUTY_SUBTICKS + 500u) / 1000u);
+}
+
+/* app_led_pulse_loss in sub-ticks of the timer clock. */
+static void set_pulse_loss(void)
+{
+    for (size_t c = 0; c < LED_CHANNEL_COUNT; c++) {
+        const app_loss_curve_t *curve = &app_led_pulse_loss[c];
+        for (size_t i = 0; i < LED_LOSS_POINTS; i++) {
+            output_config.pulse_loss[c].signal[i] = to_subticks(curve->signal_ns[i]);
+            output_config.pulse_loss[c].loss[i] = to_subticks(curve->loss_ns[i]);
+        }
+    }
+}
+
 void app_init(const fault_record_t *fault)
 {
     app.fault = *fault;
@@ -384,11 +402,7 @@ void app_init(const fault_record_t *fault)
         .pwm_period = led_pwm_period(),
         .alert_depth_permille = APP_ALERT_DEPTH_PERMILLE,
     };
-    const uint32_t timer_mhz = bsp_apb1_timer_clock_hz() / 1000000u;
-    for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
-        output_config.pulse_loss[i] =
-            (uint16_t)((app_led_pulse_loss_ns[i] * timer_mhz * LED_DUTY_SUBTICKS + 500u) / 1000u);
-    }
+    set_pulse_loss();
     led_output_init(&app.output, &output_config);
 
     lamp_fsm_init(&app.lamp);

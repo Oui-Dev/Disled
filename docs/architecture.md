@@ -140,9 +140,13 @@ The PWM runs at 20 kHz with 3600 ticks of 14 ns. Duties are in sixteenths
 of a tick: at the bottom of the range a channel lasts only a few ticks, and
 whole ticks would make dim fades step and the color drift. The TIM3 update
 interrupt spreads the fraction over 16 periods (`pwm_dither`). Each lit
-channel also gets a fixed pulse loss added, the part of every pulse that
-the driver edges turn into no light. Without it, the 1-tick blue of warm
-white at 10 % gives no light and the white turns yellow.
+channel also gets a pulse loss added, the light that the driver edges take
+from every pulse. The gates of the MOSFETs charge through 100 Ω and switch
+in about 100 ns, so a pulse of a few ticks gives no light and the next
+ticks give more light than those of a long pulse: the loss follows the
+light the pulse should give, along a curve of a few points per channel
+(`led_loss_curve_t`). Without it, the 1-tick blue of warm white at 10 %
+gives no light and the white turns yellow.
 
 The palette (`palette`) holds the four built-in colors and the custom ones
 that the host sets, all in linear light at full brightness; the level then
