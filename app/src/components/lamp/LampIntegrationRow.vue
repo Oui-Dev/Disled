@@ -63,12 +63,14 @@ function turnOn(): void {
     <span aria-hidden="true" class="text-sm font-semibold text-highlighted">
       {{ t('lamp.colors.title') }}
     </span>
+    <!-- A tile and a card, with no background on hover, as the tiles of the manual mode. -->
     <div class="-mx-2 flex items-center">
-      <button
-        type="button"
+      <UButton
+        color="neutral"
+        variant="ghost"
         :disabled="!lamp.ready"
         :aria-pressed="off"
-        class="group flex w-1/6 shrink-0 flex-col items-center gap-1.5 rounded-lg py-1 text-muted disabled:cursor-not-allowed disabled:opacity-75"
+        class="group flex w-1/6 shrink-0 flex-col gap-1.5 rounded-lg p-0 py-1 font-normal text-muted hover:bg-transparent active:bg-transparent"
         @click="turnOff"
       >
         <span
@@ -77,13 +79,14 @@ function turnOn(): void {
           class="swatch-off block size-9 rounded-[20%] border border-accented ring-2 ring-transparent ring-offset-2 ring-offset-bg transition-shadow group-has-data-[state=checked]:ring-inverted"
         />
         <LampTileName :name="t('lamp.colors.off')" />
-      </button>
-      <button
-        type="button"
+      </UButton>
+      <UButton
+        color="neutral"
+        variant="ghost"
         :disabled="!lamp.ready"
         :aria-pressed="!off"
         :aria-label="off ? t('modes.turnOn', { name }) : t('modes.on', { name })"
-        class="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1.5 py-1 text-start disabled:cursor-not-allowed disabled:opacity-75"
+        class="flex min-w-0 flex-1 gap-3 rounded-lg px-1.5 py-1 text-start font-normal hover:bg-transparent active:bg-transparent"
         @click="turnOn"
       >
         <span
@@ -106,7 +109,7 @@ function turnOn(): void {
           <b class="truncate font-medium text-highlighted">{{ lines[0] }}</b>
           <span class="truncate text-muted">{{ lines[1] }}</span>
         </span>
-      </button>
+      </UButton>
     </div>
   </div>
 </template>

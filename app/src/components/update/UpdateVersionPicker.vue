@@ -156,17 +156,17 @@ async function closeAutoFocus(event: Event): Promise<void> {
         v-model:open="open"
         :content="{ align: 'start', onCloseAutoFocus: closeAutoFocus }"
       >
-        <button
-          type="button"
-          class="-mt-px flex w-full items-center gap-2 rounded-b-lg border border-default px-3.5 py-3 text-sm font-medium text-muted transition-colors hover:bg-elevated/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary aria-expanded:bg-elevated/50"
-        >
-          {{ t('lampInstall.others') }}
-          <UIcon
-            name="i-lucide-chevron-down"
-            class="size-4 text-dimmed transition-transform"
-            :class="{ 'rotate-180': open }"
-          />
-        </button>
+        <!-- The last row of the list above, joined to it. -->
+        <UButton
+          color="neutral"
+          variant="ghost"
+          :label="t('lampInstall.others')"
+          trailing-icon="i-lucide-chevron-down"
+          class="-mt-px flex w-full gap-2 rounded-none rounded-b-lg border border-default px-3.5 py-3 text-sm text-muted hover:bg-elevated/50 active:bg-elevated/50 aria-expanded:bg-elevated/50"
+          :ui="{
+            trailingIcon: `size-4 text-dimmed transition-transform ${open ? 'rotate-180' : ''}`,
+          }"
+        />
 
         <template #content>
           <UListbox

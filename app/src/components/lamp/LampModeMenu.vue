@@ -105,21 +105,23 @@ const items = computed(() => {
     size="sm"
     :ui="{ content: 'w-70', label: 'font-semibold', itemDescription: 'whitespace-normal' }"
   >
-    <button
-      type="button"
+    <!-- Tinted primary while an integration drives the lamp. -->
+    <UButton
+      :color="integration ? 'primary' : 'neutral'"
+      :variant="integration ? 'subtle' : 'outline'"
+      size="xs"
+      :icon="icon"
+      :label="source"
+      trailing-icon="i-lucide-chevron-down"
       :disabled="lamp.locked"
       :aria-label="t('modes.button', { source })"
-      class="-mt-0.5 inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md ps-2 pe-1.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75"
-      :class="
-        integration
-          ? 'bg-primary/10 text-highlighted ring-primary/35'
-          : 'bg-default text-default ring-accented'
-      "
-    >
-      <UIcon :name="icon" class="size-4" :class="integration ? 'text-primary' : 'text-muted'" />
-      {{ source }}
-      <UIcon name="i-lucide-chevron-down" class="size-3.5 text-muted" />
-    </button>
+      class="-mt-0.5 h-7 shrink-0 gap-1.5 ps-2 pe-1.5 whitespace-nowrap"
+      :class="{ 'text-highlighted ring-primary/35': integration }"
+      :ui="{
+        leadingIcon: integration ? 'text-primary' : 'text-muted',
+        trailingIcon: 'size-3.5 text-muted',
+      }"
+    />
 
     <template #mic-trailing>
       <USwitch

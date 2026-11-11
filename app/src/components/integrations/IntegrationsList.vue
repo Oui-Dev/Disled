@@ -35,9 +35,11 @@ const { subtitle } = usePluginTexts();
         class="flex items-center gap-2 rounded-lg pe-2"
         :class="selected === plugin.id ? 'bg-elevated' : 'hover:bg-elevated/50'"
       >
-        <button
-          type="button"
-          class="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 text-start focus-visible:outline-2 focus-visible:outline-primary"
+        <!-- The row gives the background, on hover and once selected. -->
+        <UButton
+          color="neutral"
+          variant="ghost"
+          class="flex min-w-0 flex-1 gap-3 rounded-lg p-2 text-start font-normal hover:bg-transparent active:bg-transparent"
           :aria-current="selected === plugin.id ? 'true' : undefined"
           @click="selected = plugin.id"
         >
@@ -56,7 +58,7 @@ const { subtitle } = usePluginTexts();
               {{ subtitle(plugin, control.status.mode === plugin.id) }}
             </span>
           </span>
-        </button>
+        </UButton>
         <USwitch
           size="sm"
           :model-value="plugin.enabled"

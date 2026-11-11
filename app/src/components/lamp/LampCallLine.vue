@@ -84,17 +84,17 @@ function choose(slot: unknown): void {
         :content="{ side: 'bottom', align: 'start', sideOffset: 6, collisionPadding: 16 }"
         :ui="{ content: 'w-[308px] p-2' }"
       >
-        <button
-          type="button"
-          class="inline-flex min-w-0 items-center gap-0.5 rounded font-medium text-highlighted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75"
+        <UButton
+          color="neutral"
+          variant="link"
+          size="xs"
+          :label="callColor?.name"
+          trailing-icon="i-lucide-chevron-down"
           :disabled="lamp.locked"
           :aria-label="t('calls.colorLabel', { name: callColor?.name ?? '' })"
-          aria-haspopup="dialog"
-          :aria-expanded="open"
-        >
-          <span class="truncate">{{ callColor?.name }}</span>
-          <UIcon name="i-lucide-chevron-down" class="size-3.5 shrink-0 text-muted" />
-        </button>
+          class="min-w-0 gap-0.5 p-0 text-highlighted"
+          :ui="{ trailingIcon: 'size-3.5 text-muted' }"
+        />
 
         <template #content>
           <div role="dialog" :aria-label="t('calls.popoverLabel')">

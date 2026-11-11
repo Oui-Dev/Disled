@@ -24,7 +24,7 @@
 /*
  * Buttons show the pointer, which the preflight of Tailwind 4 no longer
  * gives them, as Nuxt UI advises. Its classes, such as the not-allowed
- * cursor of a button disabled with aria-disabled, still win.
+ * cursor of a disabled button, still win.
  */
 @layer base {
   button:not(:disabled),

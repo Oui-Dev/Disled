@@ -69,13 +69,13 @@ function go(page: 'manage' | 'create'): void {
     :content="{ side: 'bottom', align: 'end', sideOffset: 6, collisionPadding: 16 }"
     :ui="{ content: 'w-[308px] p-3' }"
   >
-    <button
-      type="button"
-      class="group flex min-w-0 flex-1 flex-col items-center gap-1.5 rounded-lg py-1 disabled:cursor-not-allowed disabled:opacity-75"
+    <!-- A tile like those of the row: no background on hover. -->
+    <UButton
+      color="neutral"
+      variant="ghost"
+      class="group flex min-w-0 flex-1 flex-col gap-1.5 rounded-lg p-0 py-1 font-normal hover:bg-transparent active:bg-transparent"
       :disabled="lamp.locked"
       :aria-label="tileLabel"
-      aria-haspopup="dialog"
-      :aria-expanded="open"
     >
       <!-- As in a checked radio of the row: the ring and the name follow it. -->
       <span v-if="current" hidden data-state="checked" />
@@ -92,7 +92,7 @@ function go(page: 'manage' | 'create'): void {
         </span>
       </span>
       <LampTileName :name="current?.name ?? t('lamp.colors.more')" :narrow="narrow" />
-    </button>
+    </UButton>
 
     <template #content>
       <div role="dialog" :aria-label="t('colors.mine.title')" class="flex flex-col gap-3">
@@ -142,10 +142,11 @@ function go(page: 'manage' | 'create'): void {
               <LampTileName :name="item.label ?? ''" />
             </template>
           </URadioGroup>
-          <button
+          <UButton
             v-if="!standalone && !colors.full"
-            type="button"
-            class="group flex min-w-0 flex-col items-center gap-1.5 rounded-lg py-1"
+            color="neutral"
+            variant="ghost"
+            class="group flex min-w-0 flex-col gap-1.5 rounded-lg p-0 py-1 font-normal hover:bg-transparent active:bg-transparent"
             @click="go('create')"
           >
             <span
@@ -155,7 +156,7 @@ function go(page: 'manage' | 'create'): void {
               <UIcon name="i-lucide-plus" class="size-4 text-muted" />
             </span>
             <LampTileName :name="t('colors.mine.new')" />
-          </button>
+          </UButton>
         </div>
       </div>
     </template>
