@@ -46,7 +46,9 @@ const placeholder = computed(() => {
 // The samples are whole numbers, but the axis of a small range has ticks
 // every 0.5, which one decimal at most keeps apart.
 const permille = (value: number) => t('telemetry.permille', { value: n(value, 'tick') });
-const lux = (value: number) => t('telemetry.lux', { value: n(value, 'decimal') });
+// In a dim room the ticks of the light fall 0.05 lx apart or closer, which
+// one decimal would show twice.
+const lux = (value: number) => t('telemetry.lux', { value: n(value, 'luxTick') });
 const count = (value: number) => n(value, 'tick');
 
 const charts = computed<
