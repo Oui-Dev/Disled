@@ -37,7 +37,7 @@
       "auto": "Auto",
       "darker": "Darker",
       "brighter": "Brighter",
-      "correctionLabel": "Correction of the automatic brightness",
+      "correctionLabel": "Automatic brightness correction",
       "fixed": "Fixed level",
       "follows": "Follows the room light",
       "correction": "correction {value}",
@@ -78,12 +78,12 @@
     "import": "Import a plugin",
     "list": "Plugins",
     "details": "Details",
-    "empty": "No plugin",
+    "empty": "No plugins",
     "enable": "Enable {name}",
     "on": "Enabled",
     "off": "Disabled",
     "driving": "Drives the lamp",
-    "new": "New: to review",
+    "new": "New: needs review",
     "unreadable": "{file} unreadable",
     "noEventYet": "No event received yet.",
     "lastEvent": "Last event received {ago} ago: {state}.",
@@ -106,27 +106,27 @@
     "reviewNote": "See the note again",
     "can": "What this plugin can do",
     "perm": {
-      "process": "Run a program on this computer, with your rights: {command}",
+      "process": "Run a program on this computer, with your permissions: {command}",
       "color": "Choose the lamp color, when the lamp follows it",
-      "alert": "Make an alert on the lamp",
+      "alert": "Show an alert on the lamp",
       "events": "Receive events from {name}, locally",
       "nothingElse": "Nothing else: no program, no Internet"
     },
     "colors": "Colors",
     "colorsHint": "When the lamp follows {name}:",
-    "tokenOwn": "Token of this plugin",
+    "tokenOwn": "This plugin’s own token",
     "regenerate": "Regenerate the token",
     "remove": "Remove the plugin",
     "approve": {
       "title": "Enable “{name}”?",
       "meta": "Plugin {version} · by {author} · found in the plugins folder",
       "can": "This plugin will be able to:",
-      "trust": "Only enable plugins from people you trust. If its files change, Disled will ask you again.",
+      "trust": "Only enable plugins from people you trust. If this plugin’s files change, Disled will ask you again.",
       "action": "Enable"
     },
     "regenerateConfirm": {
-      "title": "Regenerate the token of “{name}”?",
-      "text": "The old token will stop working. You will have to copy the block of the installation note again.",
+      "title": "Regenerate the token for “{name}”?",
+      "text": "The old token will stop working. You will have to copy the block from the installation note again.",
       "action": "Regenerate"
     },
     "removeConfirm": {
@@ -135,24 +135,24 @@
       "action": "Remove"
     },
     "status": {
-      "modified": "Changed: to review",
+      "modified": "Changed: needs review",
       "failed": "Stopped after several errors",
       "running": "Running",
       "stopped": "The program stopped.",
       "notFound": "Program not found: {program}",
       "portTaken": "Port {port} is taken by another program."
     },
-    "importFailed": "Import refused",
+    "importFailed": "Import rejected",
     "reason": {
       "missing": "No plugin.json file.",
       "json": "Invalid JSON, line {line}.",
       "field": "Missing field: {field}.",
       "invalid": "Invalid field: {field}.",
       "api": "Unsupported API version: {api}.",
-      "id": "The id does not match the folder name.",
-      "link": "Symbolic link refused: {path}.",
+      "id": "The ID does not match the folder name.",
+      "link": "Symbolic link not allowed: {path}.",
       "size": "Plugin too large.",
-      "path": "Path refused in the archive: {path}."
+      "path": "Path not allowed in the archive: {path}."
     }
   },
   "settings": {
@@ -173,7 +173,7 @@
       "title": "Touch sensitivity",
       "less": "Less sensitive",
       "more": "More sensitive",
-      "label": "Correction of the touch sensitivity",
+      "label": "Touch sensitivity correction",
       "hint": "Calibrated by the lamp"
     }
   },
@@ -214,7 +214,7 @@
   "health": {
     "title": "Health",
     "issues": "{n} thing to check | {n} things to check",
-    "issue": "to check",
+    "issue": "needs checking",
     "reading": "Reading…",
     "stability": "Stability",
     "boots": "Boots",
@@ -230,14 +230,14 @@
     "probes": "{n} probe | {n} probes",
     "i2cErrors": "{n} I2C error | {n} I2C errors",
     "touchSamplesLost": "Touch samples lost",
-    "rebaselines": "{n} re-baseline | {n} re-baselines",
+    "rebaselines": "{n} recalibration | {n} recalibrations",
     "usbClock": "USB and clock",
     "usbSuspends": "USB suspends",
     "crystal": "Crystal",
     "crystalRunning": "Running",
     "crystalFailed": "Failed",
     "brightness": "Brightness",
-    "correction": "Automatic correction",
+    "correction": "Automatic brightness correction",
     "touchCorrection": "Touch correction",
     "uptime": "Uptime"
   },
@@ -299,7 +299,7 @@
     "newer": "Firmware {current} → {next}",
     "current": "The lamp runs firmware {version}.",
     "already": "The lamp already runs firmware {version}.",
-    "intro": "It takes about a minute. You will open the lamp: its update mode starts with two buttons on its board, {boot} and {reset}. Keep the lamp plugged into this computer.",
+    "intro": "It takes about a minute. You will need to open the lamp: two buttons on its board, {boot} and {reset}, start its update mode. Keep the lamp plugged into this computer.",
     "steps": {
       "download": "Download the firmware",
       "bootloader": "Put the lamp in update mode",
@@ -310,12 +310,12 @@
     "buttons": "Open the lamp. Hold {boot}, press and release {reset}, then release {boot}.",
     "waitingForBootloader": "Waiting for the lamp in update mode…",
     "driver": {
-      "intro": "Windows needs a driver for the update mode, once:",
+      "intro": "Windows needs a driver for the update mode, only once:",
       "download": "Download {zadig} and run it.",
       "options": "In {options}, choose {listAll}.",
       "select": "Select the device whose USB ID is {id} (or {otherId}).",
       "install": "Choose {winusb}, then {install} (or {replace}).",
-      "waiting": "The update goes on by itself once the driver is installed."
+      "waiting": "The update resumes on its own once the driver is installed."
     },
     "noPermission": "This computer does not let the app open the lamp in update mode. Reinstall the Disled package (it adds the access rule), then start the update mode again.",
     "severalBootloaders": "Several devices are in update mode. Unplug them all but the lamp.",
@@ -327,13 +327,13 @@
       "restarting": "Restarting the lamp…"
     },
     "doNotUnplug": "Do not unplug the lamp.",
-    "waitingForLamp": "The lamp starts its new firmware: it takes a few seconds.",
-    "done": "Done: the lamp runs firmware {version}. You can put it back together.",
+    "waitingForLamp": "The lamp is starting its new firmware: this takes a few seconds.",
+    "done": "Done: the lamp runs firmware {version}. You can close it again.",
     "failed": "The update stopped: {detail}",
     "retryOrGuide": "Try again, or follow the {guide}.",
     "guide": "update guide",
     "start": "Start the update",
-    "reinstall": "Install it again",
+    "reinstall": "Reinstall it",
     "retry": "Try again"
   },
   "lampInstall": {
@@ -419,7 +419,7 @@
     "line": "This lamp runs firmware v1, and Disled v2 needs firmware v2."
   },
   "lampNewer": {
-    "text": "This lamp has a newer firmware than this app. Update Disled."
+    "text": "This lamp’s firmware is too new for this app. Update Disled."
   },
   "colors": {
     "mine": {
@@ -431,7 +431,7 @@
       "title": "Colors",
       "touch": "Touch",
       "new": "New color",
-      "cycle": "On a touch of the lid:",
+      "cycle": "Touch cycle:",
       "appOnly": "Without the app, the lamp goes back to its four colors and its original cycle.",
       "share": "Share",
       "more": "More actions for {name}",
@@ -441,10 +441,10 @@
     },
     "cycle": {
       "add": "Add {name} to the touch cycle",
-      "remove": "{name}, {rank} on touch: remove from the cycle",
-      "addTitle": "Add to touch",
-      "removeTitle": "Remove from touch",
-      "added": "{name}, {rank} on touch.",
+      "remove": "{name}, {rank} in the touch cycle: remove it",
+      "addTitle": "Add to the touch cycle",
+      "removeTitle": "Remove from the touch cycle",
+      "added": "{name}, {rank} in the touch cycle.",
       "removed": "{name} removed from the cycle.",
       "last": "{name} stays: the cycle keeps at least one color.",
       "rank": {
@@ -490,7 +490,7 @@
       "title": "Import these colors?",
       "originals": "Lamp colors",
       "custom": "Added colors",
-      "cycle": "Touch of the lid",
+      "cycle": "Touch cycle",
       "replaces": "Replaces your names, your colors and your cycle.",
       "action": "Import"
     }
