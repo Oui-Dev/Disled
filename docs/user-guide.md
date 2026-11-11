@@ -117,7 +117,7 @@ the taskbar. Drag it onto the taskbar to keep it in view.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/user-guide/popup-lamp-dark.png">
-  <img alt="The popup: the lamp is connected and green, among Off, the four colors and More; the brightness is automatic at 34 % with no correction" src="images/user-guide/popup-lamp-light.png" width="340">
+  <img alt="The popup: the lamp is connected and green, among Off, the four colors and More; the brightness is automatic at 33 % with no correction" src="images/user-guide/popup-lamp-light.png" width="340">
 </picture>
 
 - **Status.** "Lamp connected", "Connecting…" or "No lamp connected".
@@ -172,6 +172,11 @@ green.
 
 **Manage** in **My colors** opens the **Colors** page:
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/user-guide/colors-dark.png">
+  <img alt="The Colors page: the four colors of the lamp, then Focus, Music and Reading, with Available, Busy and Do not disturb numbered 1 to 3 in the touch cycle, and Share" src="images/user-guide/colors-light.png" width="340">
+</picture>
+
 - **The four colors of the lamp.** Their **⋮** menu has **Edit**, which
   renames them. Their shade stays: for another one, create a color.
 - **Your colors**, up to five. **New color** adds one, and their **⋮** menu
@@ -185,7 +190,9 @@ green.
 **The editor.** A name of up to 16 characters, then the color: **Hue**,
 from **Pale** to **Vivid**, a few suggestions, or a **Hex code**. With
 **Preview on the lamp**, the lamp shows the color while you change it, and
-gets its own back when you leave the editor. **Save** keeps it.
+gets its own back when you leave the editor. **Save** keeps it. The lamp
+balances your colors for its LED, so that they look close to the screen,
+whites included.
 
 **Delete** acts at once, without a question. Wherever the color was in use,
 another one takes its place: the first color of the touch cycle on the
@@ -238,9 +245,14 @@ lamp follows an integration:
   settings of their program, the address and the token already filled in.
   **Copy** puts it in the clipboard. Disled never changes the settings of
   another program: you paste the block yourself.
+- **Status.** A line says how the plugin stands, with a dot: green once an
+  event came, orange when its program stopped, cannot be found or finds
+  its port taken, red when it stopped for good after several errors. A
+  plugin that Disled cannot read says which file and why.
 - **Colors.** The color the lamp takes for each state of the plugin.
 - **Regenerate the token** gives the plugin a new one, to copy again into
-  its program. **Remove the plugin** deletes its folder.
+  its program. **Remove the plugin** deletes its folder, for any plugin,
+  even one never enabled or that Disled cannot read.
 
 **Alerts.** A plugin allowed to may ask for an alert: the lamp breathes
 three times, softly, then stops by itself. Nothing else shows in the popup.
