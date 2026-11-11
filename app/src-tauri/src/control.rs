@@ -31,9 +31,8 @@ const EVENT_CONTROL: &str = "control-changed";
 
 /// Breaths of an alert, the same for every plugin.
 pub const ALERT_COUNT: u8 = 3;
-/// Length of a breath, until the owner picks 1 300 or 1 500 ms with the
-/// lamp closed.
-pub const ALERT_PERIOD_MS: u16 = 1300;
+/// Length of a breath, chosen by eye on a closed lamp: 4.5 s in all.
+pub const ALERT_PERIOD_MS: u16 = 1500;
 /// An alert counts as over this long after its breaths, should its
 /// ALERT_DONE never come.
 const ALERT_MARGIN: Duration = Duration::from_secs(2);
@@ -1175,9 +1174,9 @@ mod tests {
         let later = now + Duration::from_secs(10);
         assert_eq!(control.step(later, alert("a")).len(), 1);
         // An alert whose end never came is over after its breaths.
-        let after = later + Duration::from_millis(5_899);
+        let after = later + Duration::from_millis(6_499);
         assert_eq!(control.step(after, alert("c")), []);
-        let after = later + Duration::from_millis(5_900);
+        let after = later + Duration::from_millis(6_500);
         assert_eq!(control.step(after, alert("c")).len(), 1);
     }
 
