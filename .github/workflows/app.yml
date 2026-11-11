@@ -86,12 +86,13 @@ jobs:
           test -z "$(git status --porcelain -- app/src/bindings)"
 
       # The project is Disled. "DISLED" stays only in capital identifiers
-      # (DISLED_...), in the DISLED2- prefix of the share codes, and in the
-      # files of the guards. The Markdown files follow with the documentation.
+      # (DISLED_...), in the DISLED2- prefix of the share codes, in the past
+      # entries of the changelogs, and in the files of the guards.
       - name: The name Disled
         working-directory: .
         run: |
-          found=$(git grep -n -I DISLED -- ':!*.md' ':!.github/workflows/app.yml'             ':!app/src-tauri/src/i18n.rs' | grep -v -E 'DISLED_[A-Z0-9_]|DISLED2-' || true)
+          found=$(git grep -n -I DISLED -- ':!*CHANGELOG.md' ':!.github/workflows/app.yml' \
+            ':!app/src-tauri/src/i18n.rs' | grep -v -E 'DISLED_[A-Z0-9_]|DISLED2-' || true)
           if [ -n "$found" ]; then
             echo "$found"
             echo "::error::the name is Disled"
