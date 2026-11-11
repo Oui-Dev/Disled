@@ -60,6 +60,13 @@ the top of its range.
 **Sleep.** When the computer sleeps, the lamp turns off. It comes back when
 the computer wakes up.
 
+**On Windows, keep the app running.** Windows puts a USB device that no
+program uses to sleep, a second or two after the last one lets it go. So
+when Disled is not running, as after **Quit**, the lamp turns off and its
+touch does nothing, as when the computer sleeps. It comes back as soon as
+Disled starts again. The app starts with your session, unless you turned
+that setting off. On a phone charger, the lamp keeps working on its own.
+
 At every power-up the lamp starts green, in automatic brightness. The app
 then sends your colors and settings again ([Settings](#settings)).
 
@@ -374,6 +381,7 @@ sees, and helps to report a problem.
 | "Update required" | The lamp still runs firmware v1: click **Update** ([Update required](#update-required)). |
 | The tray icon is missing (Windows) | Look behind the **^** arrow of the taskbar, then drag the icon onto the taskbar. |
 | The lamp turns off by itself | An object laid on the top turns it off after 2 s. At a high touch sensitivity, a hand held above the lid can too. |
+| The lamp is off and its touch does nothing (Windows) | Disled is not running, so Windows put the lamp to sleep. Start Disled ([On Windows, keep the app running](#the-lamp)). |
 | A short touch does nothing | The lamp follows an integration: hold for 2 s to turn it off or on, or choose **Manual** with the mode button. |
 | The lamp stays in a call | An app keeps the microphone open, such as a browser tab or an assistant that waits for its wake word. Close it, or turn **Microphone in use** off. |
 | The **Calls** group is missing | macOS needs version 14.2 or later, and Linux the `libpulse0` package. |

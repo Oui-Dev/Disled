@@ -89,10 +89,13 @@ off, a USB suspend and the self-test end it.
 |---|---|---|---|---|
 | `UNCONFIGURED` | Power-up, plain charger, hub without a host | Works locally | Active | 70 mA |
 | `CONFIGURED` | Enumerated by a host | Normal | Active | 125 mA |
-| `SUSPENDED` | Host asleep | Off at once | Ignored | 0 |
+| `SUSPENDED` | Host asleep, or on Windows no program holds the lamp open | Off at once | Ignored | 0 |
 
 Suspend turns the LED off without a fade, because a suspended USB device
-must drop its current within a few milliseconds. The touch and the light
+must drop its current within a few milliseconds. Windows 11 also suspends a
+release lamp that no program holds open, 1 to 2 s after the last one closes
+it (selective suspend), and wakes it when a program opens it again. The
+debug build, whose serial console Windows does not suspend, stays lit. The touch and the light
 sensor stop, and the chip slows down to 1 MHz. On resume, the lamp fades
 back to its previous state, with normal touch.
 

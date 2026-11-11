@@ -182,10 +182,11 @@ thresholds before flashing them.
       `firmware/src/bsp/bsp_power.c` is the first remedy.
 - [ ] Wake it up: the previous color and brightness come back, and the app
       reconnects.
-- [ ] On Windows, with the release firmware and no app running, leave the
-      lamp alone for 10 minutes, and note whether it stays lit: ____.
-      Windows may suspend an idle USB device on its own (selective
-      suspend), and the lamp then turns off as when the computer sleeps.
+- [ ] On Windows, with the release firmware and no app running, the lamp
+      turns off 1 to 2 s after the last program closes it: Windows
+      suspends an idle USB device on its own (selective suspend), and the
+      suspend counter of `DIAGNOSTICS` goes up. Opening the lamp again, as
+      the app does, wakes it. The debug build is not suspended.
 
 ## 8. Heat
 
