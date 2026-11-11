@@ -103,7 +103,10 @@ function select(choice: Choice): void {
           fieldset: 'min-w-0 flex-nowrap gap-x-0',
           item: 'group min-w-0 flex-1 rounded-lg px-0 py-1',
           wrapper: 'w-full',
-          label: 'flex w-full cursor-pointer flex-col items-center gap-1.5 font-normal text-muted',
+          // A class of ours would hide the cursor of a disabled group.
+          label: `flex w-full flex-col items-center gap-1.5 font-normal text-muted ${
+            lamp.ready ? 'cursor-pointer' : 'cursor-not-allowed'
+          }`,
         }"
         @update:model-value="select($event)"
       >

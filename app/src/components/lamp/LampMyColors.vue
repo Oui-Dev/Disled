@@ -126,8 +126,10 @@ function go(page: 'manage' | 'create'): void {
               legend: 'sr-only',
               item: 'group min-w-0 rounded-lg px-0 py-1',
               wrapper: 'w-full',
-              label:
-                'flex w-full cursor-pointer flex-col items-center gap-1.5 font-normal text-muted',
+              // A class of ours would hide the cursor of a disabled group.
+              label: `flex w-full flex-col items-center gap-1.5 font-normal text-muted ${
+                lamp.ready ? 'cursor-pointer' : 'cursor-not-allowed'
+              }`,
             }"
             @update:model-value="choose($event)"
           >
