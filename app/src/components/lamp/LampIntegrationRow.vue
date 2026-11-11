@@ -63,8 +63,10 @@ function turnOn(): void {
     <span aria-hidden="true" class="text-sm font-semibold text-highlighted">
       {{ t('lamp.colors.title') }}
     </span>
-    <!-- A tile and a card, with no background on hover, as the tiles of the manual mode. -->
-    <div class="-mx-2 flex items-center">
+    <!-- A tile and a card, with no background on hover, as the tiles of the
+         manual mode. Aligned at the top, so that the card's swatch sits beside
+         the Off swatch rather than beside its name. -->
+    <div class="-mx-2 flex items-start">
       <UButton
         color="neutral"
         variant="ghost"
