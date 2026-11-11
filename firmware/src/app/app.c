@@ -360,6 +360,16 @@ static scheduler_task_t tasks[] = {
 
 static led_output_config_t output_config; /* led_output keeps a pointer to it */
 
+uint16_t app_alert_depth(void)
+{
+    return output_config.alert_depth_permille;
+}
+
+void app_set_alert_depth(uint16_t depth_permille)
+{
+    output_config.alert_depth_permille = depth_permille;
+}
+
 void app_init(const fault_record_t *fault)
 {
     app.fault = *fault;

@@ -91,6 +91,11 @@ bool app_set_touch_cycle(const touch_cycle_t *cycle);
  * alert while the lamp is off. ALERT_DONE then carries `seq`. */
 proto_status_t app_alert(uint8_t seq, uint8_t count, uint16_t period_ms);
 
+/* The perceived swing of the breaths, per mille, APP_ALERT_DEPTH_PERMILLE
+ * until the debug console changes it, to compare depths on a closed lamp. */
+uint16_t app_alert_depth(void);
+void app_set_alert_depth(uint16_t depth_permille);
+
 /* Starts the self-test; its result is reported to the host with `seq`.
  * Never while one runs: the host gets BUSY instead. */
 void app_start_self_test(uint8_t seq);

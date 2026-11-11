@@ -76,7 +76,7 @@ Equipment:
       ____ mA (at most 63).
 - [ ] Warm white at 100 % stays under the 125 mA cap: red ____ + green
       ____ + blue ____ = ____ mA, against ____ mA estimated by `state`.
-- [ ] `alert 3 1300` breathes three times over the lamp color, then stops
+- [ ] `alert 3 1500` breathes three times over the lamp color, then stops
       by itself, and `state` says "alert running" meanwhile. Watch it with
       the enclosure closed, in a dark room and in a lit one: the breaths
       stay soft and visible, and in automatic brightness the level after
@@ -140,7 +140,7 @@ board ground and doubles the drop, which hides a weak signal.
       press, release and rise thresholds scaled by the correction. A light
       tap fires at +50 %, and misses more often at −50 %. `set sensitivity
       0` restores the factory thresholds.
-- [ ] During `alert 10 1300`, short and long presses do nothing, and a
+- [ ] During `alert 10 1500`, short and long presses do nothing, and a
       press still held when the alert ends does nothing at its release.
 
 Reference, measured on the first board with the debug firmware 2.0, the lid

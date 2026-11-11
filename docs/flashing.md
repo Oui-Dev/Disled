@@ -99,7 +99,7 @@ Type `help` for the list of commands:
 | `set on\|off\|auto\|color <0-15>\|level <1-100>\|bias <-50..50>\|sensitivity <-50..50>` | change the lamp as the host does; a color slot must hold a color, so 4 to 15 need a host that set them |
 | `watch <ms>\|off` | stream touch, light (lux, count, level) and current (`watch 20`: every touch window) |
 | `cap <mA>\|off` | override the LED current cap, for the heat test of [bringup.md](bringup.md#8-heat) only |
-| `alert [breaths] [period ms]` | breathe as for an alert from the host; `alert 0` stops it |
+| `alert [breaths] [period ms] [depth]` | breathe as for an alert from the host, 3 breaths of 1.5 s by default; a depth in per mille, 0 to 500, stays for the next alerts, to compare depths on a closed lamp; `alert 0` stops it |
 
 The Diagnostics window of the desktop app shows the rest: chip, faults,
 counters and the self-test.

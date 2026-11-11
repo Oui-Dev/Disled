@@ -40,12 +40,14 @@
 #define APP_WATCHDOG_MS 1000u
 
 /* Alert breath: perceived swing, per mille of L*, up from a lamp below 70 %
- * and down from a brighter one. Not tuned on a board yet. */
+ * and down from a brighter one. Chosen by eye on a closed lamp. Deeper, the
+ * light sensor sees the breaths of a dim lamp in a dark room, and the
+ * automatic level climbs during the alert: 3 points at 400, 8 at 500. */
 #define APP_ALERT_DEPTH_PERMILLE 300u
-/* The console's alert. The app sends the same 3 breaths, of a period still
- * to be chosen on a board, lid closed: 1.3 or 1.5 s. */
+/* The console's alert, the same as the app's: 3 breaths of 1.5 s, chosen by
+ * eye on a closed lamp. */
 #define APP_ALERT_DEFAULT_COUNT     3u
-#define APP_ALERT_DEFAULT_PERIOD_MS 1300u
+#define APP_ALERT_DEFAULT_PERIOD_MS 1500u
 
 /* Power-only touch falls back to normal after this long without a command.
  * In that mode, the app sends a SET_STATE of the touch mode alone every 3 s. */

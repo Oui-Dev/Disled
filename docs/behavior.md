@@ -80,7 +80,7 @@ hunting.
 An alert breathes over the lamp color, up from a dim lamp and down from a
 bright one, for the number of breaths and the period the host asks, then
 ends by itself and tells the host. The desktop app always asks for three
-breaths. The lamp must be on: an alert never waits for it. Turning the lamp
+breaths of 1.5 s. The lamp must be on: an alert never waits for it. Turning the lamp
 off, a USB suspend and the self-test end it.
 
 ## USB states and LED power limits

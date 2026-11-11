@@ -68,7 +68,8 @@ static void cmd_state(int argc, char **argv)
                    (unsigned)rgb.g, (unsigned)rgb.b);
     console_printf(", touch %s",
                    app.lamp.touch_mode == TOUCH_MODE_NORMAL ? "normal" : "power only");
-    console_printf(", alert %s", alert_running(&app.alert) ? "running" : "off");
+    console_printf(", alert %s, depth %u per mille", alert_running(&app.alert) ? "running" : "off",
+                   (unsigned)app_alert_depth());
     console_printf("\r\n");
     const uint32_t estimate = led_output_estimate_ma_x10(&app.output);
     console_printf("usb %s, LED %lu.%lu mA of %u mA, duty ", link_names[app.link],
@@ -140,13 +141,19 @@ static void cmd_alert(int argc, char **argv)
 {
     uint32_t count = APP_ALERT_DEFAULT_COUNT;
     uint32_t period = APP_ALERT_DEFAULT_PERIOD_MS;
-    const bool parsed = argc <= 3 && (argc < 2 || parse_u32(argv[1], &count)) &&
-                        (argc < 3 || parse_u32(argv[2], &period));
+    uint32_t depth = app_alert_depth();
+    const bool parsed = argc <= 4 && (argc < 2 || parse_u32(argv[1], &count)) &&
+                        (argc < 3 || parse_u32(argv[2], &period)) &&
+                        (argc < 4 || parse_u32(argv[3], &depth));
     if (!parsed || count > ALERT_COUNT_MAX ||
-        (count > 0u && (period < ALERT_PERIOD_MIN_MS || period > ALERT_PERIOD_MAX_MS))) {
-        console_printf("usage: alert [breaths 0-10, 0 stops] [period 500-5000 ms]\r\n");
+        (count > 0u && (period < ALERT_PERIOD_MIN_MS || period > ALERT_PERIOD_MAX_MS)) ||
+        depth > ALERT_DEPTH_MAX_PERMILLE) {
+        console_printf("usage: alert [breaths 0-10, 0 stops] [period 500-5000 ms]"
+                       " [depth 0-500 per mille]\r\n");
         return;
     }
+    /* The depth stays for the next alerts, the host's included. */
+    app_set_alert_depth((uint16_t)depth);
     const proto_status_t status = app_alert(0, (uint8_t)count, (uint16_t)period);
     console_printf(status == PROTO_OK ? "ok\r\n" : "the lamp is off\r\n");
 }
@@ -188,7 +195,7 @@ static const console_command_t commands[] = {
     { "set", "<what> [value]", "change the lamp like the host does", cmd_set },
     { "watch", "<ms>|off", "print touch, light and current periodically", cmd_watch },
     { "cap", "<mA>|off", "override the LED current cap (thermal test only)", cmd_cap },
-    { "alert", "[breaths] [period ms]", "breathe like an alert from the host", cmd_alert },
+    { "alert", "[breaths] [period ms] [depth]", "breathe like an alert from the host", cmd_alert },
 };
 
 void app_console_init(void)
