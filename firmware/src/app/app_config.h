@@ -60,6 +60,8 @@ extern const color_config_t app_color_config;
 extern const power_config_t app_power_config;
 /* Light lost per PWM pulse, per channel (see led_output_config_t). */
 extern const uint16_t app_led_pulse_loss_ns[LED_CHANNEL_COUNT];
+/* Gains of the custom colors, fractions of 65535 (palette_light). */
+extern const rgb16_t app_led_white_balance;
 extern const self_test_config_t app_self_test_config;
 
 #endif /* DISLED_APP_CONFIG_H */

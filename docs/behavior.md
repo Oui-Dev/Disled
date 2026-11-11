@@ -47,9 +47,10 @@ either, not even at its release.
 - The host reads the state and can set any subset of: power, color (a slot
   that holds a color), brightness mode, manual level (1 to 100 %) and touch
   mode.
-- It defines the custom colors of slots 4 to 15, in linear light, and empties
-  them. An emptied slot leaves the touch cycle, and a lamp that shows it
-  takes the first color of the cycle.
+- It defines the custom colors of slots 4 to 15, in linear light as a screen
+  shows them, which the lamp balances for its LED, and empties them. An
+  emptied slot leaves the touch cycle, and a lamp that shows it takes the
+  first color of the cycle.
 - It sets the touch cycle: 1 to 9 slots that hold a color, none twice.
   Setting the cycle does not change the color shown.
 - It starts an alert, 1 to 10 breaths over the lamp color

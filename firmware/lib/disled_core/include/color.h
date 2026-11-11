@@ -30,6 +30,11 @@ rgb16_t color_shade(rgb16_t base, uint16_t level_permille);
  * brighter or dimmer. */
 rgb16_t color_gain(rgb16_t color, uint16_t num, uint16_t den);
 
+/* A color given in linear light, as a host shows it, on this LED: every
+ * channel times its gain, a fraction of 65535, then scaled back so that the
+ * largest channel is COLOR_LINEAR_MAX again. Black stays black. */
+rgb16_t color_balance(rgb16_t color, rgb16_t gains);
+
 /* Linear interpolation; `t` = 0 gives `from`, 65535 gives `to`. */
 rgb16_t color_mix(rgb16_t from, rgb16_t to, uint16_t t);
 

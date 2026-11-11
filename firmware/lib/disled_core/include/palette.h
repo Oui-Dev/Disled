@@ -36,6 +36,11 @@ bool palette_defined(const palette_t *palette, uint32_t slot);
 /* The color of a slot, black for an empty or unknown one. */
 rgb16_t palette_color(const palette_t *palette, uint32_t slot);
 
+/* The light a slot gives. A built-in color is tuned by eye through the PLA
+ * already; a custom color, which the host gives in linear light, takes the
+ * gains of `balance` (color_balance), so that its white shows white. */
+rgb16_t palette_light(const palette_t *palette, uint32_t slot, rgb16_t balance);
+
 /* A custom color has its largest channel at COLOR_LINEAR_MAX, so that the
  * brightness level alone sets how bright it is. Black empties a slot. */
 bool palette_color_is_valid(rgb16_t color);

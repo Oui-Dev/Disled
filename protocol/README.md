@@ -105,8 +105,9 @@ The lamp shows one of 16 palette slots:
 
 A color is linear light at full brightness, with its largest channel at
 65535; the brightness applies on top of it, and the LED current limit as
-for any color. Hosts convert their colors (sRGB, for example) to the light
-of the LED themselves.
+for any color. Hosts send a custom color as a screen shows it, in linear
+light (linear sRGB, for example). The lamp balances it for its LED, so that
+white shows white, and `GET_COLOR` and `STATE` give it back as sent.
 
 ### SET_COLOR body (7 bytes)
 

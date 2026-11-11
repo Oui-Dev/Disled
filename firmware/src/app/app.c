@@ -302,7 +302,7 @@ static void task_output(uint32_t now_ms)
     const uint16_t breath = update_alert(now_ms, testing);
     const led_output_inputs_t inputs = {
         .on = app.lamp.on,
-        .color = palette_color(&app.palette, (uint32_t)app.lamp.color),
+        .color = palette_light(&app.palette, (uint32_t)app.lamp.color, app_led_white_balance),
         .level_permille = brightness_level_permille(&app.brightness),
         .link = app.link,
         .cap_override_ma = app.cap_override_ma,

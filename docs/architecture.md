@@ -146,9 +146,12 @@ white at 10 % gives no light and the white turns yellow.
 
 The palette (`palette`) holds the four built-in colors and the custom ones
 that the host sets, all in linear light at full brightness; the level then
-scales them. An alert (`alert`) moves the perceived brightness of the lamp
-color along a smoothstep, after the fade, up from a dim lamp and down from a
-bright one.
+scales them. The built-in colors are tuned by eye through the PLA. A custom
+color comes as a screen shows it, so the lamp first weighs its channels with
+the white balance of the LED (`color_balance`), the duties of its white,
+then brings its largest channel back to full scale. An alert (`alert`)
+moves the perceived brightness of the lamp color along a smoothstep, after
+the fade, up from a dim lamp and down from a bright one.
 
 ### Touch detection
 

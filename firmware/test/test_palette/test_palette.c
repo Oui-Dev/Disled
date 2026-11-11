@@ -90,6 +90,17 @@ static void test_set_redefine_and_empty_a_custom_slot(void)
     TEST_ASSERT_EQUAL_HEX16(PALETTE_FIXED_MASK, palette.defined);
 }
 
+static void test_light_balances_the_custom_colors_only(void)
+{
+    const rgb16_t gains = { 53921, 65535, 17187 };
+    for (uint32_t slot = 0; slot < PALETTE_FIXED_SLOTS; slot++) {
+        assert_color(fixed[slot], palette_light(&palette, slot, gains));
+    }
+    TEST_ASSERT_TRUE(palette_set(&palette, 4, (rgb16_t){ 65535, 65535, 65535 }));
+    assert_color(gains, palette_light(&palette, 4, gains));
+    assert_color(black, palette_light(&palette, 5, gains));
+}
+
 static void test_every_custom_slot_and_no_other(void)
 {
     for (uint32_t slot = PALETTE_FIXED_SLOTS; slot < PALETTE_SLOTS; slot++) {
@@ -111,6 +122,7 @@ int main(void)
     RUN_TEST(test_built_in_colors_never_change);
     RUN_TEST(test_custom_colors_are_normalized_to_full_scale);
     RUN_TEST(test_set_redefine_and_empty_a_custom_slot);
+    RUN_TEST(test_light_balances_the_custom_colors_only);
     RUN_TEST(test_every_custom_slot_and_no_other);
     return UNITY_END();
 }

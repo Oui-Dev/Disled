@@ -63,6 +63,26 @@ rgb16_t color_gain(rgb16_t color, uint16_t num, uint16_t den)
     return result;
 }
 
+rgb16_t color_balance(rgb16_t color, rgb16_t gains)
+{
+    const rgb16_t weighted = {
+        .r = color_scale(color.r, gains.r),
+        .g = color_scale(color.g, gains.g),
+        .b = color_scale(color.b, gains.b),
+    };
+    uint16_t largest = weighted.r;
+    if (weighted.g > largest) {
+        largest = weighted.g;
+    }
+    if (weighted.b > largest) {
+        largest = weighted.b;
+    }
+    if (largest == 0u) {
+        return weighted;
+    }
+    return color_gain(weighted, COLOR_LINEAR_MAX, largest);
+}
+
 static uint16_t mix_channel(uint16_t from, uint16_t to, uint16_t t)
 {
     /* t on 15 bits keeps span * t in 32 bits, with no 64-bit division from libgcc. */
