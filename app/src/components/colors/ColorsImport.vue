@@ -92,9 +92,16 @@ defineExpose({ apply });
       <p class="text-xs text-default">{{ cycleText }}</p>
     </section>
 
-    <p class="flex items-start gap-2 rounded-md border border-default p-3 text-xs text-muted">
-      <UIcon name="i-lucide-info" class="mt-0.5 size-3.5 shrink-0" />
-      <span>{{ t('colors.import.replaces') }}</span>
-    </p>
+    <UAlert
+      color="neutral"
+      variant="outline"
+      icon="i-lucide-info"
+      :description="t('colors.import.replaces')"
+      :ui="{
+        root: 'gap-2 rounded-md p-3',
+        icon: 'mt-0.5 size-3.5 text-muted',
+        description: 'text-xs text-muted',
+      }"
+    />
   </div>
 </template>

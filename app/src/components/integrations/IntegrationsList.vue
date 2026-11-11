@@ -25,9 +25,12 @@ const { subtitle } = usePluginTexts();
 
 <template>
   <nav :aria-label="t('integrations.list')" class="flex flex-col overflow-y-auto p-2">
-    <p v-if="!plugins.plugins.length" class="p-3 text-sm text-muted">
-      {{ t('integrations.empty') }}
-    </p>
+    <UEmpty
+      v-if="!plugins.plugins.length"
+      variant="naked"
+      size="md"
+      :description="t('integrations.empty')"
+    />
     <ul class="flex flex-col gap-0.5">
       <li
         v-for="plugin in plugins.plugins"
@@ -43,15 +46,13 @@ const { subtitle } = usePluginTexts();
           :aria-current="selected === plugin.id ? 'true' : undefined"
           @click="selected = plugin.id"
         >
-          <span
-            class="grid size-8 shrink-0 place-items-center rounded-md bg-muted"
-            :class="plugin.unreadable ? 'text-error' : 'text-default'"
-          >
-            <UIcon
-              :name="plugin.unreadable ? 'i-lucide-triangle-alert' : pluginIcon(plugin.icon)"
-              class="size-4"
-            />
-          </span>
+          <UAvatar
+            :icon="plugin.unreadable ? 'i-lucide-triangle-alert' : pluginIcon(plugin.icon)"
+            :ui="{
+              root: 'rounded-md bg-muted',
+              icon: plugin.unreadable ? 'text-error' : 'text-default',
+            }"
+          />
           <span class="flex min-w-0 flex-col">
             <span class="truncate text-sm font-medium text-highlighted">{{ plugin.name }}</span>
             <span class="truncate text-xs" :class="plugin.unreadable ? 'text-error' : 'text-muted'">

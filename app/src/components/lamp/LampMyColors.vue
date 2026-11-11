@@ -79,18 +79,24 @@ function go(page: 'manage' | 'create'): void {
     >
       <!-- As in a checked radio of the row: the ring and the name follow it. -->
       <span v-if="current" hidden data-state="checked" />
-      <span
-        aria-hidden="true"
-        class="relative block size-9 rounded-[20%] border border-accented ring-2 ring-transparent ring-offset-2 ring-offset-bg transition-shadow group-has-data-[state=checked]:ring-inverted"
-        :class="{ wheel: !current }"
-        :style="current ? { background: current.hex } : undefined"
+      <!-- The chevron in a chip on the corner of the swatch, 3/8 of the chip
+           outside it. -->
+      <UChip
+        position="bottom-right"
+        :ui="{
+          base: 'size-4 translate-x-[37.5%] translate-y-[37.5%] bg-default ring-1 ring-default ring-inset',
+        }"
       >
         <span
-          class="absolute -right-1.5 -bottom-1.5 flex size-4 items-center justify-center rounded-full border border-default bg-default"
-        >
+          aria-hidden="true"
+          class="block size-9 rounded-[20%] border border-accented ring-2 ring-transparent ring-offset-2 ring-offset-bg transition-shadow group-has-data-[state=checked]:ring-inverted"
+          :class="{ wheel: !current }"
+          :style="current ? { background: current.hex } : undefined"
+        />
+        <template #content>
           <UIcon name="i-lucide-chevron-down" class="size-3 text-muted" />
-        </span>
-      </span>
+        </template>
+      </UChip>
       <LampTileName :name="current?.name ?? t('lamp.colors.more')" :narrow="narrow" />
     </UButton>
 

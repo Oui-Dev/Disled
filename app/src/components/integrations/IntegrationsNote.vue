@@ -114,8 +114,14 @@ async function copy(): Promise<void> {
         </template>
       </p>
 
-      <div v-if="block" class="overflow-hidden rounded-lg border border-default">
-        <div class="flex items-center gap-2 border-b border-default bg-muted px-3 py-2 text-xs">
+      <UCard
+        v-if="block"
+        :ui="{
+          header: 'flex items-center gap-2 bg-muted px-3 py-2 text-xs sm:px-3',
+          body: 'p-0 sm:p-0',
+        }"
+      >
+        <template #header>
           <UIcon name="i-lucide-file-json" class="size-4 text-muted" />
           <span class="font-medium text-default">{{ plugin.note?.file }}</span>
           <i18n-t keypath="integrations.filled" tag="span" scope="global" class="text-muted">
@@ -140,7 +146,7 @@ async function copy(): Promise<void> {
           >
             {{ copied ? t('common.copied') : t('common.copy') }}
           </UButton>
-        </div>
+        </template>
         <!-- Spans keep the spaces of the block, as a <pre> would. -->
         <figure
           class="max-h-72 overflow-auto p-3 font-mono text-xs whitespace-pre text-default"
@@ -155,7 +161,7 @@ async function copy(): Promise<void> {
             }}</span
           >
         </figure>
-      </div>
+      </UCard>
 
       <p
         v-if="block && plugin.capabilities.events"

@@ -91,22 +91,29 @@ function turnOn(): void {
         class="flex min-w-0 flex-1 gap-3 rounded-lg px-1.5 py-1 text-start font-normal hover:bg-transparent active:bg-transparent"
         @click="turnOn"
       >
-        <span
-          aria-hidden="true"
-          class="relative block size-9 shrink-0 rounded-[20%] border border-accented ring-2 ring-offset-2 ring-offset-bg"
-          :class="off ? 'ring-transparent' : 'ring-inverted'"
+        <!-- The icon of the plugin in a chip on the corner of the swatch,
+             a third of the chip outside it. -->
+        <UChip
+          position="bottom-right"
+          :ui="{
+            base: 'size-3.75 translate-x-1/3 translate-y-1/3 bg-default ring-1 ring-accented',
+          }"
         >
           <span
-            class="absolute inset-0 rounded-[20%]"
-            :class="{ 'opacity-40': off }"
-            :style="swatch ? { background: swatch } : undefined"
-          />
-          <span
-            class="absolute -end-1.25 -bottom-1.25 grid size-3.75 place-items-center rounded-full bg-default ring-1 ring-accented"
+            aria-hidden="true"
+            class="relative block size-9 shrink-0 rounded-[20%] border border-accented ring-2 ring-offset-2 ring-offset-bg"
+            :class="off ? 'ring-transparent' : 'ring-inverted'"
           >
-            <UIcon :name="icon" class="size-2.5 text-primary" />
+            <span
+              class="absolute inset-0 rounded-[20%]"
+              :class="{ 'opacity-40': off }"
+              :style="swatch ? { background: swatch } : undefined"
+            />
           </span>
-        </span>
+          <template #content>
+            <UIcon :name="icon" class="size-2.5 text-primary" />
+          </template>
+        </UChip>
         <span class="flex min-w-0 flex-col text-xs">
           <b class="truncate font-medium text-highlighted">{{ lines[0] }}</b>
           <span class="truncate text-muted">{{ lines[1] }}</span>

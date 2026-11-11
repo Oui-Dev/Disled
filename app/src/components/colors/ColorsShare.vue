@@ -100,23 +100,22 @@ async function read(text: string): Promise<void> {
 
     <USeparator />
 
-    <section class="flex flex-col gap-2">
-      <label for="received-code" class="text-xs font-semibold text-muted">
-        {{ t('colors.share.receive') }}
-      </label>
+    <!-- The label looks like the headings of the page. -->
+    <UFormField
+      :label="t('colors.share.receive')"
+      :error="unreadable ? t('colors.share.invalid') : false"
+      :ui="{ label: 'text-xs font-semibold text-muted', container: 'mt-2', error: 'text-xs' }"
+    >
       <UInput
-        id="received-code"
         :model-value="received"
         :placeholder="t('colors.share.placeholder')"
-        :color="unreadable ? 'error' : 'neutral'"
-        :highlight="unreadable"
-        :aria-invalid="unreadable"
-        aria-describedby="received-error"
+        class="w-full"
         @update:model-value="read(String($event))"
       />
-      <p v-if="unreadable" id="received-error" role="alert" class="text-xs text-error">
-        {{ t('colors.share.invalid') }}
-      </p>
-    </section>
+      <!-- Said by screen readers as soon as it shows. -->
+      <template #error="{ error }">
+        <span role="alert">{{ error }}</span>
+      </template>
+    </UFormField>
   </div>
 </template>

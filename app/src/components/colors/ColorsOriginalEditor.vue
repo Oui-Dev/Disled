@@ -54,11 +54,8 @@ defineExpose({ save, canSave });
       {{ color?.name }}
     </h2>
 
-    <div class="flex flex-col gap-1.5">
-      <div class="flex items-center justify-between gap-2">
-        <label for="original-name" class="text-sm text-default">{{
-          t('colors.editor.name')
-        }}</label>
+    <UFormField :label="t('colors.editor.name')" :ui="{ container: 'mt-1.5' }">
+      <template #hint>
         <UButton
           v-if="name.trim() !== original"
           color="primary"
@@ -70,19 +67,20 @@ defineExpose({ save, canSave });
         >
           {{ t('colors.editor.restore', { name: original }) }}
         </UButton>
-      </div>
-      <UInput
-        id="original-name"
-        ref="nameInput"
-        v-model="name"
-        maxlength="16"
-        @keydown.enter="save"
-      />
-    </div>
+      </template>
+      <UInput ref="nameInput" v-model="name" maxlength="16" class="w-full" @keydown.enter="save" />
+    </UFormField>
 
-    <p class="flex items-start gap-2 rounded-md border border-default p-3 text-xs text-muted">
-      <UIcon name="i-lucide-lock" class="mt-0.5 size-3.5 shrink-0" />
-      <span>{{ t('colors.editor.fixed') }}</span>
-    </p>
+    <UAlert
+      color="neutral"
+      variant="outline"
+      icon="i-lucide-lock"
+      :description="t('colors.editor.fixed')"
+      :ui="{
+        root: 'gap-2 rounded-md p-3',
+        icon: 'mt-0.5 size-3.5 text-muted',
+        description: 'text-xs text-muted',
+      }"
+    />
   </div>
 </template>

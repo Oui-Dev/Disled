@@ -252,15 +252,16 @@ defineExpose({ save, canSave });
       <span class="shrink-0 text-xs text-muted">{{ t('colors.editor.vivid') }}</span>
     </div>
 
-    <div class="flex items-center justify-between gap-3">
-      <label for="color-code" class="text-sm text-default">{{ t('colors.editor.hex') }}</label>
+    <!-- An error with no message: the field turns red, invalid for screen readers. -->
+    <UFormField
+      :label="t('colors.editor.hex')"
+      orientation="horizontal"
+      :error="!fieldValid"
+      :ui="{ root: 'gap-3' }"
+    >
       <UInput
-        id="color-code"
         :model-value="field"
         maxlength="7"
-        :color="fieldValid ? 'neutral' : 'error'"
-        :highlight="!fieldValid"
-        :aria-invalid="!fieldValid"
         class="w-32 font-mono"
         @update:model-value="typeCode(String($event))"
         @blur="field = hex.slice(1)"
@@ -269,7 +270,7 @@ defineExpose({ save, canSave });
           <span class="text-sm text-muted">#</span>
         </template>
       </UInput>
-    </div>
+    </UFormField>
 
     <USwitch
       :model-value="settings.settings?.color_preview ?? true"
