@@ -93,12 +93,14 @@ off, a USB suspend and the self-test end it.
 | `SUSPENDED` | Host asleep, or on Windows no program holds the lamp open | Off at once | Ignored | 0 |
 
 Suspend turns the LED off without a fade, because a suspended USB device
-must drop its current within a few milliseconds. Windows 11 also suspends a
-release lamp that no program holds open, 1 to 2 s after the last one closes
-it (selective suspend), and wakes it when a program opens it again. The
-debug build, whose serial console Windows does not suspend, stays lit. The touch and the light
+must drop its current within a few milliseconds. The touch and the light
 sensor stop, and the chip slows down to 1 MHz. On resume, the lamp fades
 back to its previous state, with normal touch.
+
+Windows 11 also suspends a release lamp that no program holds open, 1 to
+2 s after the last one closes it (selective suspend), and wakes it when a
+program opens it again. The debug build, whose serial console Windows does
+not suspend, stays lit.
 
 The caps use the worst-case LED currents at 100 % duty: 86 mA for red,
 63 mA for green and 125 mA for blue. When a color would exceed the cap,
@@ -126,7 +128,10 @@ through the same commands as any host.
 
 ## Test scenarios
 
-Run them on a board connected to a computer, with the desktop app open.
+Run them on a board connected to a computer, with the desktop app open. On
+Windows, run 17 and 21 with the debug build: Windows suspends a release
+lamp that no program holds open
+([USB states](#usb-states-and-led-power-limits)).
 
 1. Plug in: the lamp shows green; the app shows it on, green, in automatic
    brightness.
@@ -170,4 +175,4 @@ Run them on a board connected to a computer, with the desktop app open.
     often miss.
 21. Quit the app from the popup while the lamp shows a custom color: the
     lamp fades to green, short presses step through green, orange and red
-    again, and the touch has its factory sensitivity.
+    again, and the touch has no sensitivity correction.

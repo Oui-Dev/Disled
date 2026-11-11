@@ -205,9 +205,9 @@ lives on the releases page.
 ## A major version
 
 Version 2 of the firmware and of the app came out together, since each
-needs the other. The way it went suits the next major version too:
+needs the other. The same steps suit the next major version:
 
-1. The work goes on a long branch, `v2`, in ordinary commits. Its pull
+1. The work goes on a long-lived branch, `v2`, in ordinary commits. Its pull
    request into `main` opens with the first push, ready for review and
    never as a draft, since the checks run only on such a pull request. It
    stays open until the release. Meanwhile `main` stays free for a fix of

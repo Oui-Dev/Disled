@@ -34,7 +34,7 @@ yourself.
 ## How it works
 
 Claude Code sends each [hook](https://code.claude.com/docs/en/hooks) event
-to Disled on `127.0.0.1`, with the token of the plugin. The rules of [`plugin.json`](plugin.json) turn the events
+to Disled on `127.0.0.1`, with the plugin's token. The rules of [`plugin.json`](plugin.json) turn the events
 into states, the first rule that matches winning:
 
 | Event | State |

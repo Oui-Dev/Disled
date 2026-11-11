@@ -28,14 +28,14 @@ warm white, named "Available", "Busy", "Do not disturb" and "Soft light"
 until you rename them. The app adds up to five colors of yours
 ([Colors](#colors)).
 
-**Touch.** The top of the cube is the touch surface:
+**Touch.** The lid of the cube is the touch surface:
 
 | Gesture | Lamp on | Lamp off |
 |---|---|---|
-| Short touch | Next color of the touch cycle: green, orange, red, then green again, unless you chose other colors. A color outside the cycle goes to its first one. | Nothing |
+| Short touch | Next color of the touch cycle: green, orange, red, then green again, unless you chose other colors. From a color outside the cycle, it goes to the first color of the cycle. | Nothing |
 | Hold for 2 s | Turns off, while your finger is still down | Turns on, in its last color |
 
-An object laid on the top acts as one long touch, so the lamp turns off or
+An object laid on the lid acts as one long touch, so the lamp turns off or
 on after 2 s, then ignores the object. Take it away and the touch works
 again.
 
@@ -60,8 +60,8 @@ the top of its range.
 **Sleep.** When the computer sleeps, the lamp turns off. It comes back when
 the computer wakes up.
 
-**On Windows, keep the app running.** Windows puts a USB device that no
-program uses to sleep, a second or two after the last one lets it go. So
+**On Windows, keep the app running.** Windows puts a USB device to sleep
+a second or two after the last program that uses it lets it go. So
 when Disled is not running, as after **Quit**, the lamp turns off and its
 touch does nothing, as when the computer sleeps. It comes back as soon as
 Disled starts again. The app starts with your session, unless you turned
@@ -72,7 +72,7 @@ then sends your colors and settings again ([Settings](#settings)).
 
 ## Install the app
 
-Download the installer of your system from the
+Download the installer for your system from the
 [latest release](https://github.com/Oui-Dev/Disled/releases/latest):
 
 | System | File |
@@ -90,8 +90,9 @@ once:
   first time: open System Settings, Privacy & Security, click **Open
   Anyway** next to the message about Disled, and confirm with your
   password.
-- **Linux.** The package also installs a rule that lets you open the lamp
-  without root rights. It applies at once, without unplugging the lamp.
+- **Linux.** The package also installs a rule that lets the app use the
+  lamp without root privileges. It applies at once, without unplugging the
+  lamp.
   The calls need `libpulse0`, which most desktops have and the package
   recommends.
 
@@ -117,10 +118,12 @@ the taskbar. Drag it onto the taskbar to keep it in view.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/user-guide/popup-lamp-dark.png">
-  <img alt="The popup: the lamp is connected and green, among Off, the four colors and More; the brightness is automatic at 33 % with no correction" src="images/user-guide/popup-lamp-light.png" width="340">
+  <img alt="The popup: the lamp is connected and green, checked among Off, the four colors and More. The brightness is automatic, at 33 % with no correction" src="images/user-guide/popup-lamp-light.png" width="340">
 </picture>
 
-- **Status.** "Lamp connected", "Connecting…" or "No lamp connected".
+- **Status.** "Lamp connected", "Connecting…" or "No lamp connected", and
+  "Lamp needs an update" for a lamp on firmware v1
+  ([Update required](#update-required)).
 - **Mode.** The button at the top right says what the lamp follows:
   **Manual** when you choose its color, or the name of an integration
   ([Integrations](#integrations)).
@@ -152,7 +155,7 @@ plug the lamp in. The popup hides when you click elsewhere or press Escape.
 - **Start Disled when I log in**, **Check for updates every day**.
 - **Touch sensitivity.** From **Less sensitive** to **More sensitive**
   (−50 to +50 %, in steps of 5 %). The lamp calibrates its touch by itself,
-  and this shifts it. At +40 % and more, a hand held just above the lid may
+  and this shifts it. At +40 % or more, a hand held just above the lid may
   count as a touch, and can turn the lamp off.
 - **Appearance.** System, Light or Dark.
 - **Language.** System, English or Français.
@@ -165,8 +168,8 @@ plug the lamp in. The popup hides when you click elsewhere or press Escape.
 The app keeps your settings on this computer: brightness, touch
 sensitivity, your colors and the touch cycle, the calls and the
 integrations. It sends what the lamp needs every time the lamp connects.
-The app does not save the color and on/off, so the lamp always starts
-green.
+The app does not save the color, nor whether the lamp is on, so the lamp
+always starts green.
 
 ## Colors
 
@@ -187,20 +190,20 @@ green.
   move up. The cycle keeps at least one color.
 - **Share** ([below](#share-your-colors)).
 
-**The editor.** A name of up to 16 characters, then the color: **Hue**,
-from **Pale** to **Vivid**, a few suggestions, or a **Hex code**. With
-**Preview on the lamp**, the lamp shows the color while you change it, and
-gets its own back when you leave the editor. **Save** keeps it. The lamp
-balances your colors for its LED, so that they look close to the screen,
-whites included.
+**The editor.** A name of up to 16 characters, then the color: a few
+suggestions, a hue slider, a slider from **Pale** to **Vivid**, or a **Hex
+code**. With **Preview on the lamp**, the lamp shows the color while you
+change it, and goes back to its own color when you leave the editor.
+**Save** keeps it. The lamp balances your colors for its LED, so that they
+look close to what the screen shows, whites included.
 
-**Delete** acts at once, without a question. Wherever the color was in use,
-another one takes its place: the first color of the touch cycle on the
-lamp, "Do not disturb" for the calls, and the color an integration suggests
-for its states.
+**Delete** acts at once, without asking for confirmation. Wherever the
+color was in use, another one takes its place: the first color of the touch
+cycle on the lamp, "Do not disturb" for the calls, and the color an
+integration suggests for its states.
 
-The lamp keeps your colors only while the app runs: without the app, it
-goes back to its four colors and its original cycle.
+When you quit the app, the lamp goes back to its four colors and its
+original cycle.
 
 ### Share your colors
 
@@ -217,45 +220,47 @@ goes back to its four colors and its original cycle.
 ## Integrations
 
 An integration lets a program choose the color of the lamp, such as a tool
-that shows whether it works or waits for you. Integrations come from
+that shows whether it is working or waiting for you. Integrations come from
 plugins, which people write for their programs
 ([how to write one](plugins.md)). The Disled repository has one for Claude
 Code ([examples/plugins/claude-code](../examples/plugins/claude-code/)).
 
 **The mode.** The button at the top right of the popup opens **The lamp
 follows**: **Manual** ("You choose the color."), the **Calls** group, then
-your integrations, one at a time, and **Manage integrations**. While the
-lamp follows an integration:
+your integrations, under **Integrations** (the lamp follows one at a time),
+and **Manage integrations**. While the lamp follows an integration:
 
-- the row of colors gives way to **Off** and a card with the state the
+- The row of colors gives way to **Off** and a card with the state the
   integration gives, such as what it does, and since when. A click on the
-  card turns the lamp on with the color of that state;
-- a short touch on the lid does nothing, and holding for 2 s still turns
-  the lamp off or on;
-- choose **Manual** to choose the color again.
+  card turns the lamp on with the color of that state.
+- A short touch on the lid does nothing, and holding for 2 s still turns
+  the lamp off or on.
+- Choose **Manual** to choose the color again.
 
 **Manage integrations** opens the **Disled integrations** window:
 
 - **Open the plugins folder** shows where the plugins live, one folder
   each. **Import a plugin** takes a plugin sent to you as a zip file.
 - A new plugin arrives disabled. Turning it on asks "Enable …?" with what
-  it will be able to do: choose the lamp color, make an alert, receive the
+  it will be able to do: choose the lamp color, show an alert, receive the
   events of its program, or run a program on this computer. Only enable
-  plugins from people you trust. If its files change, Disled asks again.
+  plugins from people you trust. If the files of a plugin change, Disled
+  asks again.
 - **Installation.** Some plugins come with a note: a block to add to the
   settings of their program, the address and the token already filled in.
   **Copy** puts it in the clipboard. Disled never changes the settings of
   another program: you paste the block yourself.
 - **Status.** A line says how the plugin stands, with a dot: green once an
-  event came, orange when its program stopped, cannot be found or finds
-  its port taken, red when it stopped for good after several errors. A
-  plugin that Disled cannot read says which file and why.
+  event has arrived, orange when its program stopped or cannot be found, or
+  when another program holds the port of Disled, red when it stopped for
+  good after several errors. A plugin that Disled cannot read says which
+  file and why.
 - **Colors.** The color the lamp takes for each state of the plugin.
 - **Regenerate the token** gives the plugin a new one, to copy again into
   its program. **Remove the plugin** deletes its folder, for any plugin,
   even one never enabled or that Disled cannot read.
 
-**Alerts.** A plugin allowed to may ask for an alert: the lamp breathes
+**Alerts.** A plugin allowed to show alerts can ask for one: the lamp breathes
 three times, softly, then stops by itself. Nothing else shows in the popup.
 There is no alert while the lamp is off, and the touch does nothing while
 the lamp breathes.
@@ -267,11 +272,12 @@ manual mode. Turn on **Microphone in use**, under **Calls**, in the menu of
 the mode button. A line then shows under the colors: **During a call: Do
 not disturb**. A click on the color chooses another one.
 
-An app that uses the microphone for 2 s starts a call, and 5 s without one
-end it. During the call, the lamp shows the color of the calls, and the
-line says **In a call · then Available**, the color the lamp gets back
-after the call. Choose another color, or touch the lid, and your choice
-stays until the end of the call. A lamp off stays off.
+An app that uses the microphone for 2 s starts a call, and the call ends
+after 5 s with no app on the microphone. During the call, the lamp shows
+the color of the calls, and the line says **In a call · then Available**,
+the color the lamp gets back after the call. Choose another color, or touch
+the lid, and the lamp keeps your choice, after the call too. A lamp that is
+off stays off.
 
 - Any app counts: Disled reads only whether the microphone is in use, never
   what it hears, and shows no app name.
@@ -288,8 +294,9 @@ stays until the end of the call. A lamp off stays off.
 
 ### The app
 
-The app looks for a new version when it starts, then once a day unless you
-turn that off. When there is one, **Settings** turns green at the bottom of
+Unless you turn off **Check for updates every day**, the app looks for a
+new version when it starts, then once a day. When there is one,
+**Settings** turns green at the bottom of
 the popup, and the settings page says "Disled X.Y.Z is available." with
 **Install and restart**. The app then downloads the update, installs it and
 starts again by itself, its popup open. Updates are signed, so the app
@@ -308,9 +315,9 @@ need a new app. **Update** comes once the app is up to date.
   <img alt="The lamp update window at its second step: open the lamp, hold BOOT, press and release RESET, then release BOOT" src="images/user-guide/lamp-update-light.png" width="480">
 </picture>
 
-A window guides the update. It takes about a minute, and you will open the
-lamp, because its update mode starts with two buttons on its board,
-**BOOT** and **RESET**. Keep the lamp plugged in all along.
+A window guides the update. It takes about a minute, and you need to open
+the lamp, because two buttons on its board, **BOOT** and **RESET**, start
+its update mode. Keep the lamp plugged in the whole time.
 
 1. **Download the firmware.** The app downloads it and checks its
    signature.
@@ -323,32 +330,32 @@ lamp, because its update mode starts with two buttons on its board,
    update mode, once per computer. Download [Zadig](https://zadig.akeo.ie/)
    and run it. In **Options**, choose **List All Devices**, select the
    device whose USB ID is `4348 55E0` or `1A86 55E0`, choose **WinUSB**,
-   then **Install Driver** or **Replace Driver**. The update goes on by
-   itself once the driver is in place.
+   then **Install Driver** or **Replace Driver**. The update resumes on its
+   own once the driver is in place.
 3. **Install the firmware.** The app erases the old one first. Do not
    unplug the lamp.
 4. **Restart the lamp.** The app checks the version the lamp reports. Put
    the cube back on its base.
 
 If the update stops, click **Try again**, or follow the
-[flashing guide](flashing.md).
+[update guide](flashing.md).
 
 ### Update required
 
 A lamp that still runs firmware v1 cannot work with Disled v2. The popup
-says "Update required", and everything that talks to the lamp is greyed
+says "Update required", and everything that talks to the lamp is grayed
 out: the colors, the mode button, the brightness, the touch sensitivity
 and the diagnostics. **Update** under the message opens the same window as
-above, and the lamp runs firmware v2 a minute later. The settings, the
-languages, the app updates and **Reinstall the firmware** stay available.
+above, and the lamp runs firmware v2 a minute later. The other settings,
+the app updates and **Reinstall the firmware** stay available.
 
 ### Reinstall the firmware
 
 **Reinstall the firmware**, in the **⋮** menu of the settings page, opens a
 window where you pick the version: the recommended one is checked, the one
 the lamp runs is marked as current, and **Other versions** lists the older
-ones. Each version links to its release notes. The window then guides the
-install as above. It works with or without a lamp connected, so a lamp
+ones. A link opens the release notes of the checked version. The window
+then guides the install as above. It works with or without a lamp connected, so a lamp
 that no longer starts gets its firmware back through its update mode.
 
 **Back to firmware v1.** Version 1.0.0 is in the list too. Installed, it
@@ -381,11 +388,11 @@ sees, and helps to report a problem.
   USB sleeps, and both corrections. A badge on the tab shows when something
   needs a look.
 - **Self-test.** The lamp shows red, green, blue and warm white, which you
-  check, then glows blue. Touch the top within 10 s.
+  check, then glows blue. Touch the lid within 10 s.
 - **Telemetry.** Touch, light, LED current and level, live. **Record**,
-  then **Export CSV**, saves the measurements to a file. The recording
-  stays in the memory of the window until you export it, so closing the
-  window, turning off the computer or a power cut loses it.
+  **Stop**, then **Export CSV** saves the measurements to a file. The
+  recording lives only in the memory of the window: closing the window,
+  turning off the computer or a power cut loses it, so export it first.
 
 ## Troubleshooting
 
@@ -394,7 +401,7 @@ sees, and helps to report a problem.
 | "No lamp connected" | Use a cable that carries data, and plug the lamp into the computer or a powered hub. Right after the app starts, finding the lamp can take up to a minute on a computer with a USB device that answers slowly, such as some gaming mice. |
 | "Update required" | The lamp still runs firmware v1: click **Update** ([Update required](#update-required)). |
 | The tray icon is missing (Windows) | Look behind the **^** arrow of the taskbar, then drag the icon onto the taskbar. |
-| The lamp turns off by itself | An object laid on the top turns it off after 2 s. At a high touch sensitivity, a hand held above the lid can too. |
+| The lamp turns off by itself | An object laid on the lid turns it off after 2 s. At a high touch sensitivity, a hand held above the lid can too. |
 | The lamp is off and its touch does nothing (Windows) | Disled is not running, so Windows put the lamp to sleep. Start Disled ([On Windows, keep the app running](#the-lamp)). |
 | A short touch does nothing | The lamp follows an integration: hold for 2 s to turn it off or on, or choose **Manual** with the mode button. |
 | The lamp stays in a call | An app keeps the microphone open, such as a browser tab or an assistant that waits for its wake word. Close it, or turn **Microphone in use** off. |
@@ -403,16 +410,16 @@ sees, and helps to report a problem.
 | Too bright or too dim in automatic mode | Move the slider toward **Brighter** or **Darker**, or turn **Auto** off for a fixed level. |
 | The lamp turns off when the computer sleeps | This is expected. It comes back when the computer wakes up. |
 | The lamp is dimmer on a phone charger | This is expected. Without a computer, it limits its power. |
-| Lamp update: "Waiting for the lamp in update mode…" never ends | Check the button order (hold **BOOT**, press and release **RESET**, release **BOOT**), the driver on Windows, a cable that carries data, and that no other device is in update mode. |
-| Lamp update: "The update stopped" | Click **Try again**. To flash by hand, see the [flashing guide](flashing.md). |
+| Lamp update: "Waiting for the lamp in update mode…" never ends | Check the button order (hold **BOOT**, press and release **RESET**, release **BOOT**), the driver on Windows, and a cable that carries data. |
+| Lamp update: "The update stopped" | Click **Try again**. To flash by hand, see the [update guide](flashing.md). |
 | The lamp stays dark after an update | Press **RESET**, or unplug the lamp and plug it back in. |
 
 ## Get help
 
 Open an [issue](https://github.com/Oui-Dev/Disled/issues) with:
 
-- the app and lamp firmware versions, from the settings page of the popup;
-- your system (Windows, macOS or Linux) and its version;
-- what you did, what happened, and what you expected;
-- for a touch or light problem, a recording: in Diagnostics, **Record**,
-  reproduce the problem, then **Export CSV** and attach the file.
+- The app and lamp firmware versions, from the settings page of the popup.
+- Your system (Windows, macOS or Linux) and its version.
+- What you did, what happened, and what you expected.
+- For a touch or light problem, a recording: in Diagnostics, **Record**,
+  reproduce the problem, **Stop**, then **Export CSV** and attach the file.

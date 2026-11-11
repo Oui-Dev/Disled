@@ -62,14 +62,14 @@ TIM3 update interrupt (20 kHz, every PWM period) ─> dithers the duties
 
 The firmware runs bare metal, in one cooperative loop driven by a
 table-based scheduler (`lib/disled_core/scheduler`). Interrupt handlers
-only capture data:
+keep their work short:
 
 | Interrupt | Work |
 |---|---|
 | SysTick, 1 kHz | millisecond counter, arms the next TouchKey sample |
 | TIM3 update, 20 kHz | dithers the three LED duties into whole ticks for the next period |
 | TIM3 channel 4 | one TouchKey measurement (about 5 µs), pushed to a lock-free queue |
-| USB (three vectors, one handler) | TinyUSB event capture; during suspend, first restores the full-speed clock (EXTI line 18, USB wake-up) |
+| USB (three vectors, one handler) | TinyUSB event capture; during suspend, first restores the full clock (EXTI line 18, USB wake-up) |
 | HardFault, NMI | saves `mcause`, `mepc`, `mtval` in backup registers, resets |
 
 All interrupts share one priority, so the QingKe hardware stack never
@@ -93,8 +93,8 @@ nests.
   sensor leaves a fixed brightness, and the firmware probes it again every
   5 s. A TouchKey conversion gives up after about 100 µs.
 - **Watchdog.** The loop feeds the independent watchdog (1 s) only after
-  every task ran. The longest task took 0.5 ms when measured during
-  development, 1.7 ms on the suspend clock: far within that second.
+  every task has run. The longest task took 0.5 ms when measured during
+  development, 1.7 ms on the suspend clock: well within that second.
 - **Faults are reported.** A crash or a failed `DISLED_ASSERT` leaves its
   cause in the backup registers, then the chip resets. A failed assertion
   shows as `mcause` 0x0A55nnnn, nnnn being its source line. The next boot reports
@@ -131,8 +131,8 @@ flash: the ROM bootloader of WCH, which writes it, lives outside it.
 
 ### Configuration
 
-Every tunable lives in `src/app/app_config.c`, with the reason for its
-value. [bringup.md](bringup.md) checks them on a new board.
+Every tunable lives in `src/app/app_config.h` or `src/app/app_config.c`,
+with the reason for its value. [bringup.md](bringup.md) checks them on a new board.
 
 ### LED output
 
@@ -151,7 +151,7 @@ gives no light and the white turns yellow.
 The palette (`palette`) holds the four built-in colors and the custom ones
 that the host sets, all in linear light at full brightness; the level then
 scales them. The built-in colors are tuned by eye through the PLA. A custom
-color comes as a screen shows it, so the lamp first weighs its channels with
+color comes as a screen shows it, so the lamp first weights its channels by
 the white balance of the LED (`color_balance`), the duties of its white,
 then brings its largest channel back to full scale. An alert (`alert`)
 moves the perceived brightness of the lamp color along a smoothstep, after
@@ -171,7 +171,7 @@ time, so that it cannot drift under the hand and blunt the next touch.
 The sensitivity correction of the host multiplies the press, release and
 rise thresholds by `(100 − percent) / 100`; a change during a press waits
 for its release. During an alert, `touch_gate` keeps feeding the detector
-but passes no gesture, nor the release of a press that the alert outlived.
+but passes no gesture, nor the release of a press that outlived the alert.
 
 ### Testing
 

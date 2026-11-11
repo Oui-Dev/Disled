@@ -85,9 +85,9 @@ A plugin never brings an image or HTML: every text shows as plain text.
 
 | Capability | What the approval says | What it allows |
 |---|---|---|
-| `run` | "Run a program on this computer, with your rights:" and the command | Disled runs the command of the manifest |
+| `run` | "Run a program on this computer, with your permissions:" and the command | Disled runs the command of the manifest |
 | `color` | "Choose the lamp color, when the lamp follows it" | the plugin joins the integrations of the mode menu |
-| `alert` | "Make an alert on the lamp" | the plugin may ask for an alert |
+| `alert` | "Show an alert on the lamp" | the plugin may ask for an alert |
 | `events` | "Receive events from …, locally" | a local address and a token |
 
 A plugin without `run` also gets "Nothing else: no program, no Internet". A
@@ -124,7 +124,7 @@ plugin keeps 32 keys at most; past that, the key used least recently goes.
 ```
 
 The program sends each event as JSON in a POST request to
-`http://127.0.0.1:47831/v1/hooks/<id>`, with the token of the plugin in the
+`http://127.0.0.1:47831/v1/hooks/<id>`, with the plugin's token in the
 `X-Disled-Token` header. The installation note of the plugin carries both:
 `{{url}}` and `{{token}}` in its block become the address and the token.
 
@@ -233,7 +233,7 @@ An alert is three soft breaths of the lamp, which stop by themselves. Only a
 plugin with `alert`, approved and turned on, plays one, in every mode. There
 is no alert while the lamp is off, and no queue: a request that cannot play
 is lost. A request during an alert is ignored, and a plugin plays one alert
-every 10 seconds at most. The touch of the lid does nothing during an alert.
+every 10 seconds at most. Touching the lid does nothing during an alert.
 
 ## An example
 
