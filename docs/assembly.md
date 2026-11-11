@@ -1,13 +1,13 @@
 # Assembling a lamp
 
-This guide builds one DISLED lamp from its design files: the board, the
+This guide builds one Disled lamp from its design files: the board, the
 printed enclosure and the touch electrode, then the firmware and a last
 test. For a batch, [production.md](production.md) flashes and tests the
 boards one after the other.
 
 The files come from a pair of releases, `pcb-vX.Y.Z` and
 `enclosure-vX.Y.Z`, on the
-[releases page](https://github.com/Oui-Dev/DISLED/releases), or from the
+[releases page](https://github.com/Oui-Dev/Disled/releases), or from the
 `hardware/` folder of the repository
 ([hardware/README.md](../hardware/README.md)).
 
@@ -72,18 +72,19 @@ and the layer heights. The foot file holds the shape only.
 The buttons sit on the board, so flash it before the assembly.
 
 1. Solder CN1 onto the top side, turned as its outline on the silkscreen.
-2. In the desktop app, open **⋯**, **Reinstall the lamp firmware…**, plug
-   the board in, and follow the window: hold **BOOT**, press and release
-   **RESET**, then release **BOOT** ([user guide](user-guide.md#updates)).
+2. In the desktop app, open **Settings**, then the **⋮** menu, **Reinstall
+   the firmware**. Keep the recommended version, plug the board in, and
+   follow the window: hold **BOOT**, press and release **RESET**, then
+   release **BOOT** ([user guide](user-guide.md#reinstall-the-firmware)).
    On Windows, the window asks once for the driver of the update mode.
 3. The lamp fades in green, and the app finds it.
 
 For a batch, `disled-factory` flashes the boards and runs the self-test
 ([production.md](production.md)).
 
-The firmware still uses the pid.codes test PIDs: until it moves to the
-lamp's own, a lamp built with it must not be redistributed or sold
-([LICENSING.md](../LICENSING.md#usb-identifiers)).
+The release firmware still uses `1209:0001`, a test PID of pid.codes, until
+pid.codes grants the lamp its own, `1209:D1ED`. A firmware update then
+moves the lamp to it ([LICENSING.md](../LICENSING.md#usb-identifiers)).
 
 ## 4. Cut the copper ring
 

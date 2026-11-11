@@ -44,6 +44,12 @@ changelog. The maintainers release the hardware by hand
    Published releases are immutable, a repository setting (Settings,
    General, Releases). Their files and tag can no longer change, only their
    title and notes.
+5. When both components release, the firmware is published only once the
+   app installers are attached too: a failed app build must not leave a new
+   firmware alone, which the app before it would offer to every lamp. The
+   app release then waits for the approval of a maintainer
+   ([App updates](#app-updates)), given right after the firmware is
+   published.
 
 Both components are past 1.0.0: a breaking change raises the major
 version, `feat` the minor version and the other releasing types the patch
@@ -55,7 +61,9 @@ in the release pull request (step 3).
 
 ## When a release build fails
 
-The release stays a draft, with its tag, and nothing is published.
+The release stays a draft, with its tag, and nothing is published. Do not
+approve `app-publish` while a firmware or app job of the same run has
+failed.
 
 - If the cause is outside the code (runner, secret), re-run the failed
   jobs, and the publication follows. Not all the jobs: release-please
@@ -122,9 +130,10 @@ The installed apps update themselves from the latest GitHub release:
 
 - the `app` job signs the installers with the update key (the secrets
   below) and attaches a `.sig` next to each one;
-- once the three installers are attached, the `app-publish` job writes
-  `latest.json` from these signatures (`app/scripts/updater-manifest.mjs`),
-  attaches it, and publishes the release as the latest;
+- once the three installers are attached, the `app-publish` job waits for
+  the approval of a maintainer, then writes `latest.json` from these
+  signatures (`app/scripts/updater-manifest.mjs`), attaches it, and
+  publishes the release as the latest;
 - the app installs an update only if its signature names the version that
   `latest.json` announces (`requireSignedVersion` in `tauri.conf.json`), so
   a forged manifest cannot pair a newer version number with an older signed
@@ -133,6 +142,18 @@ The installed apps update themselves from the latest GitHub release:
 Local builds (`npm run tauri build`) need no key, because only the release
 workflow adds `src-tauri/tauri.updater.conf.json`, which asks for the
 update files.
+
+### The approval of `app-publish` (once)
+
+`app-publish` runs in the GitHub environment of the same name. Create it
+before the first release that needs it, in Settings, Environments, **New
+environment**, named `app-publish`, with the maintainers as **Required
+reviewers**. Without the environment, GitHub creates it at the first run,
+with no protection, and the app goes out unapproved. Each app release then
+waits in the Actions tab for a reviewer: **Review deployments**, then
+**Approve and deploy**. When the firmware releases in the same run, approve
+once its release is published, so that the app that knows it follows at
+once.
 
 ### Update key (once)
 
@@ -176,6 +197,38 @@ target. Install it with `cargo install wchisp@0.3.0 --locked`, copy it to
 `app/src-tauri/binaries/wchisp-<target triple>` (`.exe` on Windows), then
 run `npm run tauri build -- --config src-tauri/tauri.wchisp.conf.json`.
 
+The app lists every signed release of the firmware major that it drives,
+newest first, then the last one of the major before, which takes a lamp
+back. So a firmware release stays installable from the app as long as it
+lives on the releases page.
+
+## A major version
+
+Version 2 of the firmware and of the app came out together, since each
+needs the other. The way it went suits the next major version too:
+
+1. The work goes on a long branch, `v2`, in ordinary commits. Its pull
+   request into `main` opens with the first push, ready for review and
+   never as a draft, since the checks run only on such a pull request. It
+   stays open until the release. Meanwhile `main` stays free for a fix of
+   the released version and for Dependabot, and `main` is merged into the
+   branch after each of them, then once more before the release.
+2. One breaking commit per component, in its own paths, raises its major
+   version: `feat(firmware)!:` and `feat(app)!:`. No `Release-As` footer is
+   needed. Should the release pull request still read another version, add
+   `"release-as": "X.0.0"` to the component in
+   `release-please-config.json` ([Notes](#notes)).
+3. The branch goes into `main` with a merge commit, never a squash: with a
+   squash, only its title would count for release-please.
+4. Write the notes of both components in the release pull request (step 3
+   of the [flow](#flow)), then merge it.
+5. The firmware release is published first, then the app, the same day:
+   approve `app-publish` as soon as the firmware is out. In between, the
+   app of the previous major may offer the new firmware to a lamp, and a
+   lamp updated then works on its own but no longer takes colors from that
+   app, until the new app is installed. The previous app offers its own
+   update first once the new app is out.
+
 ## Notes
 
 - The installers carry no publisher certificate, since the update
@@ -184,12 +237,15 @@ run `npm run tauri build -- --config src-tauri/tauri.wchisp.conf.json`.
 - The macOS app is signed ad hoc (`signingIdentity` `-` in
   `tauri.conf.json`), because Apple Silicon calls a downloaded app without
   any signature "damaged" and offers only to bin it
-  ([issue #19](https://github.com/Oui-Dev/DISLED/issues/19)). The release
-  workflow checks that signature.
+  ([issue #19](https://github.com/Oui-Dev/Disled/issues/19)). The release
+  workflow checks that signature, and that `Info.plist` declares no use of
+  the microphone or of the camera: the calls come from the microphone
+  without any permission, and such a declaration would have macOS ask for
+  one.
 - The disk image window has a background,
   `app/src-tauri/installer/dmg-background.png`, with an arrow toward
   Applications and the first-launch steps
-  ([issue #36](https://github.com/Oui-Dev/DISLED/issues/36)). It also
+  ([issue #36](https://github.com/Oui-Dev/Disled/issues/36)). It also
   shows the address of the "Install the app" section of the user guide,
   so keep that heading. Tauri lays the window out with an AppleScript
   that it skips on CI, unless `TAURI_BUNDLER_DMG_IGNORE_CI` is set. The

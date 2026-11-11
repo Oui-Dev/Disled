@@ -1,17 +1,19 @@
-# DISLED
+# Disled
 
-DISLED is a USB status light. The 4 cm white cube glows green, orange or red
-to tell colleagues whether you are available. A touch on the lid cycles the
-colors and the brightness follows the room light. The desktop app also sets
-warm white or a fixed brightness, and updates the lamp
-([user guide](docs/user-guide.md)).
+Disled is a USB status light. The 4 cm white cube glows green, orange or red
+to show whether you are available, in warm white, or in up to five colors of
+your own. A touch on the lid cycles the colors and the brightness follows the
+room light. In the desktop app you name the colors, choose the ones the touch
+cycles through and update the lamp. The app can also let other programs pick
+the color, through plugins, and show a color of your choice while the
+microphone is in use during a call ([user guide](docs/user-guide.md)).
 
 > **Status.** Released: the board (PCB 1.0.0), the enclosure (1.1.1), the
-> tray app with lamp updates, and the production tool. Still to come: the
-> lamp's own USB IDs, requested from pid.codes, and the tests of the LED
+> firmware and the tray app 2.0, and the production tool. Still to come: the
+> lamp's own USB ID, requested from pid.codes, and the tests of the LED
 > current and of the heat. Binaries
 > and hardware files are on the
-> [releases page](https://github.com/Oui-Dev/DISLED/releases).
+> [releases page](https://github.com/Oui-Dev/Disled/releases).
 
 > [!WARNING]
 > On macOS, the first launch of the app is blocked, because Apple has not
@@ -28,7 +30,7 @@ warm white or a fixed brightness, and updates the lamp
 | [`crates/`](crates/) | Rust code shared by the app and the tools: protocol codec, flashing |
 | [`protocol/`](protocol/) | USB HID protocol specification and shared test vectors |
 | [`hardware/`](hardware/) | PCB (EasyEDA Pro, STEP) and enclosure (3MF) design files |
-| [`docs/`](docs/) | User guide, assembly, architecture, behavior, flashing, bring-up, production and releases |
+| [`docs/`](docs/) | User guide, plugins, assembly, architecture, behavior, flashing, bring-up, production and releases |
 
 ## Hardware at a glance
 
@@ -43,6 +45,7 @@ warm white or a fixed brightness, and updates the lamp
 | I want to… | Read |
 |---|---|
 | Use the lamp and install its app | [docs/user-guide.md](docs/user-guide.md) |
+| Write a plugin that drives the lamp | [docs/plugins.md](docs/plugins.md) |
 | Build a lamp from the design files | [docs/assembly.md](docs/assembly.md) |
 | Contribute a change | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Build, test and flash the firmware | [firmware/README.md](firmware/README.md), [docs/flashing.md](docs/flashing.md) |

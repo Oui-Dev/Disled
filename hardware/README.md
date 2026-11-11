@@ -1,8 +1,8 @@
-# DISLED hardware
+# Disled hardware
 
 This folder holds the board and the enclosure of the lamp. Each has its own
 versions, released with its files on the
-[releases page](https://github.com/Oui-Dev/DISLED/releases) as
+[releases page](https://github.com/Oui-Dev/Disled/releases) as
 `pcb-vX.Y.Z` and `enclosure-vX.Y.Z`
 ([docs/releasing.md](../docs/releasing.md#hardware-releases)).
 
@@ -40,7 +40,7 @@ the touch electrode is soldered by hand.
 ### Constraints the firmware must respect
 
 They come from the design review of the board before production
-([PDF, in French](https://github.com/Oui-Dev/DISLED/blob/d5e8749603c0b48a2b3b314eaaab88630da2aa92/hardware/review/Review_PCB_v4_connected_status_light_2026-10-10.pdf),
+([PDF, in French](https://github.com/Oui-Dev/Disled/blob/d5e8749603c0b48a2b3b314eaaab88630da2aa92/hardware/review/Review_PCB_v4_connected_status_light_2026-10-10.pdf),
 in the git history):
 
 - **N1, touch.** The touch trace runs next to LED_B. Synchronize TouchKey sampling with the LED PWM.

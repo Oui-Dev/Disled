@@ -1,6 +1,6 @@
 # Licensing
 
-DISLED is free software and open hardware.
+Disled is free software and open hardware.
 
 | Part | Path | License |
 |---|---|---|
@@ -64,10 +64,10 @@ permission above.
 
 ## USB identifiers
 
-During development the firmware uses the
-[pid.codes test PIDs](https://pid.codes/1209/0001/) `1209:0001` (release
-builds) and `1209:0002` (debug builds). They are reserved for private
-testing and must not ship on devices that are redistributed, sold or
-manufactured. Dedicated PIDs are requested from pid.codes, `1209:D1ED`
-for the release builds and `1209:D1EE` for the debug builds; the firmware
-moves to them once they are granted, before the first batch is built.
+The [pid.codes test PIDs](https://pid.codes/1209/0001/) are meant for
+private testing. Release builds still use `1209:0001` until pid.codes grants
+the lamp its own PID, `1209:D1ED`, requested for them, and the lamps
+published until then carry it too. A normal firmware update moves them to
+`1209:D1ED` once it is granted, after a version of the desktop app that
+knows it. Debug builds keep `1209:0002` for good: they serve private
+testing only and never ship.
