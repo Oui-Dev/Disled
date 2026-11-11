@@ -44,6 +44,7 @@
     "targets": "all",
     "linux": {
       "deb": {
+        "recommends": ["libpulse0"],
         "files": {
           "/usr/lib/udev/rules.d/70-disled.rules": "linux/70-disled.rules"
         },

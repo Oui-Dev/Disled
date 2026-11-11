@@ -9,6 +9,7 @@
 // Prevents an additional console window on Windows in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod calls;
 mod colors;
 mod control;
 mod device;
@@ -632,6 +633,7 @@ fn main() {
             let settings = init_settings(&handle);
             // Before the USB worker, which tells it of the lamp.
             app.manage(ControlState::new(settings.calls));
+            calls::announce(&handle);
             handle.set_theme(settings.color_mode.theme());
             let locale = Locale::of(settings.language);
             handle.state::<LocaleState>().replace(locale);

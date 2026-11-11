@@ -9,8 +9,7 @@
 //!
 //! A pure core, `Control::step`, decides from what happens to the lamp, in
 //! the windows, in the plugins and on the microphone; the functions around
-//! it carry out what it decides. Until the microphone has its module, no
-//! call reaches it.
+//! it carry out what it decides, the microphone monitor included.
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -23,6 +22,7 @@ use disled_protocol::{
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::calls::Monitor;
 use crate::colors::DEFAULT_CYCLE;
 use crate::device::DeviceHandle;
 use crate::settings::CallSettings;
@@ -114,23 +114,12 @@ pub enum Input {
     },
     CallSettings(CallSettings),
     /// This system can, or cannot, tell a call from the microphone.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the microphone monitor feeds it, in its own module"
-        )
-    )]
     CallsAvailable(bool),
-    /// The microphone monitor: a call, or none.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the microphone monitor feeds it, in its own module"
-        )
-    )]
-    Call(bool),
+    /// A run of the microphone monitor hears a call begin, or end.
+    Call {
+        run: u64,
+        in_call: bool,
+    },
     /// After a deletion, the color the lamp gets back after the call.
     CallBack(Option<u8>),
     /// A plugin asks for an alert.
@@ -154,6 +143,9 @@ pub enum Effect {
     Send { command: Command, user: bool },
     /// The heartbeat of the integrations mode, on or off.
     Heartbeat(bool),
+    /// The microphone monitor starts under the number of its run, or
+    /// stops.
+    Monitor(Option<u64>),
 }
 
 /// A command that the backend sends on its own.
@@ -188,7 +180,11 @@ pub struct Control {
     state: Option<State>,
     calls: CallSettings,
     calls_available: bool,
-    /// The microphone monitor hears a call.
+    /// The run of the microphone monitor, while it runs.
+    monitor: Option<u64>,
+    /// The runs started so far.
+    runs: u64,
+    /// The monitor that runs hears a call.
     in_call: bool,
     call: Option<Call>,
     /// When the alert under way began.
@@ -396,7 +392,8 @@ impl Control {
                     self.end_call(&mut effects);
                 }
             }
-            Input::Call(in_call) => {
+            // A run stopped since may still have spoken.
+            Input::Call { run, in_call } if self.monitor == Some(run) => {
                 self.in_call = in_call;
                 if in_call {
                     self.start_call(&mut effects);
@@ -404,6 +401,7 @@ impl Control {
                     self.end_call(&mut effects);
                 }
             }
+            Input::Call { .. } => {}
             Input::CallBack(back) => {
                 if let (Some(call), Some(back)) = (&mut self.call, back) {
                     call.back = back;
@@ -454,7 +452,25 @@ impl Control {
                 }
             }
         }
+        self.watch(&mut effects);
         effects
+    }
+
+    /// The microphone monitor runs only while it serves: the switch on, a
+    /// system that tells calls, in manual mode, with a version 2 lamp. Each
+    /// start is a new run, which first hears no call.
+    fn watch(&mut self, effects: &mut Vec<Effect>) {
+        let wanted =
+            self.calls.mic && self.calls_available && self.mode.is_none() && self.connected;
+        if wanted == self.monitor.is_some() {
+            return;
+        }
+        self.in_call = false;
+        self.monitor = wanted.then(|| {
+            self.runs += 1;
+            self.runs
+        });
+        effects.push(Effect::Monitor(self.monitor));
     }
 
     /// Changes the source the lamp follows. An integration takes the touch
@@ -526,10 +542,12 @@ impl Control {
     }
 }
 
-/// The control of the app, and its status as the windows last heard it.
+/// The control of the app, its status as the windows last heard it, and
+/// the microphone monitor that it runs.
 pub struct ControlState {
     core: Mutex<Control>,
     shown: Mutex<ControlStatus>,
+    monitor: Mutex<Option<Monitor>>,
 }
 
 impl ControlState {
@@ -539,6 +557,7 @@ impl ControlState {
         Self {
             core: Mutex::new(core),
             shown: Mutex::new(shown),
+            monitor: Mutex::new(None),
         }
     }
 
@@ -573,12 +592,25 @@ impl ControlState {
 /// status. Fails when the lamp refuses to take a choice of the user.
 pub fn input(app: &AppHandle, input: Input) -> Result<(), String> {
     let control = app.state::<ControlState>();
-    let Ok((effects, status)) = control.core.lock().map(|mut core| {
+    let Ok((effects, status, stopped)) = control.core.lock().map(|mut core| {
         let effects = core.step(Instant::now(), input);
-        (effects, core.status())
+        // In the order of the core, under its lock: a monitor asked to stop
+        // here never outlives the start of the next one.
+        let stopped = effects
+            .iter()
+            .find_map(|effect| match effect {
+                Effect::Monitor(run) => Some(*run),
+                _ => None,
+            })
+            .and_then(|run| switch_monitor(app, &control, run));
+        (effects, core.status(), stopped)
     }) else {
         return Ok(());
     };
+    // Out of the lock, which its last call may be waiting for.
+    if let Some(monitor) = stopped {
+        monitor.join();
+    }
     let result = carry_out(app, effects);
     let changed = control.shown.lock().is_ok_and(|mut shown| {
         let changed = *shown != status;
@@ -591,6 +623,18 @@ pub fn input(app: &AppHandle, input: Input) -> Result<(), String> {
         let _ = app.emit(EVENT_CONTROL, status);
     }
     result
+}
+
+/// Asks the monitor that runs to stop, and starts the run `run` if any.
+/// Returns the monitor stopped, to wait for.
+fn switch_monitor(app: &AppHandle, control: &ControlState, run: Option<u64>) -> Option<Monitor> {
+    let mut current = control.monitor.lock().ok()?;
+    let stopped = current.take();
+    if let Some(monitor) = &stopped {
+        monitor.ask();
+    }
+    *current = run.and_then(|run| Monitor::start(app.clone(), run));
+    stopped
 }
 
 /// Sends the commands, the first refusal of a choice of the user kept.
@@ -618,6 +662,8 @@ fn carry_out(app: &AppHandle, effects: Vec<Effect>) -> Result<(), String> {
                 let _ = device.send_automatic(command);
             }
             Effect::Heartbeat(on) => device.heartbeat(on),
+            // Done by `input`, under the lock of the core.
+            Effect::Monitor(_) => {}
         }
     }
     result
@@ -674,6 +720,14 @@ mod tests {
         (control, now)
     }
 
+    /// What the monitor that runs hears.
+    fn heard(control: &Control, in_call: bool) -> Input {
+        Input::Call {
+            run: control.monitor.expect("the monitor runs"),
+            in_call,
+        }
+    }
+
     fn color(slot: u8) -> Effect {
         automatic(set_state(SetState {
             color: Some(slot),
@@ -719,18 +773,21 @@ mod tests {
     #[test]
     fn a_call_shows_its_color_then_gives_the_lamp_back() {
         let (mut control, now) = control();
-        assert_eq!(control.step(now, Input::Call(true)), [color(SLOT_RED)]);
+        assert_eq!(control.step(now, heard(&control, true)), [color(SLOT_RED)]);
         let calls = control.status().calls;
         assert!(calls.in_call && calls.imposed);
         assert_eq!(calls.back, Some(SLOT_GREEN));
-        assert_eq!(control.step(now, Input::Call(false)), [color(SLOT_GREEN)]);
+        assert_eq!(
+            control.step(now, heard(&control, false)),
+            [color(SLOT_GREEN)]
+        );
         assert_eq!(control.status().calls.back, None);
     }
 
     #[test]
     fn a_choice_during_a_call_keeps_the_hand() {
         let (mut control, now) = control();
-        control.step(now, Input::Call(true));
+        control.step(now, heard(&control, true));
         let effects = control.step(
             now,
             Input::Choose {
@@ -750,10 +807,10 @@ mod tests {
             }]
         );
         assert!(!control.status().calls.imposed);
-        assert_eq!(control.step(now, Input::Call(false)), []);
+        assert_eq!(control.step(now, heard(&control, false)), []);
 
         // A touch, too: a change whose number moved, made by the touch.
-        control.step(now, Input::Call(true));
+        control.step(now, heard(&control, true));
         control.step(
             now,
             Input::State(lamp(true, SLOT_RED, 2, ChangeSource::Host)),
@@ -764,7 +821,7 @@ mod tests {
             Input::State(lamp(true, SLOT_GREEN, 3, ChangeSource::Touch)),
         );
         assert!(!control.status().calls.imposed);
-        assert_eq!(control.step(now, Input::Call(false)), []);
+        assert_eq!(control.step(now, heard(&control, false)), []);
     }
 
     #[test]
@@ -774,7 +831,7 @@ mod tests {
             now,
             Input::State(lamp(true, SLOT_GREEN, 2, ChangeSource::Touch)),
         );
-        control.step(now, Input::Call(true));
+        control.step(now, heard(&control, true));
         control.step(
             now,
             Input::State(lamp(true, SLOT_RED, 2, ChangeSource::Touch)),
@@ -790,13 +847,13 @@ mod tests {
             Input::State(lamp(false, SLOT_GREEN, 2, ChangeSource::Touch)),
         );
         // The color alone: lit again during the call, the lamp shows it.
-        assert_eq!(control.step(now, Input::Call(true)), [color(SLOT_RED)]);
+        assert_eq!(control.step(now, heard(&control, true)), [color(SLOT_RED)]);
     }
 
     #[test]
     fn the_microphone_turned_off_ends_the_call() {
         let (mut control, now) = control();
-        control.step(now, Input::Call(true));
+        control.step(now, heard(&control, true));
         let effects = control.step(
             now,
             Input::CallSettings(CallSettings {
@@ -804,16 +861,20 @@ mod tests {
                 color: SLOT_RED,
             }),
         );
-        assert_eq!(effects, [color(SLOT_GREEN)]);
+        assert_eq!(effects, [color(SLOT_GREEN), Effect::Monitor(None)]);
         assert!(!control.status().calls.in_call);
         // And with it off, a call changes nothing.
-        assert_eq!(control.step(now, Input::Call(true)), []);
+        let late = Input::Call {
+            run: 1,
+            in_call: true,
+        };
+        assert_eq!(control.step(now, late), []);
     }
 
     #[test]
     fn a_new_call_color_shows_at_once() {
         let (mut control, now) = control();
-        control.step(now, Input::Call(true));
+        control.step(now, heard(&control, true));
         let effects = control.step(
             now,
             Input::CallSettings(CallSettings {
@@ -827,16 +888,19 @@ mod tests {
     #[test]
     fn a_deleted_color_comes_back_as_its_replacement() {
         let (mut control, now) = control();
-        control.step(now, Input::Call(true));
+        control.step(now, heard(&control, true));
         assert_eq!(control.call_back(), Some(SLOT_GREEN));
         control.step(now, Input::CallBack(Some(SLOT_ORANGE)));
-        assert_eq!(control.step(now, Input::Call(false)), [color(SLOT_ORANGE)]);
+        assert_eq!(
+            control.step(now, heard(&control, false)),
+            [color(SLOT_ORANGE)]
+        );
     }
 
     #[test]
     fn an_integration_takes_the_color_and_the_call_is_forgotten() {
         let (mut control, now) = control();
-        control.step(now, Input::Call(true));
+        control.step(now, heard(&control, true));
         control.step(
             now,
             Input::Integrations(vec![Integration {
@@ -861,14 +925,19 @@ mod tests {
             effects,
             [
                 touch_mode(TouchMode::PowerOnly, Some(SLOT_ORANGE)),
-                Effect::Heartbeat(true)
+                Effect::Heartbeat(true),
+                Effect::Monitor(None)
             ]
         );
         let status = control.status();
         assert_eq!(status.mode.as_deref(), Some("claude-code"));
         assert!(!status.calls.in_call);
         // The end of the forgotten call gives nothing back.
-        assert_eq!(control.step(now, Input::Call(false)), []);
+        let end = Input::Call {
+            run: 1,
+            in_call: false,
+        };
+        assert_eq!(control.step(now, end), []);
     }
 
     #[test]
@@ -878,28 +947,102 @@ mod tests {
             control.step(now, Input::Follow(None)),
             [
                 Effect::Heartbeat(false),
-                touch_mode(TouchMode::Normal, None)
+                touch_mode(TouchMode::Normal, None),
+                Effect::Monitor(Some(2))
             ]
         );
         assert_eq!(control.status().mode, None);
     }
 
     #[test]
-    fn back_to_manual_during_a_capture_starts_a_call() {
+    fn back_to_manual_a_capture_starts_a_new_call() {
         let (mut control, now) = following();
-        control.step(now, Input::Call(true));
         control.step(
             now,
             Input::State(lamp(true, SLOT_ORANGE, 2, ChangeSource::Host)),
         );
+        control.step(now, Input::Follow(None));
+        // The monitor, stopped with the integration, hears the capture again.
+        assert_eq!(control.step(now, heard(&control, true)), [color(SLOT_RED)]);
+        assert_eq!(control.status().calls.back, Some(SLOT_ORANGE));
+    }
+
+    #[test]
+    fn the_monitor_runs_only_while_it_serves() {
+        let now = Instant::now();
+        let mut control = Control::new(CallSettings {
+            mic: true,
+            color: SLOT_RED,
+        });
+        assert_eq!(control.step(now, Input::CallsAvailable(true)), []);
         assert_eq!(
-            control.step(now, Input::Follow(None)),
-            [
-                Effect::Heartbeat(false),
-                touch_mode(TouchMode::Normal, None),
-                color(SLOT_RED)
-            ]
+            control.step(now, Input::Connected),
+            [Effect::Monitor(Some(1))]
         );
+        let switch = |mic| {
+            Input::CallSettings(CallSettings {
+                mic,
+                color: SLOT_RED,
+            })
+        };
+        assert_eq!(control.step(now, switch(false)), [Effect::Monitor(None)]);
+        assert_eq!(control.step(now, switch(true)), [Effect::Monitor(Some(2))]);
+        // The same settings heard again change nothing.
+        assert_eq!(control.step(now, switch(true)), []);
+        assert_eq!(
+            control.step(now, Input::Disconnected),
+            [Effect::Monitor(None)]
+        );
+        assert_eq!(
+            control.step(now, Input::Connected),
+            [Effect::Monitor(Some(3))]
+        );
+        assert_eq!(
+            control.step(now, Input::CallsAvailable(false)),
+            [Effect::Monitor(None)]
+        );
+        // The switch off from the start: no monitor at all.
+        let mut control = Control::new(CallSettings::default());
+        control.step(now, Input::CallsAvailable(true));
+        assert_eq!(control.step(now, Input::Connected), []);
+    }
+
+    #[test]
+    fn a_call_heard_by_a_stopped_run_changes_nothing() {
+        let (mut control, now) = control();
+        let switch = |mic| {
+            Input::CallSettings(CallSettings {
+                mic,
+                color: SLOT_RED,
+            })
+        };
+        control.step(now, switch(false));
+        control.step(now, switch(true));
+        let late = Input::Call {
+            run: 1,
+            in_call: true,
+        };
+        assert_eq!(control.step(now, late), []);
+        assert!(!control.status().calls.in_call);
+        assert_eq!(control.step(now, heard(&control, true)), [color(SLOT_RED)]);
+    }
+
+    #[test]
+    fn an_unplugged_lamp_forgets_the_call() {
+        let (mut control, now) = control();
+        control.step(now, heard(&control, true));
+        assert_eq!(
+            control.step(now, Input::Disconnected),
+            [Effect::Monitor(None)]
+        );
+        assert!(!control.status().calls.in_call);
+        // Back with its color of start-up, which the call gives back.
+        control.step(now, Input::Connected);
+        control.step(
+            now,
+            Input::State(lamp(true, SLOT_ORANGE, 1, ChangeSource::Boot)),
+        );
+        assert_eq!(control.step(now, heard(&control, true)), [color(SLOT_RED)]);
         assert_eq!(control.status().calls.back, Some(SLOT_ORANGE));
     }
 
@@ -961,7 +1104,8 @@ mod tests {
             control.step(now, Input::Integrations(Vec::new())),
             [
                 Effect::Heartbeat(false),
-                touch_mode(TouchMode::Normal, None)
+                touch_mode(TouchMode::Normal, None),
+                Effect::Monitor(Some(2))
             ]
         );
         assert_eq!(control.status().mode, None);
