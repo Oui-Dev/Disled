@@ -211,6 +211,19 @@ jobs:
         working-directory: target/release/bundle/macos
         run: codesign --verify --deep --strict --verbose=2 Disled.app
 
+      # The calls come from the microphone without any permission: a bundle
+      # that declared the use of the microphone or of the camera would have
+      # macOS ask the user, and the detection of the calls would be gone.
+      - name: No microphone or camera permission
+        if: runner.os == 'macOS'
+        working-directory: target/release/bundle/macos
+        run: |
+          plist=$(plutil -convert xml1 -o - Disled.app/Contents/Info.plist)
+          if grep -E -q 'NS(Microphone|Camera)UsageDescription' <<< "$plist"; then
+            echo "::error::Info.plist asks for the microphone or the camera"
+            exit 1
+          fi
+
       # The disk image window shows its background, with the first-launch
       # steps, only if Finder saved its layout into the image.
       - name: Check the disk image layout
