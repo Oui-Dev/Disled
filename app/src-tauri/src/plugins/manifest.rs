@@ -607,6 +607,24 @@ mod tests {
         );
     }
 
+    /// The example of the repository reads as a folder of the plugins folder
+    /// does, its name included.
+    #[test]
+    fn the_example_plugin_reads() {
+        let folder =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/plugins/claude-code");
+        let manifest = read(&folder).expect("examples/plugins/claude-code reads");
+        assert_eq!(manifest.id, "claude-code");
+        assert_eq!(manifest.states.len(), 3);
+        assert!(manifest.capabilities.events && manifest.capabilities.alert);
+        assert!(
+            manifest
+                .note
+                .as_ref()
+                .is_some_and(|note| matches!(note.block, Some(Block::Json(_))))
+        );
+    }
+
     #[test]
     fn a_text_comes_in_the_language_of_the_app_or_english_or_french() {
         let mut value = claude_code();
