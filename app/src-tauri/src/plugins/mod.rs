@@ -1006,7 +1006,9 @@ pub fn regenerate_token(app: &AppHandle, id: &str) -> Result<(), String> {
 /// the app kept of it.
 pub fn remove(app: &AppHandle, id: &str) -> Result<(), String> {
     with(app, |host, outbox| {
-        if !manifest::valid_id(id) {
+        // A folder the scan found, unreadable ones too: a plain name, never
+        // a path, since the scan takes the names of the folder's entries.
+        if !host.plugins.contains_key(id) {
             return Err("no such plugin".into());
         }
         host.forget(id, outbox);

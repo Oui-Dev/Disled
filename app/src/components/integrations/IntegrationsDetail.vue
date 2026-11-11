@@ -4,8 +4,9 @@
 
   The details of a plugin: who made it, how it stands, its installation
   note, what it can do, the colors of its states, its token and its
-  removal. A plugin never approved shows only what it will be able to do,
-  until its first approval.
+  removal. A plugin never approved shows only what it will be able to do
+  and its removal, until its first approval; an unreadable one, why and its
+  removal.
 -->
 <script setup lang="ts">
 import { useIntervalFn } from '@vueuse/core';
@@ -35,6 +36,26 @@ const driving = computed(() => control.status.mode === props.plugin.id);
 const line = computed(() => status(props.plugin, now.value));
 /** Never approved: the details wait for the first approval. */
 const fresh = computed(() => !props.plugin.approved && !props.plugin.unreadable);
+/** The dot of the status line: red for a program stopped for good, orange
+ * while it waits to start again or for its port, green once it was heard,
+ * grey otherwise. */
+const dot = computed<'error' | 'warning' | 'success' | 'neutral'>(() => {
+  const plugin = props.plugin;
+  if (!plugin.enabled) {
+    return 'neutral';
+  }
+  if (plugin.program?.kind === 'failed') {
+    return 'error';
+  }
+  if (
+    plugin.port_taken
+    || plugin.program?.kind === 'stopped'
+    || plugin.program?.kind === 'not_found'
+  ) {
+    return 'warning';
+  }
+  return plugin.last_event ? 'success' : 'neutral';
+});
 
 const confirming = ref<'regenerate' | 'remove' | null>(null);
 const regenerating = computed({
@@ -64,13 +85,14 @@ async function remove(): Promise<void> {
 <template>
   <section :aria-label="t('integrations.details')" class="flex flex-col gap-6 p-6">
     <div class="flex items-start gap-3">
-      <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-muted">
-        <UIcon
-          :name="plugin.unreadable ? 'i-lucide-triangle-alert' : pluginIcon(plugin.icon)"
-          class="size-5"
-          :class="plugin.unreadable ? 'text-error' : 'text-default'"
-        />
-      </span>
+      <UAvatar
+        :icon="plugin.unreadable ? 'i-lucide-triangle-alert' : pluginIcon(plugin.icon)"
+        size="xl"
+        :ui="{
+          root: 'rounded-lg bg-muted',
+          icon: plugin.unreadable ? 'text-error' : 'text-default',
+        }"
+      />
       <div class="flex min-w-0 flex-1 flex-col gap-0.5">
         <div class="flex flex-wrap items-center gap-2">
           <h2 class="truncate text-base font-semibold text-highlighted">{{ plugin.name }}</h2>
@@ -96,16 +118,22 @@ async function remove(): Promise<void> {
 
     <p v-if="plugin.description" class="text-sm text-default">{{ plugin.description }}</p>
 
+    <!-- On the baseline, the chip sits level with the lower case letters,
+         below the middle of the line, and beside the first line of a long text. -->
     <p
       v-if="line"
       role="status"
-      class="flex items-center gap-2 text-sm"
+      class="flex items-baseline gap-2 text-sm"
       :class="plugin.unreadable ? 'text-error' : 'text-muted'"
     >
-      <span
-        aria-hidden="true"
-        class="size-2 shrink-0 rounded-full"
-        :class="plugin.last_event && plugin.enabled ? 'bg-success' : 'bg-accented'"
+      <!-- An empty chip, silent for screen readers; inset, or it keeps the
+           shift of a chip on a corner. The neutral chip of Nuxt UI is the
+           inverted color: ours is grey. -->
+      <UChip
+        standalone
+        inset
+        :color="dot"
+        :ui="{ base: dot === 'neutral' ? 'bg-accented' : undefined }"
       />
       {{ line }}
     </p>
@@ -119,11 +147,8 @@ async function remove(): Promise<void> {
 
     <IntegrationsColors v-if="!fresh && plugin.capabilities.color" :plugin="plugin" />
 
-    <footer
-      v-if="!fresh && !plugin.unreadable"
-      class="mt-auto flex items-center gap-4 border-t border-default pt-4"
-    >
-      <template v-if="plugin.capabilities.events">
+    <footer class="mt-auto flex items-center gap-4 border-t border-default pt-4">
+      <template v-if="!fresh && !plugin.unreadable && plugin.capabilities.events">
         <span class="text-xs text-muted">{{ t('integrations.tokenOwn') }}</span>
         <UButton color="neutral" variant="link" size="sm" class="p-0" @click="regenerating = true">
           {{ t('integrations.regenerate') }}
