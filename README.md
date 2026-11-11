@@ -31,6 +31,7 @@ microphone is in use during a call ([user guide](docs/user-guide.md)).
 | [`protocol/`](protocol/) | USB HID protocol specification and shared test vectors |
 | [`hardware/`](hardware/) | PCB (EasyEDA Pro, STEP) and enclosure (3MF) design files |
 | [`docs/`](docs/) | User guide, plugins, assembly, architecture, behavior, flashing, bring-up, production and releases |
+| [`examples/`](examples/) | Example plugins: [Claude Code](examples/plugins/claude-code/) |
 
 ## Hardware at a glance
 
@@ -46,6 +47,7 @@ microphone is in use during a call ([user guide](docs/user-guide.md)).
 |---|---|
 | Use the lamp and install its app | [docs/user-guide.md](docs/user-guide.md) |
 | Write a plugin that drives the lamp | [docs/plugins.md](docs/plugins.md) |
+| Show on the lamp what Claude Code does | [examples/plugins/claude-code](examples/plugins/claude-code/) |
 | Build a lamp from the design files | [docs/assembly.md](docs/assembly.md) |
 | Contribute a change | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Build, test and flash the firmware | [firmware/README.md](firmware/README.md), [docs/flashing.md](docs/flashing.md) |

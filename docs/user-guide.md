@@ -219,7 +219,8 @@ goes back to its four colors and its original cycle.
 An integration lets a program choose the color of the lamp, such as a tool
 that shows whether it works or waits for you. Integrations come from
 plugins, which people write for their programs
-([how to write one](plugins.md)).
+([how to write one](plugins.md)). The Disled repository has one for Claude
+Code ([examples/plugins/claude-code](../examples/plugins/claude-code/)).
 
 **The mode.** The button at the top right of the popup opens **The lamp
 follows**: **Manual** ("You choose the color."), the **Calls** group, then

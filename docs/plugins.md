@@ -8,9 +8,10 @@ write one.
 A plugin is a folder with a `plugin.json` file. It talks to Disled in one of
 two ways:
 
-- **With events**: a program that Disled does not run, such as Claude Code,
-  sends JSON to a local address, and rules of the manifest turn each event
-  into a state or an alert. Disled runs nothing of such a plugin.
+- **With events**: a program that Disled does not run, such as Claude Code
+  ([its plugin](../examples/plugins/claude-code/)), sends JSON to a local
+  address, and rules of the manifest turn each event into a state or an
+  alert. Disled runs nothing of such a plugin.
 - **As a program**: Disled runs the command of the manifest and reads one
   notification per line on its output.
 
@@ -259,3 +260,7 @@ A program plugin, for a timer:
 `index.js` writes `{"jsonrpc":"2.0","method":"state","params":{"state":"focus"}}`
 when a session begins, the same with `break` at the pause, and
 `{"jsonrpc":"2.0","method":"alert"}` when it ends.
+
+A whole plugin with events, for Claude Code, is in
+[examples/plugins/claude-code](../examples/plugins/claude-code/): its
+states, its rules, and its installation note with the block of hooks.
