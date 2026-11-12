@@ -35,13 +35,13 @@ driver, the debug console and troubleshooting.
 |---|---|
 | `debug` (default) | HID protocol + CDC console and logs, USB ID `1209:0002` |
 | `release` | HID protocol only, no logs, USB ID `1209:0001` |
+| `native` | Unity tests of `lib/disled_core`, with the protocol vectors |
 
 Both IDs are test PIDs of pid.codes. The release build moves to the lamp's
 own, `1209:D1ED`, once pid.codes grants it, and the debug build keeps
 `1209:0002` ([LICENSING.md](../LICENSING.md#usb-identifiers)). Both start
 at 0x0 and may fill the 32 KB of flash: the ROM bootloader of WCH, which
 writes them, lives outside it.
-| `native` | Unity tests of `lib/disled_core`, with the protocol vectors |
 
 ## Layout
 
