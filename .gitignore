@@ -18,6 +18,7 @@ __pycache__/
 
 # Firmware: PlatformIO builds and the tools uv installs
 firmware/.pio/
+firmware/bootloader/.pio/
 firmware/.venv/
 firmware/.vscode/*
 !firmware/.vscode/extensions.json
