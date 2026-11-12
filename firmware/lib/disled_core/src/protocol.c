@@ -82,6 +82,9 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
         case PROTO_CMD_RESET:
         case PROTO_CMD_GET_DIAGNOSTICS:
         case PROTO_CMD_SELF_TEST:
+#if DISLED_ENTER_UPDATE
+        case PROTO_CMD_ENTER_UPDATE:
+#endif
             return PROTO_OK;
 
         case PROTO_CMD_SET_STATE: {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
-//! Update protocol of the DISLED HID bootloader
+//! Update protocol of the Disled HID bootloader
 //! (firmware/bootloader/README.md): 64-byte reports without report ID, one
 //! reply for each request. The functions here do no I/O: a [`Transport`]
 //! carries the reports, hidapi in the tool, the bootloader's own C core in

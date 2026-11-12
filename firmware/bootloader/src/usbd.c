@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
  * USBD is the STM32F103 USB device ("FSDEV"): 16-bit registers at 32-bit
@@ -132,7 +132,7 @@ _Static_assert(sizeof desc_device <= EP0_SIZE && sizeof desc_report <= EP0_SIZE,
 /* The same serial number as the application: the host can follow the lamp
  * across the restarts of an update. */
 static char s_serial[SERIAL_CHARS + 1u];
-static const char *const strings[] = { "DISLED", "DISLED bootloader", s_serial };
+static const char *const strings[] = { "Disled", "Disled bootloader", s_serial };
 
 static uint8_t s_address; /* DADDR_EF | address, set after the status stage */
 static uint8_t s_config;

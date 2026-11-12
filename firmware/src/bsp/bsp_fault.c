@@ -12,6 +12,8 @@
 /* Backup registers (16 bits each, cleared by a power cycle):
  *   DATAR1     FAULT_MAGIC while a fault is waiting to be reported
  *   DATAR2..7  last fault: mcause, mepc, mtval (kept after the report)
+ *   DATAR8     BSP_UPDATE_MAGIC: update mode requested (ENTER_UPDATE, _bl
+ *              builds only)
  *   DATAR9     boots since power-up
  *   DATAR10    watchdog resets (high byte), faults (low byte) */
 #define FAULT_MAGIC 0xFA17u
@@ -72,8 +74,23 @@ fault_record_t bsp_fault_take(void)
         faults = saturating_inc(faults);
     }
     BKP->DATAR10 = (uint16_t)(((uint16_t)watchdog_resets << 8) | faults);
+#if DISLED_ENTER_UPDATE
+    BKP->DATAR8 = 0; /* a request no bootloader took */
+#endif
     return record;
 }
+
+#if DISLED_ENTER_UPDATE
+void bsp_reset_to_update(void)
+{
+    __disable_irq();
+    unlock_backup_domain();
+    BKP->DATAR8 = BSP_UPDATE_MAGIC;
+    NVIC_SystemReset();
+    for (;;) {
+    }
+}
+#endif
 
 fault_stats_t bsp_fault_stats(void)
 {

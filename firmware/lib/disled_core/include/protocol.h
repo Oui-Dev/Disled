@@ -53,6 +53,18 @@
 #define PROTO_CMD_ALERT                 0x0Eu
 #define PROTO_CMD_SET_TOUCH_SENSITIVITY 0x10u
 
+/* Only in the builds for the HID bootloader prototype (firmware/bootloader/,
+ * the _bl environments): ENTER_UPDATE takes 0x09 and capability bit 5. It
+ * gets an ACK, then the lamp restarts into the bootloader, in update mode.
+ * Every other build keeps both reserved, as protocol 2.0 says. */
+#ifndef DISLED_ENTER_UPDATE
+#define DISLED_ENTER_UPDATE 0
+#endif
+#if DISLED_ENTER_UPDATE
+#define PROTO_CMD_ENTER_UPDATE 0x09u
+#define PROTO_CAP_ENTER_UPDATE (1u << 5)
+#endif
+
 /* From the device to the host. */
 #define PROTO_MSG_INFO             0x81u
 #define PROTO_MSG_STATE            0x82u

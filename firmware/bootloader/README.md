@@ -1,12 +1,14 @@
-# DISLED HID bootloader (prototype)
+# Disled HID bootloader (prototype)
 
 A bootloader in the first 4 KB of the flash that updates the firmware over
-USB HID: no driver on any system, no BOOT button, the cube stays closed.
+USB HID: no driver on any system, no BOOT button, the lamp stays closed.
 The application moves to 0x1000. The WCH ROM bootloader stays the way back
 when everything else fails ([docs/flashing.md](../../docs/flashing.md)).
 
-Status: prototype. It builds and its logic is unit tested, but it has not
-run on a board yet.
+Status: prototype, set aside on 2026-11-08, since Disled 2.0 updates every
+lamp through the ROM bootloader. It builds with firmware 2.0, its logic is
+unit tested, and it passed the [board tests](#board-tests) on Windows 11.
+[Coming back](#coming-back) lists what it still needs.
 
 ## Flash layout
 
@@ -29,17 +31,26 @@ After a reset, on the internal 8 MHz oscillator:
 2. No record, a size out of range or a CRC mismatch: it stays.
 3. Otherwise it jumps to `0x1000` in machine mode, with interrupts off and
    every clock at its reset value: the application's startup runs as after
-   a reset. The CRC loop is 17 instructions per byte, so about 50 ms for an
-   18 KB image at 8 MHz, still to be measured on a board.
+   a reset. The CRC loop is 17 instructions per byte, about 50 ms for an
+   18 KB image at 8 MHz: on the board, the lamp came back on the USB 446 ms
+   after a RESET through the bootloader, 389 ms without it, for an 18.5 KB
+   application.
 
 To enter update mode, the application enables the PWR and BKP clocks, sets
 `PWR_CTLR.DBP`, writes `0xB007` to `BKP->DATAR8` and resets
 (`NVIC_SystemReset()`). A power cycle clears `DATAR8`.
 
+Firmware 2.x does it on `ENTER_UPDATE` (`0x09`, no body), which it answers
+with `ACK` and announces with capability bit 5, in its `debug_bl` and
+`release_bl` builds only (`DISLED_ENTER_UPDATE`, `bsp_reset_to_update()`).
+Its other builds keep `0x09` and bit 5 reserved, as protocol 2.0 says, and
+answer `ERROR` (unknown command). A request that reaches the application
+found no bootloader: the application drops it at boot.
+
 ## Update mode
 
 Crystal and PLL at 48 MHz (USB clock; flash programming needs 60 MHz or
-less). The USB device is `1209:0003`, "DISLED bootloader", with the serial
+less). The USB device is `1209:0003`, "Disled bootloader", with the serial
 number of the application (the chip unique ID), bus powered at 100 mA. The
 green LED blinks slowly while waiting and fast during an update (63 mA at
 most, constraint N2), and goes off when the computer suspends the bus. Pins
@@ -114,11 +125,16 @@ uv run pio test -e native -e native_bitwise # protocol, record and CRC tests
 ```
 
 The application at `0x1000`, from `firmware/`: `uv run pio run -e release_bl`
-(or `debug_bl`). One image for the ROM bootloader, from `firmware/`:
+(or `debug_bl`), about 21.4 KB and 27.4 KB of the 28,416 bytes with firmware
+2.0.0. `scripts/bl_ldscript.py` gives the linker those 28,416 bytes, which
+the platform would round down to 27 KB. `uv run pio test -e native_bl`
+tests the decoder of these builds. One image for the ROM bootloader, from
+`firmware/`:
 
 ```sh
 uv run python bootloader/scripts/make_image.py --bootloader bootloader/.pio/build/bootloader/firmware.bin \
-    --app .pio/build/release_bl/firmware.bin --tag 0x010000 --out disled-combined
+    --app .pio/build/release_bl/firmware.bin --tag 0x020000 --out disled-combined
+wchisp erase
 wchisp flash disled-combined.bin
 ```
 
@@ -138,3 +154,41 @@ upload` goes through it.
   Write-protecting sector 0 (option bytes) also guards it against a faulty
   application; `wchisp config unprotect` lifts the protection for the ROM
   bootloader.
+- Windows suspends the bootloader about 2 s after the last program closes
+  it, and the bootloader then turns its LED off, as USB requires (2.5 mA at
+  most): the lamp looks dead. A host that waits for an update, or resumes
+  one, must keep it open meanwhile.
+
+## Board tests
+
+On 2026-10-31, Windows 11, one lamp, with firmware 1.x and a 2.0 prototype
+whose `ENTER_UPDATE` is the one above. Every test passed:
+
+| Test | Result |
+|---|---|
+| Image without record, through the ROM | The bootloader stays in update mode, a HID device with no driver; `info`: no valid application |
+| Firmware 1.x `release_bl` through HID | 18,468 bytes in 1.6 s, 1.96 s in all; the application starts with the same serial number |
+| BOOT + RESET, then an image with a bad CRC | The ROM bootloader still starts; the bootloader then stays in update mode |
+| Firmware 2.0 `debug_bl` through HID | 26,824 bytes in 2.3 s |
+| `enter` | `ACK`, the bootloader 468 ms later, requested by the application; back to the application alone 60.2 s later; `enter` then `boot`: back in about 1 s |
+| Firmware 2.0 `release_bl`, from the running application | `flash` sends `ENTER_UPDATE`: 20,892 bytes in 1.8 s, 2.65 s in all |
+| Tool killed at 11,008 of 26,824 bytes, lamp unplugged at 6,656 | The bootloader stays in update mode with no valid application, and the next update completes |
+| Back to firmware 1.0.0 at `0x0` through the ROM | The lamp works as before |
+
+Not tested on a board: a power cut just before the end of an update (the
+unit tests inject it), the current in update mode, the write protection of
+sector 0.
+
+## Coming back
+
+- A USB PID of its own: `1209:0003` is a test PID of pid.codes.
+- Tests on macOS, on Linux and on Windows 10 behind a hub, and the current
+  in update mode.
+- `ENTER_UPDATE` in every build, through a new minor version of the
+  protocol, with its capability bit.
+- A desktop app that updates through the bootloader and keeps it open while
+  it waits. Today it installs every firmware through the ROM bootloader,
+  after `wchisp erase`, which empties the whole flash, this bootloader with
+  it.
+- Each lamp gets the bootloader once, opened, through the ROM bootloader:
+  the combined image above.

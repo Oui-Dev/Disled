@@ -35,8 +35,9 @@ driver, the debug console and troubleshooting.
 |---|---|
 | `debug` (default) | HID protocol + CDC console and logs, USB ID `1209:0002` |
 | `release` | HID protocol only, no logs, USB ID `1209:0001` |
-| `debug_bl`, `release_bl` | The same, linked at `0x1000` behind the HID bootloader prototype ([bootloader/](bootloader/README.md)) |
+| `debug_bl`, `release_bl` | The same, linked at `0x1000` behind the HID bootloader prototype, with `ENTER_UPDATE` ([bootloader/](bootloader/README.md)) |
 | `native` | Unity tests of `lib/disled_core`, with the protocol vectors |
+| `native_bl` | The test of the decoder of the `_bl` builds |
 
 Both IDs are test PIDs of pid.codes. The release build moves to the lamp's
 own, `1209:D1ED`, once pid.codes grants it, and the debug build keeps
@@ -57,7 +58,7 @@ of WCH, which writes them, lives outside it.
 | `lib/disled_core/` | hardware-independent logic, unit tested |
 | `lib/tinyusb/` | TinyUSB 0.21.0 (submodule `upstream/`) and its build description |
 | `test/` | Unity tests, one folder per core module |
-| `scripts/` | version from git, memory budget, Intel HEX, protocol vectors to C, binary for an upload through the bootloader |
+| `scripts/` | version from git, memory budget, Intel HEX, protocol vectors to C, the flash size and the upload of the `_bl` builds |
 | `pyproject.toml`, `uv.lock` | build and check tools (PlatformIO, clang-format) for uv, kept up to date by Dependabot |
 | `tools/touch_replay/` | replays touch recordings through the detector on the build machine |
 | `bootloader/` | HID bootloader prototype, a PlatformIO project of its own |

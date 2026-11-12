@@ -1,7 +1,7 @@
 {
   "name": "bl_core",
   "version": "0.1.0",
-  "description": "Hardware-independent part of the DISLED bootloader: flash layout, update protocol, CRC-32 and boot decision. Includes no SDK header, so it also builds and runs natively for unit tests.",
+  "description": "Hardware-independent part of the Disled bootloader: flash layout, update protocol, CRC-32 and boot decision. Includes no SDK header, so it also builds and runs natively for unit tests.",
   "license": "GPL-3.0-or-later",
   "frameworks": "*",
   "platforms": "*",

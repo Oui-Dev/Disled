@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
-//! Prototype host tool of the DISLED HID bootloader (firmware/bootloader/).
+//! Prototype host tool of the Disled HID bootloader (firmware/bootloader/).
 //! It needs no driver: the bootloader is a HID device.
 
 mod protocol;
@@ -77,8 +77,12 @@ fn wait_for_bootloader(api: &mut HidApi) -> Result<Session<Hid>, String> {
     }
 }
 
-/// Asks a running lamp for update mode: ENTER_BOOTLOADER of the application
-/// protocol, which the application answers with ACK before it resets.
+/// ENTER_UPDATE of the firmware built for this bootloader (the `_bl`
+/// environments). Protocol 2.0 reserves 0x09, so the codec does not know it.
+const ENTER_UPDATE: u8 = 0x09;
+
+/// Asks a running lamp for update mode: ENTER_UPDATE, which the application
+/// answers with ACK before it resets into the bootloader.
 fn enter(api: &mut HidApi) -> Result<(), String> {
     api.reset_devices().map_err(|e| e.to_string())?;
     api.add_devices(lamp::USB_VENDOR_ID, 0)
@@ -90,9 +94,11 @@ fn enter(api: &mut HidApi) -> Result<(), String> {
         .open_device(api)
         .map_err(|e| e.to_string())?;
 
+    // A frame without a body: type, seq 1, length 0.
     let mut report = [0u8; lamp::PAYLOAD_SIZE + 1];
     report[0] = lamp::REPORT_ID_COMMAND;
-    report[1..].copy_from_slice(&lamp::Command::EnterBootloader.encode(1));
+    report[1] = ENTER_UPDATE;
+    report[2] = 1;
     device.write(&report).map_err(|e| e.to_string())?;
 
     let start = Instant::now();
@@ -107,12 +113,13 @@ fn enter(api: &mut HidApi) -> Result<(), String> {
         match lamp::decode_message(&buffer[1..length]) {
             Ok(frame) if frame.seq == 1 => {
                 return match frame.message {
-                    lamp::Message::Ack { .. } => Ok(()),
-                    _ => Err(
-                        "the firmware of this lamp has no update mode: flash it once \
-                              through the ROM bootloader (BOOT + RESET, wchisp)"
-                            .into(),
-                    ),
+                    lamp::Message::Ack {
+                        command: ENTER_UPDATE,
+                    } => Ok(()),
+                    _ => Err("the firmware of this lamp has no update mode (not a _bl \
+                              build): flash the combined image once through the ROM \
+                              bootloader (BOOT + RESET, wchisp)"
+                        .into()),
                 };
             }
             _ => continue,

@@ -11,6 +11,7 @@
 #include "app_context.h"
 #include "bsp/board.h"
 #include "bsp/bsp.h"
+#include "bsp/bsp_fault.h"
 #include "bsp/bsp_uid.h"
 #include "protocol.h"
 #include "time_utils.h"
@@ -38,6 +39,12 @@ static uint32_t s_telemetry_next_ms;
 
 static bool s_reset_pending;
 static uint32_t s_reset_at_ms;
+#if DISLED_ENTER_UPDATE
+static bool s_reset_to_update; /* the pending reset is an ENTER_UPDATE */
+#define APP_CAP_ENTER_UPDATE PROTO_CAP_ENTER_UPDATE
+#else
+#define APP_CAP_ENTER_UPDATE 0u
+#endif
 
 static bool same_rgb(rgb16_t a, rgb16_t b)
 {
@@ -139,10 +146,11 @@ static bool send_state(uint8_t seq)
 static uint32_t capabilities(void)
 {
     /* No ENTER_BOOTLOADER: the CH32V203 cannot start its ROM bootloader
-     * from software. */
+     * from software. ENTER_UPDATE restarts into the HID bootloader prototype
+     * instead, in the builds made for it. */
     return PROTO_CAP_TELEMETRY | PROTO_CAP_AUTO_BIAS | PROTO_CAP_DIAGNOSTICS | PROTO_CAP_SELF_TEST |
            PROTO_CAP_CUSTOM_COLORS | PROTO_CAP_TOUCH_CYCLE | PROTO_CAP_TOUCH_MODE |
-           PROTO_CAP_ALERT | PROTO_CAP_TOUCH_SENSITIVITY |
+           PROTO_CAP_ALERT | PROTO_CAP_TOUCH_SENSITIVITY | APP_CAP_ENTER_UPDATE |
            (DISLED_DEBUG ? PROTO_CAP_DEBUG_CONSOLE : 0u);
 }
 
@@ -327,6 +335,14 @@ static void handle_command(const uint8_t payload[PROTO_REPORT_SIZE], uint32_t no
             s_reset_pending = true;
             s_reset_at_ms = now_ms + APP_RESET_DELAY_MS;
             break;
+#if DISLED_ENTER_UPDATE
+        case PROTO_CMD_ENTER_UPDATE:
+            send_ack(command.seq, command.type);
+            s_reset_pending = true;
+            s_reset_to_update = true;
+            s_reset_at_ms = now_ms + APP_RESET_DELAY_MS;
+            break;
+#endif
         case PROTO_CMD_SET_AUTO_BIAS:
             brightness_set_auto_bias(&app.brightness, command.body.auto_bias);
             send_ack(command.seq, command.type);
@@ -420,6 +436,11 @@ void app_host_task(uint32_t now_ms)
     }
 
     if (s_reset_pending && time_reached(now_ms, s_reset_at_ms)) {
+#if DISLED_ENTER_UPDATE
+        if (s_reset_to_update) {
+            bsp_reset_to_update();
+        }
+#endif
         bsp_system_reset();
     }
 }

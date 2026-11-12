@@ -36,4 +36,15 @@ fault_record_t bsp_fault_take(void);
 
 fault_stats_t bsp_fault_stats(void);
 
+#if DISLED_ENTER_UPDATE
+/* DATAR8 holds it when the HID bootloader must stay in update mode: its
+ * BL_ENTER_MAGIC (bootloader/lib/bl_core/include/bl_core.h). */
+#define BSP_UPDATE_MAGIC 0xB007u
+
+/* Leaves the update request in DATAR8, then resets. The bootloader takes the
+ * request; one that reaches the application found no bootloader, and
+ * bsp_fault_take() drops it, so that no later reset enters update mode. */
+__attribute__((noreturn)) void bsp_reset_to_update(void);
+#endif
+
 #endif /* DISLED_BSP_FAULT_H */

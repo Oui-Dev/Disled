@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! Compiles the hardware-independent core of the bootloader (C), which the
 //! tests of src/protocol.rs drive: the host side and the bootloader logic
