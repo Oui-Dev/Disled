@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  */
 #include <unity.h>
@@ -56,23 +56,23 @@ static void test_dimmest_manual_level_stays_visible(void)
     TEST_ASSERT_TRUE(ticks >= 3);
 }
 
-static void test_compose_applies_the_level(void)
+static void test_shade_applies_the_level(void)
 {
-    const rgb16_t full = color_compose(&config, LAMP_COLOR_GREEN, 1000);
+    const rgb16_t full = color_shade(config.palette[LAMP_COLOR_GREEN], 1000);
     TEST_ASSERT_EQUAL_UINT16(0, full.r);
     TEST_ASSERT_EQUAL_UINT16(65535, full.g);
     TEST_ASSERT_EQUAL_UINT16(color_perceived_to_linear(500),
-                             color_compose(&config, LAMP_COLOR_GREEN, 500).g);
+                             color_shade(config.palette[LAMP_COLOR_GREEN], 500).g);
     TEST_ASSERT_EQUAL_UINT16(0, full.b);
 
-    const rgb16_t dark = color_compose(&config, LAMP_COLOR_RED, 0);
+    const rgb16_t dark = color_shade(config.palette[LAMP_COLOR_RED], 0);
     TEST_ASSERT_EQUAL_UINT16(0, dark.r);
 }
 
-static void test_compose_keeps_the_hue_when_dimming(void)
+static void test_shade_keeps_the_hue_when_dimming(void)
 {
-    const rgb16_t bright = color_compose(&config, LAMP_COLOR_WARM_WHITE, 1000);
-    const rgb16_t dim = color_compose(&config, LAMP_COLOR_WARM_WHITE, 500);
+    const rgb16_t bright = color_shade(config.palette[LAMP_COLOR_WARM_WHITE], 1000);
+    const rgb16_t dim = color_shade(config.palette[LAMP_COLOR_WARM_WHITE], 500);
     /* Same red/blue ratio within rounding. */
     const uint32_t lhs = (uint32_t)bright.r * dim.b;
     const uint32_t rhs = (uint32_t)dim.r * bright.b;
@@ -100,6 +100,48 @@ static void test_scale(void)
     TEST_ASSERT_UINT16_WITHIN(1, 16384, color_scale(32768, 32768));
 }
 
+/* The gains of an LED whose red gives a little too much light and whose blue
+ * gives four times too much. */
+static const rgb16_t gains = { 53921, 65535, 17187 };
+
+static void assert_rgb(rgb16_t expected, rgb16_t actual)
+{
+    TEST_ASSERT_EQUAL_UINT16(expected.r, actual.r);
+    TEST_ASSERT_EQUAL_UINT16(expected.g, actual.g);
+    TEST_ASSERT_EQUAL_UINT16(expected.b, actual.b);
+}
+
+static void test_balance_turns_white_into_the_gains(void)
+{
+    assert_rgb(gains, color_balance((rgb16_t){ 65535, 65535, 65535 }, gains));
+}
+
+static void test_balance_keeps_a_primary_at_full_scale(void)
+{
+    assert_rgb((rgb16_t){ 65535, 0, 0 }, color_balance((rgb16_t){ 65535, 0, 0 }, gains));
+    assert_rgb((rgb16_t){ 0, 0, 65535 }, color_balance((rgb16_t){ 0, 0, 65535 }, gains));
+}
+
+static void test_balance_brings_the_largest_channel_back_to_full_scale(void)
+{
+    /* The red loses 18 %, so the green of an orange gains as much against it. */
+    const rgb16_t orange = color_balance((rgb16_t){ 65535, 29000, 0 }, gains);
+    TEST_ASSERT_EQUAL_UINT16(65535, orange.r);
+    TEST_ASSERT_UINT16_WITHIN(1, 35246, orange.g);
+    TEST_ASSERT_EQUAL_UINT16(0, orange.b);
+}
+
+static void test_balance_needs_only_the_ratios_of_the_gains(void)
+{
+    const rgb16_t white = { 65535, 65535, 65535 };
+    assert_rgb(white, color_balance(white, (rgb16_t){ 32768, 32768, 32768 }));
+}
+
+static void test_balance_keeps_black(void)
+{
+    assert_rgb((rgb16_t){ 0, 0, 0 }, color_balance((rgb16_t){ 0, 0, 0 }, gains));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -107,9 +149,14 @@ int main(void)
     RUN_TEST(test_perceived_mid_grey_is_18_percent);
     RUN_TEST(test_perceived_scale_is_strictly_increasing);
     RUN_TEST(test_dimmest_manual_level_stays_visible);
-    RUN_TEST(test_compose_applies_the_level);
-    RUN_TEST(test_compose_keeps_the_hue_when_dimming);
+    RUN_TEST(test_shade_applies_the_level);
+    RUN_TEST(test_shade_keeps_the_hue_when_dimming);
     RUN_TEST(test_mix_ends_and_middle);
     RUN_TEST(test_scale);
+    RUN_TEST(test_balance_turns_white_into_the_gains);
+    RUN_TEST(test_balance_keeps_a_primary_at_full_scale);
+    RUN_TEST(test_balance_brings_the_largest_channel_back_to_full_scale);
+    RUN_TEST(test_balance_needs_only_the_ratios_of_the_gains);
+    RUN_TEST(test_balance_keeps_black);
     return UNITY_END();
 }

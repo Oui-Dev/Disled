@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  */
 #include "app_config.h"
@@ -14,10 +14,15 @@
  * reading near mid-scale, about 2100 of 4095. The WCH example values
  * (charge 16, 7.5 cycles) saturate it.
  *
- * Thresholds, in per mille below the baseline, through the closed lid. A tap
- * reads 77 to 188, a hand held 1 cm above 60 to 80, idle noise under 25. A
+ * Thresholds, in per mille below the baseline, through the closed lid, from
+ * the measurements of 2026-10-31 on a PC on an earthed monitor hub: a firm
+ * finger on the ring reads 182 to 198, a light tap in the center 69 to 105, a
+ * hand held 1 cm above 80 to 89, the idle noise about 6 (peaks under 15). A
  * finger lands faster than a hand nears, so the rise above the floor (50)
- * tells them apart. A 60 ms debounce misses light taps over the ring's hole. */
+ * tells them apart. A 60 ms debounce misses light taps over the ring's hole.
+ * The touch sensitivity setting of the desktop app scales press, release and
+ * rise from 50 to 150 %, and never takes the release under 1.5 times the
+ * proximity band. */
 const tkey_config_t app_tkey_config = {
     .charge_time = 3,
     .discharge_time = 8,
@@ -84,11 +89,36 @@ const color_config_t app_color_config = {
 };
 /* clang-format on */
 
-/* Light lost per pulse by the driver edges, in ns, tuned by eye on warm
- * white. A tick lasts 14 ns at 72 MHz. Without it, the 1-tick blue of warm
- * white at 10 % gives no light and the color turns yellow. With the
- * dithering, a blue of 4 3/16 ticks suits both 3 and 10 %. */
-const uint16_t app_led_pulse_loss_ns[LED_CHANNEL_COUNT] = { 28, 42, 58 };
+/* Light lost per pulse by the driver edges, in ns, by the light the pulse
+ * should give; a tick lasts 14 ns at 72 MHz. The gates of the MOSFETs charge
+ * through 100 Ω (R7 to R9) and take about 100 ns to switch: a pulse of a few
+ * ticks gives no light, the next ticks give up to twice the light of the
+ * ticks of a long pulse. One loss per channel, right for the shortest
+ * pulses, made a white pink from 3 to 20 % and a warm white red at 1 and
+ * 2 %. Measured with a camera, each LED alone and with another, then set by
+ * eye through the PLA. */
+/* clang-format off: keep the table readable */
+const app_loss_curve_t app_led_pulse_loss[LED_CHANNEL_COUNT] = {
+    [LED_CHANNEL_RED] = {
+        .signal_ns = { 56, 170, 289, 521, 868, 868, 868, 868 },
+        .loss_ns =   { 63,  47,  33,  19,  15,  15,  15,  15 },
+    },
+    [LED_CHANNEL_GREEN] = {
+        .signal_ns = { 25,  55, 111, 222, 222, 222, 222, 222 },
+        .loss_ns =   { 52,  48,  45,  42,  42,  42,  42,  42 },
+    },
+    [LED_CHANNEL_BLUE] = {
+        .signal_ns = { 22,  64, 111, 294, 294, 294, 294, 294 },
+        .loss_ns =   { 58,  50,  44,  40,  40,  40,  40,  40 },
+    },
+};
+/* clang-format on */
+
+/* The white of the custom colors, judged by eye through the PLA: the light
+ * of #EAFF8C at 2 % on a lamp with no balance (its duties less the pulse
+ * losses), then that of #FFFDE0 on the balanced lamp, which looked more
+ * neutral. Equal duties show violet. */
+const rgb16_t app_led_white_balance = { 33622, 65535, 12922 };
 
 /* Worst-case LED currents at 100 % duty, at 5.25 V and the lowest forward
  * voltage (constraint N2 in hardware/README.md). 70 mA plus about 25 mA for

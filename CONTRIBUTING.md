@@ -1,9 +1,9 @@
-# Contributing to DISLED
+# Contributing to Disled
 
-The DISLED repository holds the firmware, the desktop app, the shared Rust
+The Disled repository holds the firmware, the desktop app, the shared Rust
 crates and the hardware design files. This page explains how to propose a
 change and what the checks expect. For a bug or an idea, open an
-[issue](https://github.com/Oui-Dev/DISLED/issues) first, unless the fix is
+[issue](https://github.com/Oui-Dev/Disled/issues) first, unless the fix is
 small. The [user guide](docs/user-guide.md#get-help) lists what a bug report
 needs.
 
@@ -12,7 +12,7 @@ needs.
 Clone with the TinyUSB submodule:
 
 ```sh
-git clone --recurse-submodules https://github.com/Oui-Dev/DISLED.git
+git clone --recurse-submodules https://github.com/Oui-Dev/Disled.git
 ```
 
 In an existing clone, `git submodule update --init` fetches it. Then set up
@@ -21,7 +21,7 @@ the part you work on:
 | Part | Tools | Setup |
 |---|---|---|
 | Firmware | PlatformIO and clang-format through [uv](https://docs.astral.sh/uv/), a host C compiler for the unit tests | [firmware/README.md](firmware/README.md) |
-| Desktop app | Node.js 24 or 26, Rust through `rustup`, the build tools of your system | [app/README.md](app/README.md) |
+| Desktop app | Node.js 26, Rust through `rustup`, the build tools of your system | [app/README.md](app/README.md) |
 | Production tool, shared crates | Rust through `rustup` | [docs/production.md](docs/production.md) |
 | Hardware | EasyEDA Pro (PCB), a 3D editor for the 3MF parts | [hardware/README.md](hardware/README.md) |
 
@@ -66,8 +66,8 @@ characters.
   ([docs/releasing.md](docs/releasing.md)).
 - Scopes in use: `app`, `firmware`, `protocol`, `factory` (the production
   tool), `hardware`, `deps`.
-- `feat!` or a `BREAKING CHANGE:` footer marks a breaking change. Version 1
-  of the USB protocol is frozen at 1.1 and only grows in compatible ways
+- `feat!` or a `BREAKING CHANGE:` footer marks a breaking change. Version 2
+  of the USB protocol is frozen at 2.0 and only grows in compatible ways
   ([protocol/README.md](protocol/README.md#compatibility)).
 
 ## Checks
@@ -112,6 +112,10 @@ sensor, USB sleep. [docs/bringup.md](docs/bringup.md) lists the checks.
 - The checks enforce the formatting: clang-format for the firmware, Biome
   for the front end, rustfmt for Rust, and [`.editorconfig`](.editorconfig)
   for the rest.
+- The project is named Disled. The name stays in capitals only in the
+  identifiers written in capitals, such as `DISLED_FIRMWARE_HEX`, in the
+  `DISLED2-` prefix of the share codes and in the changelogs: a check of
+  the pull requests looks for it everywhere else.
 - Every source file starts with an SPDX header
   ([LICENSING.md](LICENSING.md)). The firmware's headers also point to the
   permission for the WCH SDK.
@@ -131,7 +135,7 @@ Dependabot opens update pull requests every week
 pinned on purpose:
 
 - `@tauri-apps/cli` stays on 2.11. From 2.12, the Windows installer can
-  abort an update started from the app with "Failed to kill DISLED"
+  abort an update started from the app with "Failed to kill Disled"
   ([tauri-apps/tauri#16277](https://github.com/tauri-apps/tauri/issues/16277)).
   Close Dependabot's pull requests for 2.12 and later until that issue is
   fixed.

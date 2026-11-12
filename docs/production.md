@@ -20,12 +20,15 @@ board takes about 30 seconds.
   the udev rule of the app ([app/README.md](../app/README.md#the-udev-rule-on-linux)).
   macOS needs nothing.
 - **The firmware.** From the firmware release to produce (`fw-vX.Y.Z` on
-  the [releases page](https://github.com/Oui-Dev/DISLED/releases)),
+  the [releases page](https://github.com/Oui-Dev/Disled/releases)),
   download the release build `disled-fw-X.Y.Z.hex` and its signature
   `disled-fw-X.Y.Z.hex.sig` into the same folder. The tool flashes only a
   release build signed with the update key.
-- **USB IDs.** Lamps that leave your hands must use the pid.codes PIDs of
-  DISLED, not the test PIDs ([LICENSING.md](../LICENSING.md#usb-identifiers)).
+- **USB IDs.** The release builds use `1209:0001`, a test PID of pid.codes,
+  until the lamp gets its own, `1209:D1ED`
+  ([LICENSING.md](../LICENSING.md#usb-identifiers)). The tool accepts
+  `1209:0001` until then, and refuses it from the first release whose
+  firmware uses `1209:D1ED`.
 
 ## Run
 
@@ -48,7 +51,7 @@ Stop with Ctrl+C. The log already holds every finished board.
    its bootloader. The tool finds the bootloader and flashes the board:
    erase, write, verify, restart.
 2. The lamp starts its firmware. The tool checks what it reports
-   (`INFO`): the version of the release, a release build, protocol 1.
+   (`INFO`): the version of the release, a release build, protocol 2.
 3. **Self-test.** The lamp shows red, green, blue and warm white, 1.5 s
    each, while the tool names them. **Touch the lid** when it glows blue,
    within 10 s. The lamp checks its light sensor and its touch by itself.
@@ -99,12 +102,13 @@ otherwise:
 | No touch detected | Touch the lid within the 10 s of blue. If the touch still fails, check the electrode. |
 | Colors | The LED, its MOSFETs and their soldering. |
 
-The ROM bootloader cannot be erased, so a board that failed can always be
-flashed and tested again.
+The ROM bootloader stays whatever firmware a `.hex` or a `.bin` writes, so a
+board that failed can always be flashed and tested again.
 
 ## Unsigned firmware
 
-`--unsigned` flashes any firmware file (`.hex`, `.bin` or `.elf`) without
-checking it, to try the tool with a local build or to install a custom
-firmware, at your own risk. The tool then checks no version, and the log
+`--unsigned` flashes any firmware file without checking it, to try the tool
+with a local build or to install a custom firmware, at your own risk. Give
+it a `.hex` or a `.bin`, never an `.elf`: a broken ELF file was reported to
+erase the ROM bootloader once. The tool then checks no version, and the log
 marks the rows `signature: none`.

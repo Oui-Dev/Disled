@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 The DISLED contributors
+# SPDX-FileCopyrightText: 2026 The Disled contributors
 #
 # Rust workspace of the desktop app, the production tool and the two crates
 # they share, the protocol codec and the flashing code.
@@ -13,10 +13,10 @@ members = [
 ]
 
 [workspace.package]
-authors = ["The DISLED contributors"]
+authors = ["The Disled contributors"]
 edition = "2024"
 license = "GPL-3.0-or-later"
-repository = "https://github.com/Oui-Dev/DISLED"
+repository = "https://github.com/Oui-Dev/Disled"
 publish = false
 
 [workspace.dependencies]

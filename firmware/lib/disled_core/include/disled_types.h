@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
  * Domain types shared by the core modules. Explicit values: several of them
@@ -11,6 +11,8 @@
 
 #include <stdint.h>
 
+/* The four built-in colors. With custom colors, a color is a palette slot:
+ * these four, then the custom ones up to LAMP_SLOT_COUNT - 1. */
 typedef enum {
     LAMP_COLOR_GREEN = 0,
     LAMP_COLOR_ORANGE = 1,
@@ -19,6 +21,16 @@ typedef enum {
 } lamp_color_t;
 
 #define LAMP_COLOR_COUNT 4u
+
+#define LAMP_SLOT_COUNT 16u
+
+/* What the touch does. Integrations drive the color in power-only mode. */
+typedef enum {
+    TOUCH_MODE_NORMAL = 0,     /* short press: next color, long press: power */
+    TOUCH_MODE_POWER_ONLY = 1, /* long press: power, short press ignored */
+} touch_mode_t;
+
+#define TOUCH_MODE_COUNT 2u
 
 typedef enum {
     BRIGHTNESS_MODE_AUTO = 0,
@@ -43,6 +55,7 @@ typedef enum {
     CHANGE_SOURCE_HOST = 2,
     CHANGE_SOURCE_AUTO_BRIGHTNESS = 3,
     CHANGE_SOURCE_USB = 4,
+    CHANGE_SOURCE_HOST_SILENCE = 5, /* touch mode back to normal: no command for too long */
 } change_source_t;
 
 /* Why the chip last reset. */

@@ -1,26 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
-import type { LampColor } from '@/bindings/LampColor';
-
-/** The lamp colors, in the order of the color picker. */
-export const LAMP_COLORS = [
-  'green',
-  'orange',
-  'red',
-  'warm_white',
-] as const satisfies readonly LampColor[];
+/** The protocol version that this app drives, as PROTOCOL_MAJOR of the protocol crate. */
+export const PROTOCOL_MAJOR = 2;
 
 /**
- * How the swatches show the lamp colors, as the tray icon of
- * src-tauri/src/tray.rs does, close to the LEDs whatever the color mode.
+ * The built-in colors, by palette slot (0 to 3): the key of their name
+ * under `lamp.colors`, and their swatch. The swatches show the lamp colors
+ * as the tray icon of src-tauri/src/tray.rs does, close to the LEDs whatever
+ * the color mode.
  */
-export const SWATCH_COLORS: Record<LampColor, string> = {
-  green: '#2ecc71',
-  orange: '#f39c12',
-  red: '#e74c3c',
-  warm_white: '#ffe2b8',
-};
+export const BUILT_IN_COLORS = [
+  { key: 'green', swatch: '#2ecc71' },
+  { key: 'orange', swatch: '#f39c12' },
+  { key: 'red', swatch: '#e74c3c' },
+  { key: 'warm_white', swatch: '#ffe2b8' },
+] as const;
 
 /**
  * Limits of the automatic brightness correction, in percent, as

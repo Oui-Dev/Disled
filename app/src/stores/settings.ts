@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 // Settings saved on this computer by the backend, which applies them to the lamp at
 // every connection and to the app. Every window keeps a copy, refreshed by

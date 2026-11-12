@@ -1,9 +1,11 @@
-# DISLED firmware
+# Disled firmware
 
-This is the firmware of the CH32V203G6U6 on the DISLED board: lamp state
-machine, capacitive touch, ambient light, LED output with a current cap,
-and a USB HID protocol. It is written in C11 on the WCH NoneOS SDK and
-TinyUSB, and built with PlatformIO.
+This is the firmware of the CH32V203G6U6 on the Disled board: lamp state
+machine, custom colors and touch cycle set by the host, capacitive touch,
+ambient light, LED output with a current cap, alerts, and version 2 of the
+USB HID protocol. It is written in C11 on the WCH NoneOS SDK and TinyUSB,
+and built with PlatformIO. It stores nothing in flash: the host sends its
+colors and settings again at every connection.
 
 ## Quick start
 
@@ -33,6 +35,12 @@ driver, the debug console and troubleshooting.
 |---|---|
 | `debug` (default) | HID protocol + CDC console and logs, USB ID `1209:0002` |
 | `release` | HID protocol only, no logs, USB ID `1209:0001` |
+
+Both IDs are test PIDs of pid.codes. The release build moves to the lamp's
+own, `1209:D1ED`, once pid.codes grants it, and the debug build keeps
+`1209:0002` ([LICENSING.md](../LICENSING.md#usb-identifiers)). Both start
+at 0x0 and may fill the 32 KB of flash: the ROM bootloader of WCH, which
+writes them, lives outside it.
 | `native` | Unity tests of `lib/disled_core`, with the protocol vectors |
 
 ## Layout

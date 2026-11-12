@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  */
 #include "protocol.h"
@@ -13,6 +13,8 @@ _Static_assert(PROTO_DIAGNOSTICS_SIZE <= PROTO_MAX_BODY_SIZE, "DIAGNOSTICS fits 
 _Static_assert(LAMP_FIELD_POWER == 0x01u && LAMP_FIELD_COLOR == 0x02u &&
                    LAMP_FIELD_BRIGHTNESS_MODE == 0x04u && LAMP_FIELD_MANUAL_LEVEL == 0x08u,
                "SET_STATE field bits are part of the protocol");
+_Static_assert(LAMP_FIELD_TOUCH_MODE == 0x10u, "SET_STATE field bits are part of the protocol");
+_Static_assert(1u + TOUCH_CYCLE_MAX == PROTO_TOUCH_CYCLE_SIZE, "TOUCH_CYCLE: count and slots");
 
 /* Little-endian writer over one payload. */
 typedef struct {
@@ -56,6 +58,12 @@ static uint16_t get_u16(const uint8_t *bytes)
     return (uint16_t)(bytes[0] | ((uint16_t)bytes[1] << 8));
 }
 
+/* Two's complement to a signed value without an implementation-defined conversion. */
+static int32_t get_i8(const uint8_t *bytes)
+{
+    return (bytes[0] < 0x80u) ? (int32_t)bytes[0] : (int32_t)bytes[0] - 256;
+}
+
 proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
                                     proto_command_t *command)
 {
@@ -74,7 +82,6 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
         case PROTO_CMD_RESET:
         case PROTO_CMD_GET_DIAGNOSTICS:
         case PROTO_CMD_SELF_TEST:
-        case PROTO_CMD_ENTER_BOOTLOADER:
             return PROTO_OK;
 
         case PROTO_CMD_SET_STATE: {
@@ -91,6 +98,7 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
             request->color = (lamp_color_t)body[2];
             request->brightness_mode = (brightness_mode_t)body[3];
             request->manual_level = body[4];
+            request->touch_mode = (touch_mode_t)body[5];
             return lamp_request_is_valid(request) ? PROTO_OK : PROTO_ERR_BAD_VALUE;
         }
 
@@ -110,12 +118,85 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
             if (length < PROTO_SET_AUTO_BIAS_SIZE) {
                 return PROTO_ERR_BAD_LENGTH;
             }
-            /* Two's complement to int8_t without an implementation-defined conversion. */
-            const int32_t bias = (body[0] < 0x80u) ? (int32_t)body[0] : (int32_t)body[0] - 256;
+            const int32_t bias = get_i8(body);
             if (bias < PROTO_AUTO_BIAS_MIN || bias > PROTO_AUTO_BIAS_MAX) {
                 return PROTO_ERR_BAD_VALUE;
             }
             command->body.auto_bias = (int8_t)bias;
+            return PROTO_OK;
+        }
+
+        case PROTO_CMD_SET_COLOR: {
+            if (length < PROTO_SET_COLOR_SIZE) {
+                return PROTO_ERR_BAD_LENGTH;
+            }
+            const rgb16_t color = { get_u16(&body[1]), get_u16(&body[3]), get_u16(&body[5]) };
+            /* The built-in colors never change. */
+            if (body[0] < PALETTE_FIXED_SLOTS || body[0] >= PALETTE_SLOTS ||
+                !palette_color_is_valid(color)) {
+                return PROTO_ERR_BAD_VALUE;
+            }
+            command->body.set_color.slot = body[0];
+            command->body.set_color.color = color;
+            return PROTO_OK;
+        }
+
+        case PROTO_CMD_GET_COLOR:
+            if (length < PROTO_GET_COLOR_SIZE) {
+                return PROTO_ERR_BAD_LENGTH;
+            }
+            if (body[0] >= PALETTE_SLOTS) {
+                return PROTO_ERR_BAD_VALUE;
+            }
+            command->body.color_slot = body[0];
+            return PROTO_OK;
+
+        case PROTO_CMD_SET_TOUCH_CYCLE: {
+            if (length < 1u) {
+                return PROTO_ERR_BAD_LENGTH;
+            }
+            const uint8_t count = body[0];
+            if (count == 0u || count > TOUCH_CYCLE_MAX) {
+                return PROTO_ERR_BAD_VALUE;
+            }
+            if (length < 1u + count) {
+                return PROTO_ERR_BAD_LENGTH;
+            }
+            /* Every slot passes here; the application knows which hold a color. */
+            touch_cycle_t *cycle = &command->body.touch_cycle;
+            const uint32_t every_slot = (1u << LAMP_SLOT_COUNT) - 1u;
+            return touch_cycle_set(cycle, &body[1], count, every_slot) ? PROTO_OK
+                                                                       : PROTO_ERR_BAD_VALUE;
+        }
+
+        case PROTO_CMD_GET_TOUCH_CYCLE:
+            return PROTO_OK;
+
+        case PROTO_CMD_ALERT: {
+            if (length < PROTO_ALERT_SIZE) {
+                return PROTO_ERR_BAD_LENGTH;
+            }
+            const uint8_t count = body[0];
+            const uint16_t period = get_u16(&body[1]);
+            /* A count of 0 stops the alert, whatever the period. */
+            if (count > ALERT_COUNT_MAX ||
+                (count > 0u && (period < ALERT_PERIOD_MIN_MS || period > ALERT_PERIOD_MAX_MS))) {
+                return PROTO_ERR_BAD_VALUE;
+            }
+            command->body.alert.count = count;
+            command->body.alert.period_ms = period;
+            return PROTO_OK;
+        }
+
+        case PROTO_CMD_SET_TOUCH_SENSITIVITY: {
+            if (length < PROTO_SET_TOUCH_SENSITIVITY_SIZE) {
+                return PROTO_ERR_BAD_LENGTH;
+            }
+            const int32_t percent = get_i8(body);
+            if (percent < PROTO_TOUCH_SENSITIVITY_MIN || percent > PROTO_TOUCH_SENSITIVITY_MAX) {
+                return PROTO_ERR_BAD_VALUE;
+            }
+            command->body.touch_sensitivity = (int8_t)percent;
             return PROTO_OK;
         }
 
@@ -165,6 +246,10 @@ void proto_encode_state(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, const p
     put_u8(&w, state->applied_percent);
     put_u8(&w, (uint8_t)state->link);
     put_u8(&w, (uint8_t)state->source);
+    put_u8(&w, (uint8_t)state->lamp.touch_mode);
+    put_u16(&w, state->rgb.r);
+    put_u16(&w, state->rgb.g);
+    put_u16(&w, state->rgb.b);
     end_message(&w);
 }
 
@@ -208,6 +293,7 @@ void proto_encode_diagnostics(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq,
     put_u16(&w, diagnostics->usb_suspends);
     put_u8(&w, (uint8_t)diagnostics->auto_bias);
     put_u8(&w, diagnostics->flags);
+    put_u8(&w, (uint8_t)diagnostics->touch_sensitivity);
     end_message(&w);
 }
 
@@ -235,5 +321,34 @@ void proto_encode_error(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, uint8_t
     writer_t w = begin_message(payload, PROTO_MSG_ERROR, seq);
     put_u8(&w, command_type);
     put_u8(&w, (uint8_t)error);
+    end_message(&w);
+}
+
+void proto_encode_color(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, uint8_t slot,
+                        rgb16_t color)
+{
+    writer_t w = begin_message(payload, PROTO_MSG_COLOR, seq);
+    put_u8(&w, slot);
+    put_u16(&w, color.r);
+    put_u16(&w, color.g);
+    put_u16(&w, color.b);
+    end_message(&w);
+}
+
+void proto_encode_touch_cycle(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq,
+                              const touch_cycle_t *cycle)
+{
+    writer_t w = begin_message(payload, PROTO_MSG_TOUCH_CYCLE, seq);
+    put_u8(&w, cycle->count);
+    for (size_t i = 0; i < TOUCH_CYCLE_MAX; i++) {
+        put_u8(&w, cycle->slots[i]); /* zero past the count */
+    }
+    end_message(&w);
+}
+
+void proto_encode_alert_done(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, uint8_t reason)
+{
+    writer_t w = begin_message(payload, PROTO_MSG_ALERT_DONE, seq);
+    put_u8(&w, reason);
     end_message(&w);
 }

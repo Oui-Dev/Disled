@@ -4,12 +4,16 @@
     "back": "Back",
     "quit": "Quit",
     "cancel": "Cancel",
-    "close": "Close"
+    "close": "Close",
+    "save": "Save",
+    "copy": "Copy",
+    "copied": "Copied"
   },
   "status": {
     "noLamp": "No lamp connected",
     "connecting": "Connecting…",
-    "connected": "Lamp connected"
+    "connected": "Lamp connected",
+    "needsUpdate": "Lamp needs an update"
   },
   "popup": {
     "lampPage": "Lamp"
@@ -18,27 +22,141 @@
     "unplugged": "Plug the lamp into this computer. The settings below will apply to it.",
     "colors": {
       "legend": "Lamp color",
+      "title": "Color",
       "off": "Off",
-      "green": "Green",
-      "orange": "Orange",
-      "red": "Red",
-      "warm_white": "Warm white"
+      "green": "Available",
+      "orange": "Busy",
+      "red": "Do not disturb",
+      "warm_white": "Soft light",
+      "more": "More",
+      "moreLabel": "More colors",
+      "moreCurrent": "More colors, current: {name}"
     },
     "brightness": {
       "title": "Brightness",
       "auto": "Auto",
       "darker": "Darker",
       "brighter": "Brighter",
-      "correctionLabel": "Correction of the automatic brightness",
+      "correctionLabel": "Automatic brightness correction",
       "fixed": "Fixed level",
       "follows": "Follows the room light",
       "correction": "correction {value}",
-      "noCorrection": "no correction",
-      "needsFirmware": "Follows the room light; the correction needs a lamp firmware update"
+      "noCorrection": "no correction"
+    }
+  },
+  "modes": {
+    "label": "The lamp follows",
+    "button": "The lamp follows: {source}",
+    "manual": "Manual",
+    "manualHint": "You choose the color.",
+    "integrations": "Integrations",
+    "pluginTag": "plugin",
+    "manage": "Manage integrations",
+    "on": "On: follows {name}",
+    "turnOn": "Turn on: follow {name}",
+    "clickToTurnOn": "Click to turn on",
+    "since": "since {time}"
+  },
+  "calls": {
+    "title": "Calls",
+    "manualOnly": "Manual mode only",
+    "mic": "Microphone in use",
+    "during": "During a call:",
+    "colorLabel": "Color during a call: {name}",
+    "popoverTitle": "During a call",
+    "popoverLabel": "Color during a call",
+    "inCall": "In a call",
+    "then": "· then {name}",
+    "detected": "Call detected by the microphone",
+    "micPrefix": "Microphone in use:"
+  },
+  "integrations": {
+    "noEvent": "No event received",
+    "title": "Integrations",
+    "subtitle": "They come from your plugins.",
+    "openFolder": "Open the plugins folder",
+    "import": "Import a plugin",
+    "list": "Plugins",
+    "details": "Details",
+    "empty": "No plugins",
+    "enable": "Enable {name}",
+    "on": "Enabled",
+    "off": "Disabled",
+    "driving": "Drives the lamp",
+    "new": "New: needs review",
+    "unreadable": "{file} unreadable",
+    "noEventYet": "No event received yet.",
+    "lastEvent": "Last event received {ago} ago: {state}.",
+    "lastEventNoState": "Last event received {ago} ago.",
+    "ago": {
+      "seconds": "{n} s",
+      "minutes": "{n} min",
+      "hours": "{n} h"
+    },
+    "newDetail": "New: read what it will be able to do before enabling it.",
+    "meta": "Plugin {version} · by {author}",
+    "install": "Installation",
+    "noteSource": "Plugin note",
+    "filled": "{address} and {token} filled in by Disled",
+    "address": "address",
+    "token": "token",
+    "blockLabel": "Block to add to {file}",
+    "neverEdits": "Disled never changes the settings of {name}: you paste this block yourself.",
+    "installed": "Installed: {name} sends its events.",
+    "reviewNote": "See the note again",
+    "can": "What this plugin can do",
+    "perm": {
+      "process": "Run a program on this computer, with your permissions: {command}",
+      "color": "Choose the lamp color, when the lamp follows it",
+      "alert": "Show an alert on the lamp",
+      "events": "Receive events from {name}, locally",
+      "nothingElse": "Nothing else: no program, no Internet"
+    },
+    "colors": "Colors",
+    "colorsHint": "When the lamp follows {name}:",
+    "tokenOwn": "This plugin’s own token",
+    "regenerate": "Regenerate the token",
+    "remove": "Remove the plugin",
+    "approve": {
+      "title": "Enable “{name}”?",
+      "meta": "Plugin {version} · by {author} · found in the plugins folder",
+      "can": "This plugin will be able to:",
+      "trust": "Only enable plugins from people you trust. If this plugin’s files change, Disled will ask you again.",
+      "action": "Enable"
+    },
+    "regenerateConfirm": {
+      "title": "Regenerate the token for “{name}”?",
+      "text": "The old token will stop working. You will have to copy the block from the installation note again.",
+      "action": "Regenerate"
+    },
+    "removeConfirm": {
+      "title": "Remove “{name}”?",
+      "text": "Its folder will be deleted, with its token.",
+      "action": "Remove"
+    },
+    "status": {
+      "modified": "Changed: needs review",
+      "failed": "Stopped after several errors",
+      "running": "Running",
+      "stopped": "The program stopped.",
+      "notFound": "Program not found: {program}",
+      "portTaken": "Port {port} is taken by another program."
+    },
+    "importFailed": "Import rejected",
+    "reason": {
+      "missing": "No plugin.json file.",
+      "json": "Invalid JSON, line {line}.",
+      "field": "Missing field: {field}.",
+      "invalid": "Invalid field: {field}.",
+      "api": "Unsupported API version: {api}.",
+      "id": "The ID does not match the folder name.",
+      "link": "Symbolic link not allowed: {path}.",
+      "size": "Plugin too large.",
+      "path": "Path not allowed in the archive: {path}."
     }
   },
   "settings": {
-    "autostart": "Start DISLED when I log in",
+    "autostart": "Start Disled when I log in",
     "checkUpdates": "Check for updates every day",
     "colorMode": "Appearance",
     "colorModes": {
@@ -48,25 +166,32 @@
     },
     "language": "Language",
     "systemLanguage": "System",
-    "diagnostics": "Open diagnostics…",
+    "diagnostics": "Open diagnostics",
     "versions": "App {app} · lamp firmware {firmware}",
-    "more": "More actions"
+    "more": "More actions",
+    "touch": {
+      "title": "Touch sensitivity",
+      "less": "Less sensitive",
+      "more": "More sensitive",
+      "label": "Touch sensitivity correction",
+      "hint": "Calibrated by the lamp"
+    }
   },
   "updates": {
     "install": "Install and restart",
-    "updateLamp": "Update the lamp…",
+    "updateLamp": "Update",
     "check": "Check for updates",
     "downloading": "Downloading {version}… {progress}",
     "checking": "Checking for updates…",
     "error": "Update error: {detail}",
-    "available": "DISLED {version} is available.",
+    "available": "Disled {version} is available.",
     "upToDate": "Up to date (checked {date}).",
     "lampError": "Lamp firmware check error: {detail}",
     "lampAvailable": "Lamp firmware {version} is available.",
-    "lampAfterApp": "Lamp firmware {version} is available. Install DISLED {app} first.",
-    "reinstall": "Reinstall the lamp firmware…",
-    "toApp": "Update to {version}",
-    "toLamp": "Update the lamp"
+    "lampAfterApp": "Lamp firmware {version} is available. Install Disled {app} first.",
+    "reinstall": "Reinstall the firmware",
+    "reinstallHint": "Any version. The lamp has to be opened.",
+    "toApp": "Update to {version}"
   },
   "diagnostics": {
     "connected": "Connected",
@@ -89,8 +214,7 @@
   "health": {
     "title": "Health",
     "issues": "{n} thing to check | {n} things to check",
-    "issue": "to check",
-    "unsupported": "This lamp firmware does not report diagnostics.",
+    "issue": "needs checking",
     "reading": "Reading…",
     "stability": "Stability",
     "boots": "Boots",
@@ -106,19 +230,19 @@
     "probes": "{n} probe | {n} probes",
     "i2cErrors": "{n} I2C error | {n} I2C errors",
     "touchSamplesLost": "Touch samples lost",
-    "rebaselines": "{n} re-baseline | {n} re-baselines",
+    "rebaselines": "{n} recalibration | {n} recalibrations",
     "usbClock": "USB and clock",
     "usbSuspends": "USB suspends",
     "crystal": "Crystal",
     "crystalRunning": "Running",
     "crystalFailed": "Failed",
     "brightness": "Brightness",
-    "correction": "Automatic correction",
+    "correction": "Automatic brightness correction",
+    "touchCorrection": "Touch correction",
     "uptime": "Uptime"
   },
   "selfTest": {
     "title": "Self-test",
-    "unsupported": "This lamp firmware has no self-test.",
     "instructions": "The lamp shows red, green, blue and warm white (check them), then glows blue: touch the lid within 10 s.",
     "run": "Run the self-test",
     "running": "Running…",
@@ -154,11 +278,10 @@
     "record": "Record",
     "stop": "Stop",
     "rows": "{n} row | {n} rows",
-    "export": "Export CSV…",
+    "export": "Export CSV",
     "saveTitle": "Save the recording",
     "permille": "{value} ‰",
     "lux": "{value} lx",
-    "unsupported": "This lamp firmware sends no telemetry.",
     "stopped": "Telemetry is off",
     "stoppedHint": "Choose a period to stream measurements from the lamp.",
     "waiting": "Waiting for measurements…",
@@ -176,7 +299,7 @@
     "newer": "Firmware {current} → {next}",
     "current": "The lamp runs firmware {version}.",
     "already": "The lamp already runs firmware {version}.",
-    "intro": "It takes about a minute. You will open the lamp: its update mode starts with two buttons on its board, {boot} and {reset}. Keep the lamp plugged into this computer.",
+    "intro": "It takes about a minute. You will need to open the lamp: two buttons on its board, {boot} and {reset}, start its update mode. Keep the lamp plugged into this computer.",
     "steps": {
       "download": "Download the firmware",
       "bootloader": "Put the lamp in update mode",
@@ -187,16 +310,16 @@
     "buttons": "Open the lamp. Hold {boot}, press and release {reset}, then release {boot}.",
     "waitingForBootloader": "Waiting for the lamp in update mode…",
     "driver": {
-      "intro": "Windows needs a driver for the update mode, once:",
+      "intro": "Windows needs a driver for the update mode, only once:",
       "download": "Download {zadig} and run it.",
       "options": "In {options}, choose {listAll}.",
       "select": "Select the device whose USB ID is {id} (or {otherId}).",
       "install": "Choose {winusb}, then {install} (or {replace}).",
-      "waiting": "The update goes on by itself once the driver is installed."
+      "waiting": "The update resumes on its own once the driver is installed."
     },
-    "noPermission": "This computer does not let the app open the lamp in update mode. Reinstall the DISLED package (it adds the access rule), then start the update mode again.",
+    "noPermission": "This computer does not let the app open the lamp in update mode. Reinstall the Disled package (it adds the access rule), then start the update mode again.",
     "severalBootloaders": "Several devices are in update mode. Unplug them all but the lamp.",
-    "otherChip": "A device that is not a DISLED lamp is in update mode ({chip}). Unplug it.",
+    "otherChip": "A device that is not a Disled lamp is in update mode ({chip}). Unplug it.",
     "stages": {
       "erasing": "Erasing the old firmware…",
       "writing": "Writing the new firmware…",
@@ -204,14 +327,31 @@
       "restarting": "Restarting the lamp…"
     },
     "doNotUnplug": "Do not unplug the lamp.",
-    "waitingForLamp": "The lamp starts its new firmware: it takes a few seconds.",
-    "done": "Done: the lamp runs firmware {version}. You can put it back together.",
+    "waitingForLamp": "The lamp is starting its new firmware: this takes a few seconds.",
+    "done": "Done: the lamp runs firmware {version}. You can close it again.",
     "failed": "The update stopped: {detail}",
-    "notDamaged": "The lamp is not damaged: its update mode always works. Try again, or follow the {guide}.",
-    "guide": "flashing guide",
+    "retryOrGuide": "Try again, or follow the {guide}.",
+    "guide": "update guide",
     "start": "Start the update",
-    "reinstall": "Install it again",
+    "reinstall": "Reinstall it",
     "retry": "Try again"
+  },
+  "lampInstall": {
+    "title": "Reinstall the firmware",
+    "intro": "A manual step is required: the lamp has to be opened, and every step is guided. It takes about a minute, with the lamp plugged into this computer.",
+    "version": "Version to install",
+    "notes": "Release notes {version}",
+    "notesTitle": "Opens in the browser",
+    "recommended": "Recommended",
+    "current": "Current",
+    "others": "Other versions",
+    "group": "Firmware v{major}",
+    "install": "Install {version}",
+    "reinstall": "Reinstall {version}",
+    "rollback": {
+      "title": "Back to firmware v1",
+      "text": "The lamp will only work with Disled v1."
+    }
   },
   "errors": {
     "backend": "Error: {detail}",
@@ -223,7 +363,8 @@
       "unknown_command": "unknown command",
       "bad_length": "wrong length",
       "bad_value": "invalid value",
-      "busy": "busy"
+      "busy": "busy",
+      "lamp_off": "lamp off"
     },
     "resetCause": {
       "unknown": "unknown",
@@ -239,7 +380,8 @@
       "touch": "touch",
       "host": "this computer",
       "auto_brightness": "automatic brightness",
-      "usb": "USB"
+      "usb": "USB",
+      "host_silence": "app silence"
     },
     "usbLink": {
       "unconfigured": "not configured",
@@ -253,20 +395,104 @@
     }
   },
   "tray": {
-    "open": "Open DISLED",
-    "diagnostics": "Diagnostics…",
-    "quit": "Quit DISLED",
+    "open": "Open Disled",
+    "diagnostics": "Diagnostics",
+    "quit": "Quit Disled",
     "tooltip": {
-      "noLamp": "DISLED: no lamp",
-      "off": "DISLED: off",
-      "green": "DISLED: green",
-      "orange": "DISLED: orange",
-      "red": "DISLED: red",
-      "warm_white": "DISLED: warm white"
+      "noLamp": "Disled: no lamp",
+      "off": "Disled: off",
+      "color": "Disled: {name}",
+      "needsUpdate": "Disled: lamp needs an update",
+      "newer": "Disled: lamp newer than the app"
     }
   },
   "window": {
-    "diagnostics": "DISLED diagnostics",
-    "lampUpdate": "DISLED lamp update"
+    "diagnostics": "Disled diagnostics",
+    "integrations": "Disled integrations",
+    "lampUpdate": "Disled lamp update",
+    "lampInstall": "Reinstall the firmware"
+  },
+  "lampV1": {
+    "title": "Update required",
+    "text": "This lamp still runs firmware v1, and Disled v2 needs firmware v2.",
+    "action": "Update",
+    "line": "This lamp runs firmware v1, and Disled v2 needs firmware v2."
+  },
+  "lampNewer": {
+    "text": "This lamp’s firmware is too new for this app. Update Disled."
+  },
+  "colors": {
+    "mine": {
+      "title": "My colors",
+      "manage": "Manage",
+      "new": "New"
+    },
+    "library": {
+      "title": "Colors",
+      "touch": "Touch",
+      "new": "New color",
+      "cycle": "Touch cycle:",
+      "appOnly": "Without the app, the lamp goes back to its four colors and its original cycle.",
+      "share": "Share",
+      "more": "More actions for {name}",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleted": "{name} deleted."
+    },
+    "cycle": {
+      "add": "Add {name} to the touch cycle",
+      "remove": "{name}, {rank} in the touch cycle: remove it",
+      "addTitle": "Add to the touch cycle",
+      "removeTitle": "Remove from the touch cycle",
+      "added": "{name}, {rank} in the touch cycle.",
+      "removed": "{name} removed from the cycle.",
+      "last": "{name} stays: the cycle keeps at least one color.",
+      "rank": {
+        "one": "{n}st",
+        "two": "{n}nd",
+        "few": "{n}rd",
+        "other": "{n}th"
+      }
+    },
+    "editor": {
+      "new": "New color",
+      "edit": "Edit the color",
+      "name": "Name",
+      "suggestions": "Suggestions",
+      "suggestion": {
+        "yellow": "Yellow",
+        "cyan": "Cyan",
+        "blue": "Blue",
+        "violet": "Violet",
+        "magenta": "Magenta",
+        "pink": "Pink",
+        "coolWhite": "Cool white"
+      },
+      "hue": "Hue",
+      "pale": "Pale",
+      "vivid": "Vivid",
+      "vividLabel": "Pale or vivid",
+      "hex": "Hex code",
+      "preview": "Preview on the lamp",
+      "restore": "Restore “{name}”",
+      "fixed": "The original colors keep their shade. For another one, create a color."
+    },
+    "share": {
+      "title": "Share your colors",
+      "send": "Send",
+      "sendHint": "Your names, your colors and your touch cycle, in a code to paste in a message.",
+      "copy": "Copy the code",
+      "receive": "Receive",
+      "placeholder": "Paste the code you received",
+      "invalid": "Cannot read this code."
+    },
+    "import": {
+      "title": "Import these colors?",
+      "originals": "Lamp colors",
+      "custom": "Added colors",
+      "cycle": "Touch cycle",
+      "replaces": "Replaces your names, your colors and your cycle.",
+      "action": "Import"
+    }
   }
 }

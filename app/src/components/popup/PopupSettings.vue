@@ -1,9 +1,9 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
-  The settings of the popup: start at login, daily update checks, color
-  mode, language, and the versions under them. The rare actions are in the
+  The settings of the popup: start at login, daily update checks, the touch
+  sensitivity, color mode, language, and the versions under them. The rare actions are in the
   menu next to the title, PopupMenu.
 -->
 <script setup lang="ts">
@@ -62,8 +62,14 @@ const cards = { legend: 'text-sm', fieldset: 'flex-nowrap gap-2', item: 'min-w-0
         @update:model-value="settingsStore.update({ check_updates: $event })"
       />
     </div>
+    <PopupTouchSensitivity />
 
+    <!-- Reka names each radio once, from its label: the group mounts again
+         in a new language. Not the group of the languages, which would lose
+         the focus of the keyboard that changes it; only its "System" keeps
+         the former language, until the page closes. -->
     <URadioGroup
+      :key="settingsStore.locale"
       :model-value="settings?.color_mode"
       :items="colorModes"
       :legend="t('settings.colorMode')"

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 The DISLED contributors
+# SPDX-FileCopyrightText: 2026 The Disled contributors
 # Code style of the firmware sources (lib/disled_core, src, test).
 BasedOnStyle: LLVM
 IndentWidth: 4

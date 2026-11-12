@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
  * USB identity, interfaces and endpoints of the device.
@@ -11,9 +11,10 @@
 #include "tusb_config.h"
 
 /*
- * pid.codes test PIDs, for private testing only (see LICENSING.md).
- * Debug builds expose an extra CDC interface; a separate PID keeps hosts
- * from mixing up the cached descriptors of the two builds.
+ * pid.codes test PIDs (see LICENSING.md): release builds use 1209:0001 until
+ * pid.codes grants 1209:D1ED, and debug builds, for private testing only,
+ * keep 1209:0002. Debug builds expose an extra CDC interface; a separate PID
+ * keeps hosts from mixing up the cached descriptors of the two builds.
  */
 #define USB_VID 0x1209u
 #if DISLED_DEBUG
@@ -22,8 +23,8 @@
 #define USB_PID 0x0001u
 #endif
 
-#define USB_MANUFACTURER_STRING "DISLED"
-#define USB_PRODUCT_STRING      "DISLED"
+#define USB_MANUFACTURER_STRING "Disled"
+#define USB_PRODUCT_STRING      "Disled"
 
 /* Declared current draw: LED budget plus MCU, with margin (constraint N2
  * in hardware/README.md). */

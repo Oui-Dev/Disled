@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   Live telemetry for tuning the touch, the light sensor and the heat: the
   stream period, the last figures, three charts, and CSV recordings at the
@@ -33,9 +33,6 @@ const placeholder = computed(() => {
   if (!lamp.connection.connected) {
     return { icon: 'i-lucide-unplug', description: t('diagnostics.noLamp') };
   }
-  if (lamp.info && !lamp.info.telemetry) {
-    return { icon: 'i-lucide-activity', description: t('telemetry.unsupported') };
-  }
   if (telemetry.periodMs === 0) {
     return {
       icon: 'i-lucide-circle-pause',
@@ -49,7 +46,9 @@ const placeholder = computed(() => {
 // The samples are whole numbers, but the axis of a small range has ticks
 // every 0.5, which one decimal at most keeps apart.
 const permille = (value: number) => t('telemetry.permille', { value: n(value, 'tick') });
-const lux = (value: number) => t('telemetry.lux', { value: n(value, 'decimal') });
+// In a dim room the ticks of the light fall 0.05 lx apart or closer, which
+// one decimal would show twice.
+const lux = (value: number) => t('telemetry.lux', { value: n(value, 'luxTick') });
 const count = (value: number) => n(value, 'tick');
 
 const charts = computed<

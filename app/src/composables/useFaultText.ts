@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 // Firmware faults as the lamp reports them: RISC-V trap registers, or a
 // failed assertion that the firmware encodes in mcause.

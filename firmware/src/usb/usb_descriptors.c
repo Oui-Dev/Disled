@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
  * USB descriptors: one vendor HID interface for the protocol, plus a CDC
@@ -95,9 +95,9 @@ _Static_assert(PROTO_REPORT_SIZE + 1u <= CFG_TUD_HID_EP_BUFSIZE, "HID report mus
 static const char *const string_table[] = {
     [STRID_MANUFACTURER] = USB_MANUFACTURER_STRING,
     [STRID_PRODUCT] = USB_PRODUCT_STRING,
-    [STRID_HID] = "DISLED control",
+    [STRID_HID] = "Disled control",
 #if CFG_TUD_CDC
-    [STRID_CDC] = "DISLED console",
+    [STRID_CDC] = "Disled console",
 #endif
 };
 

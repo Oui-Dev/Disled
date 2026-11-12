@@ -1,0 +1,274 @@
+{
+  "api": 1,
+  "id": "claude-code",
+  "name": "Claude Code",
+  "version": "1.0.0",
+  "author": "Disled",
+  "icon": "terminal",
+  "description": {
+    "fr": "Montre sur la lampe ce que fait Claude Code : il travaille, il attend votre réponse ou il a fini. Une alerte vous prévient aussi quand il vous attend.",
+    "en": "Shows on the lamp what Claude Code does: it works, it waits for your answer, or it is done. An alert also tells you when it waits for you."
+  },
+  "capabilities": [
+    "color",
+    "alert",
+    "events"
+  ],
+  "states": [
+    {
+      "id": "waiting",
+      "label": {
+        "fr": "Claude attend votre réponse",
+        "en": "Claude waits for your answer"
+      },
+      "color": "orange",
+      "priority": 3,
+      "ttl": 1800
+    },
+    {
+      "id": "working",
+      "label": {
+        "fr": "Claude travaille",
+        "en": "Claude is working"
+      },
+      "color": "red",
+      "priority": 2,
+      "ttl": 300
+    },
+    {
+      "id": "done",
+      "label": {
+        "fr": "Claude a fini",
+        "en": "Claude is done"
+      },
+      "color": "green",
+      "priority": 1,
+      "ttl": 1800
+    }
+  ],
+  "idle": "done",
+  "events": {
+    "from": "Claude Code",
+    "key": "/session_id",
+    "rules": [
+      {
+        "when": {
+          "/hook_event_name": "SessionEnd"
+        },
+        "clear": true
+      },
+      {
+        "when": {
+          "/hook_event_name": "PreToolUse",
+          "/tool_name": [
+            "AskUserQuestion",
+            "ExitPlanMode"
+          ]
+        },
+        "state": "waiting",
+        "alert": true
+      },
+      {
+        "when": {
+          "/hook_event_name": [
+            "PermissionRequest",
+            "Elicitation",
+            "StopFailure"
+          ]
+        },
+        "state": "waiting",
+        "alert": true
+      },
+      {
+        "when": {
+          "/hook_event_name": "Stop",
+          "/background_tasks": {
+            "nonEmpty": true
+          }
+        },
+        "state": "working"
+      },
+      {
+        "when": {
+          "/hook_event_name": "Stop"
+        },
+        "state": "done"
+      },
+      {
+        "when": {
+          "/hook_event_name": "Notification"
+        },
+        "ignore": true
+      },
+      {
+        "when": {
+          "/hook_event_name": [
+            "UserPromptSubmit",
+            "PreToolUse",
+            "PostToolUse",
+            "PostToolUseFailure",
+            "ElicitationResult"
+          ]
+        },
+        "state": "working"
+      }
+    ]
+  },
+  "note": {
+    "text": {
+      "fr": [
+        "Claude Code prévient Disled par des « hooks » : ajoutez ce bloc à `~/.claude/settings.json`, dans votre dossier personnel.",
+        "Le fichier a déjà une clé « hooks » ? Ajoutez-y ces entrées sans effacer les vôtres. Claude Code les prend en compte sans redémarrer."
+      ],
+      "en": [
+        "Claude Code tells Disled through “hooks”: add this block to `~/.claude/settings.json`, in your home folder.",
+        "The file has a “hooks” key already? Add these entries to it without removing yours. Claude Code takes them into account without a restart."
+      ]
+    },
+    "file": "settings.json",
+    "block": {
+      "hooks": {
+        "UserPromptSubmit": [
+          {
+            "hooks": [
+              {
+                "type": "http",
+                "url": "{{url}}",
+                "headers": {
+                  "X-Disled-Token": "{{token}}"
+                },
+                "timeout": 2
+              }
+            ]
+          }
+        ],
+        "PreToolUse": [
+          {
+            "hooks": [
+              {
+                "type": "http",
+                "url": "{{url}}",
+                "headers": {
+                  "X-Disled-Token": "{{token}}"
+                },
+                "timeout": 2
+              }
+            ]
+          }
+        ],
+        "PostToolUse": [
+          {
+            "hooks": [
+              {
+                "type": "http",
+                "url": "{{url}}",
+                "headers": {
+                  "X-Disled-Token": "{{token}}"
+                },
+                "timeout": 2
+              }
+            ]
+          }
+        ],
+        "PostToolUseFailure": [
+          {
+            "hooks": [
+              {
+                "type": "http",
+                "url": "{{url}}",
+                "headers": {
+                  "X-Disled-Token": "{{token}}"
+                },
+                "timeout": 2
+              }
+            ]
+          }
+        ],
+        "PermissionRequest": [
+          {
+            "hooks": [
+              {
+                "type": "http",
+                "url": "{{url}}",
+                "headers": {
+                  "X-Disled-Token": "{{token}}"
+                },
+                "timeout": 2
+              }
+            ]
+          }
+        ],
+        "Elicitation": [
+          {
+            "hooks": [
+              {
+                "type": "http",
+                "url": "{{url}}",
+                "headers": {
+                  "X-Disled-Token": "{{token}}"
+                },
+                "timeout": 2
+              }
+            ]
+          }
+        ],
+        "ElicitationResult": [
+          {
+            "hooks": [
+              {
+                "type": "http",
+                "url": "{{url}}",
+                "headers": {
+                  "X-Disled-Token": "{{token}}"
+                },
+                "timeout": 2
+              }
+            ]
+          }
+        ],
+        "Stop": [
+          {
+            "hooks": [
+              {
+                "type": "http",
+                "url": "{{url}}",
+                "headers": {
+                  "X-Disled-Token": "{{token}}"
+                },
+                "timeout": 2
+              }
+            ]
+          }
+        ],
+        "StopFailure": [
+          {
+            "hooks": [
+              {
+                "type": "http",
+                "url": "{{url}}",
+                "headers": {
+                  "X-Disled-Token": "{{token}}"
+                },
+                "timeout": 2
+              }
+            ]
+          }
+        ],
+        "SessionEnd": [
+          {
+            "hooks": [
+              {
+                "type": "http",
+                "url": "{{url}}",
+                "headers": {
+                  "X-Disled-Token": "{{token}}"
+                },
+                "timeout": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

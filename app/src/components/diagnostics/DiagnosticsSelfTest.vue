@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   Self-test tab of the Diagnostics window (SELF_TEST): the lamp shows its
   colors, checks its light sensor and its touch, and reports. The checks are
@@ -61,9 +61,6 @@ const checks = computed(() => {
 <template>
   <p v-if="!lamp.connection.connected" class="text-sm text-muted">
     {{ t('diagnostics.noLamp') }}
-  </p>
-  <p v-else-if="lamp.info && !lamp.info.self_test" class="text-sm text-muted">
-    {{ t('selfTest.unsupported') }}
   </p>
   <div v-else class="flex flex-col gap-4">
     <p class="text-sm text-muted">{{ t('selfTest.instructions') }}</p>

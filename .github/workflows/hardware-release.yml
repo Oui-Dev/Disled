@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 The DISLED contributors
+# SPDX-FileCopyrightText: 2026 The Disled contributors
 #
 # Hardware releases of the PCB or the enclosure, which release-please leaves
 # alone (docs/releasing.md). The workflow runs by hand on main and tags the

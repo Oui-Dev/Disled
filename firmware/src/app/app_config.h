@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
  * Every tunable of the firmware, in one place, with the reason for its
@@ -12,6 +12,7 @@
 #include "brightness.h"
 #include "color.h"
 #include "drivers/tkey.h"
+#include "led_output.h"
 #include "power_limiter.h"
 #include "self_test.h"
 #include "touch_detector.h"
@@ -39,13 +40,34 @@
 
 #define APP_WATCHDOG_MS 1000u
 
+/* Alert breath: perceived swing, per mille of L*, up from a lamp below 70 %
+ * and down from a brighter one. Chosen by eye on a closed lamp. Deeper, the
+ * light sensor sees the breaths of a dim lamp in a dark room, and the
+ * automatic level climbs during the alert: 3 points at 400, 8 at 500. */
+#define APP_ALERT_DEPTH_PERMILLE 300u
+/* The console's alert, the same as the app's: 3 breaths of 1.5 s, chosen by
+ * eye on a closed lamp. */
+#define APP_ALERT_DEFAULT_COUNT     3u
+#define APP_ALERT_DEFAULT_PERIOD_MS 1500u
+
+/* Power-only touch falls back to normal after this long without a command.
+ * In that mode, the app sends a SET_STATE of the touch mode alone every 3 s. */
+#define APP_HOST_SILENCE_MS 10000u
+
 extern const tkey_config_t app_tkey_config;
 extern const touch_config_t app_touch_config;
 extern const brightness_config_t app_brightness_config;
 extern const color_config_t app_color_config;
 extern const power_config_t app_power_config;
-/* Light lost per PWM pulse, per channel (see led_output_config_t). */
-extern const uint16_t app_led_pulse_loss_ns[LED_CHANNEL_COUNT];
+/* Light lost per PWM pulse, per channel, in ns: points of the pulse that the
+ * light needs and of the loss added to it (led_loss_curve_t). */
+typedef struct {
+    uint16_t signal_ns[LED_LOSS_POINTS];
+    uint16_t loss_ns[LED_LOSS_POINTS];
+} app_loss_curve_t;
+extern const app_loss_curve_t app_led_pulse_loss[LED_CHANNEL_COUNT];
+/* Gains of the custom colors, fractions of 65535 (palette_light). */
+extern const rgb16_t app_led_white_balance;
 extern const self_test_config_t app_self_test_config;
 
 #endif /* DISLED_APP_CONFIG_H */

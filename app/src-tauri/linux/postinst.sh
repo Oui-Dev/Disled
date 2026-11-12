@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 The DISLED contributors
+# SPDX-FileCopyrightText: 2026 The Disled contributors
 #
 # Runs after the .deb install. It loads the udev rule now, so that a lamp
 # already plugged in becomes accessible without unplugging it.

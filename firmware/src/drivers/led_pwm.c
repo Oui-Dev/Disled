@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  */
 #include "led_pwm.h"
@@ -47,10 +47,14 @@ void led_pwm_init(uint32_t frequency_hz)
     BOARD_LED_TIMER->CTLR1 = TIM_ARPE;
     led_pwm_start(); /* its update event also loads the prescaler */
 
-    /* Hand the pins to the timer only now, with every duty at 0 %. */
-    bsp_gpio_config(BOARD_LED_RED_PORT, BOARD_LED_RED_PIN, GPIO_Mode_AF_PP, GPIO_Speed_2MHz);
-    bsp_gpio_config(BOARD_LED_GREEN_PORT, BOARD_LED_GREEN_PIN, GPIO_Mode_AF_PP, GPIO_Speed_2MHz);
-    bsp_gpio_config(BOARD_LED_BLUE_PORT, BOARD_LED_BLUE_PIN, GPIO_Mode_AF_PP, GPIO_Speed_2MHz);
+    /* Hand the pins to the timer only now, with every duty at 0 %. The gate
+     * resistors (100 Ω) set how fast the MOSFETs switch; 10 MHz edges still
+     * give the shortest blue pulses a tenth more light than 2 MHz ones, with
+     * the same touch noise. The pulse losses of app_config.c are measured
+     * with them. */
+    bsp_gpio_config(BOARD_LED_RED_PORT, BOARD_LED_RED_PIN, GPIO_Mode_AF_PP, GPIO_Speed_10MHz);
+    bsp_gpio_config(BOARD_LED_GREEN_PORT, BOARD_LED_GREEN_PIN, GPIO_Mode_AF_PP, GPIO_Speed_10MHz);
+    bsp_gpio_config(BOARD_LED_BLUE_PORT, BOARD_LED_BLUE_PIN, GPIO_Mode_AF_PP, GPIO_Speed_10MHz);
 
     NVIC_EnableIRQ(TIM3_IRQn);
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 // Translations of the windows. The messages live in src/locales, shared
 // with the backend (src-tauri/src/i18n.rs), which also picks the language
@@ -23,6 +23,8 @@ const numberFormats = {
   decimal: { minimumFractionDigits: 1, maximumFractionDigits: 1 },
   /** A chart value: 2, or 0.5 between whole ticks. */
   tick: { maximumFractionDigits: 1 },
+  /** A light on its chart: 2.0, or 1.65 when a dim room makes the ticks close. */
+  luxTick: { minimumFractionDigits: 1, maximumFractionDigits: 3 },
   /** From a fraction: 0.37 is 37 %. */
   percent: { style: 'percent', maximumFractionDigits: 1 },
   /** A correction: +10 %, −20 %, 0 %. */
@@ -34,6 +36,8 @@ const numberFormats = {
 
 const datetimeFormats = {
   short: { dateStyle: 'short', timeStyle: 'short' },
+  /** The local time of a day, as "10:42". */
+  time: { timeStyle: 'short' },
 } as const;
 
 /** French counts 0 as singular, as in "0 ligne"; messages are "one | other". */

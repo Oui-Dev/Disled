@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 The DISLED contributors
+# SPDX-FileCopyrightText: 2026 The Disled contributors
 #
 # Releases (docs/releasing.md). On every push to main, release-please keeps
 # the release pull request up to date. Merging it tags fw-vX.Y.Z, app-vX.Y.Z
@@ -69,7 +69,7 @@ jobs:
           fetch-depth: 0 # the build takes its version from the tag
 
       # uv version from pyproject.toml, Python from .python-version.
-      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           working-directory: firmware
 
@@ -112,6 +112,21 @@ jobs:
           npx --yes "@tauri-apps/cli@$cli" signer sign --app-version "$version" "dist/disled-fw-$version.hex"
           gh release upload "$TAG" dist/* --clobber
 
+  firmware-publish:
+    # When the app releases too, only once its installers are built and
+    # attached: a failed app build must not leave a new firmware published
+    # alone, since the app before it would offer it to every lamp.
+    needs: [release-please, firmware, app]
+    if: >-
+      always()
+      && needs.firmware.result == 'success'
+      && (needs.app.result == 'success' || needs.app.result == 'skipped')
+    runs-on: ubuntu-24.04
+    env:
+      TAG: ${{ needs.release-please.outputs.firmware-tag }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
       - name: Publish the release
         # Never as the latest release, which is the app's.
         run: gh release edit "$TAG" --draft=false --latest=false
@@ -194,7 +209,20 @@ jobs:
       - name: Check the macOS signature
         if: runner.os == 'macOS'
         working-directory: target/release/bundle/macos
-        run: codesign --verify --deep --strict --verbose=2 DISLED.app
+        run: codesign --verify --deep --strict --verbose=2 Disled.app
+
+      # The calls come from the microphone without any permission: a bundle
+      # that declared the use of the microphone or of the camera would have
+      # macOS ask the user, and the detection of the calls would be gone.
+      - name: No microphone or camera permission
+        if: runner.os == 'macOS'
+        working-directory: target/release/bundle/macos
+        run: |
+          plist=$(plutil -convert xml1 -o - Disled.app/Contents/Info.plist)
+          if grep -E -q 'NS(Microphone|Camera)UsageDescription' <<< "$plist"; then
+            echo "::error::Info.plist asks for the microphone or the camera"
+            exit 1
+          fi
 
       # The disk image window shows its background, with the first-launch
       # steps, only if Finder saved its layout into the image.
@@ -203,7 +231,7 @@ jobs:
         working-directory: target/release/bundle/dmg
         run: |
           mount=$(mktemp -d)
-          hdiutil attach -readonly -nobrowse -mountpoint "$mount" DISLED_*.dmg
+          hdiutil attach -readonly -nobrowse -mountpoint "$mount" Disled_*.dmg
           trap 'hdiutil detach "$mount"' EXIT
           grep -q backgroundImageAlias "$mount/.DS_Store"
 
@@ -212,9 +240,9 @@ jobs:
         run: |
           # The macOS updater archive has neither version nor architecture
           # in its name.
-          if [ -f macos/DISLED.app.tar.gz ]; then
+          if [ -f macos/Disled.app.tar.gz ]; then
             for ext in "" .sig; do
-              mv "macos/DISLED.app.tar.gz$ext" "macos/DISLED_${TAG#app-v}_aarch64.app.tar.gz$ext"
+              mv "macos/Disled.app.tar.gz$ext" "macos/Disled_${TAG#app-v}_aarch64.app.tar.gz$ext"
             done
           fi
           find . -type f \
@@ -224,9 +252,16 @@ jobs:
   app-publish:
     # Only once every installer is attached, since a published release can
     # no longer change. If one platform failed, re-run it, and this job
-    # follows.
-    needs: [release-please, app]
-    if: needs.release-please.outputs.app-released == 'true'
+    # follows. When the firmware releases too, only once it is published:
+    # an app never goes out before the firmware it installs, and never
+    # while the firmware build has failed.
+    needs: [release-please, app, firmware-publish]
+    if: >-
+      always()
+      && needs.release-please.outputs.app-released == 'true'
+      && needs.app.result == 'success'
+      && (needs.release-please.outputs.firmware-released != 'true'
+      || needs.firmware-publish.result == 'success')
     runs-on: ubuntu-24.04
     env:
       TAG: ${{ needs.release-please.outputs.app-tag }}

@@ -1,6 +1,6 @@
 [package]
 name = "disled-flash"
-description = "Flashing a DISLED lamp: the signed firmware files and the wchisp flasher, run as a separate program"
+description = "Flashing a Disled lamp: the signed firmware files and the wchisp flasher, run as a separate program"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true

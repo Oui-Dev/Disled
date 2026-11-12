@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  */
 #include "color.h"
@@ -35,9 +35,8 @@ uint16_t color_scale(uint16_t value, uint16_t factor)
     return (uint16_t)(((uint32_t)value * factor + COLOR_LINEAR_MAX / 2u) / COLOR_LINEAR_MAX);
 }
 
-rgb16_t color_compose(const color_config_t *config, lamp_color_t color, uint16_t level_permille)
+rgb16_t color_shade(rgb16_t base, uint16_t level_permille)
 {
-    const rgb16_t base = config->palette[color];
     const uint16_t intensity = color_perceived_to_linear(level_permille);
     const rgb16_t result = {
         .r = color_scale(base.r, intensity),
@@ -45,6 +44,43 @@ rgb16_t color_compose(const color_config_t *config, lamp_color_t color, uint16_t
         .b = color_scale(base.b, intensity),
     };
     return result;
+}
+
+static uint16_t gain_channel(uint16_t value, uint16_t num, uint16_t den)
+{
+    /* 65535 * 65535 + 32767 still fits 32 bits. */
+    const uint32_t scaled = ((uint32_t)value * num + den / 2u) / den;
+    return (scaled > COLOR_LINEAR_MAX) ? (uint16_t)COLOR_LINEAR_MAX : (uint16_t)scaled;
+}
+
+rgb16_t color_gain(rgb16_t color, uint16_t num, uint16_t den)
+{
+    const rgb16_t result = {
+        .r = gain_channel(color.r, num, den),
+        .g = gain_channel(color.g, num, den),
+        .b = gain_channel(color.b, num, den),
+    };
+    return result;
+}
+
+rgb16_t color_balance(rgb16_t color, rgb16_t gains)
+{
+    const rgb16_t weighted = {
+        .r = color_scale(color.r, gains.r),
+        .g = color_scale(color.g, gains.g),
+        .b = color_scale(color.b, gains.b),
+    };
+    uint16_t largest = weighted.r;
+    if (weighted.g > largest) {
+        largest = weighted.g;
+    }
+    if (weighted.b > largest) {
+        largest = weighted.b;
+    }
+    if (largest == 0u) {
+        return weighted;
+    }
+    return color_gain(weighted, COLOR_LINEAR_MAX, largest);
 }
 
 static uint16_t mix_channel(uint16_t from, uint16_t to, uint16_t t)

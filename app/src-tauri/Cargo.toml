@@ -2,7 +2,7 @@
 name = "disled-app"
 # No version here. The app version lives in package.json, where
 # release-please bumps it, and tauri.conf.json reads it from there.
-description = "Desktop app for the DISLED USB status light"
+description = "Desktop app for the Disled USB status light"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -17,14 +17,14 @@ disled-protocol.workspace = true
 tauri = { version = "^2.12.5", features = ["tray-icon"] }
 tauri-plugin-dialog = "^2.8.4"
 tauri-plugin-positioner = { version = "^2.4.0", features = ["tray-icon"] }
-tauri-plugin-store = "^2.5.0"
+tauri-plugin-store = "^2.5.1"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 hidapi.workspace = true
 tauri-plugin-autostart = "^2.7.0"
 tauri-plugin-single-instance = "^2.5.5"
 tauri-plugin-updater = "^2.14.1"
-tauri-plugin-opener = "^2.7.2"
+tauri-plugin-opener = "^2.7.3"
 # Lamp firmware updates: the signed firmware files and wchisp, shared with
 # the production tool, then the HTTP client and the TLS stack of the updater.
 disled-flash.workspace = true
@@ -33,11 +33,39 @@ rustls = { version = "^0.23.46", default-features = false, features = ["ring", "
 semver.workspace = true
 # The languages of the system, for the "System" language setting.
 sys-locale = "^0.3.2"
+# The share codes of the colors, in base64url, and "Copy the code", which
+# writes the clipboard from Rust only.
+base64 = "^0.23.1"
+tauri-plugin-clipboard-manager = "^2.5.0"
+# The plugins: the local server of the plugins with events on the runtime of
+# Tauri, the fingerprint of their files, their tokens, compared in constant
+# time, and their import from a zip file.
+axum = { version = "^0.8.9", default-features = false, features = ["http1", "json", "tokio"] }
+tokio = { version = "^1.54.1", features = ["net", "rt", "sync", "time"] }
+sha2 = "^0.10.9"
+subtle = "^2.6.1"
+getrandom = "^0.4.3"
+zip = { version = "^9.5.1", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+
+# The programs of the plugins die with the app: a job object on Windows,
+# their process group elsewhere, and on Linux the death signal of the app.
+# On Windows, the calls come from the capture sessions of WASAPI.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "^0.62.2", features = ["Win32_Foundation", "Win32_Media_Audio", "Win32_Security", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_Variant"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "^0.2.191"
 
 # The popup as a panel, the only kind of window that macOS shows over an app
-# in full screen.
+# in full screen. The calls come from the process objects of CoreAudio.
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-nspanel = "^2.1.1"
+objc2-core-audio = { version = "^0.3.2", default-features = false, features = ["std", "AudioHardware"] }
+
+# The calls come from the sound server through libpulse, loaded at run time,
+# so that the app starts without it.
+[target.'cfg(target_os = "linux")'.dependencies]
+dlopen2 = "^0.9.0"
 
 # The tests write the TypeScript types of the front end with ts-rs, set up
 # in .cargo/config.toml. Release builds never compile ts-rs.
@@ -45,3 +73,8 @@ tauri-nspanel = "^2.1.1"
 disled-flash = { workspace = true, features = ["ts"] }
 disled-protocol = { workspace = true, features = ["ts"] }
 ts-rs.workspace = true
+# The tests of the plugins write their files in temporary folders, and send
+# their requests to the router of the local server without a socket.
+tempfile = "^3.27.0"
+tower = { version = "^0.5.3", features = ["util"] }
+tokio = { version = "^1.54.1", features = ["macros"] }

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 The DISLED contributors
+# SPDX-FileCopyrightText: 2026 The Disled contributors
 name: app
 
 # Checks of the pull requests into main that are ready for review, drafts
@@ -26,6 +26,11 @@ permissions:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
+
+env:
+  # The flasher of the release workflow, which says what to check before
+  # changing it.
+  WCHISP_VERSION: 0.3.0
 
 jobs:
   app:
@@ -79,3 +84,108 @@ jobs:
         run: |
           git status --porcelain -- app/src/bindings
           test -z "$(git status --porcelain -- app/src/bindings)"
+
+      # The project is Disled. "DISLED" stays only in capital identifiers
+      # (DISLED_...), in the DISLED2- prefix of the share codes, in the past
+      # entries of the changelogs, and in the files of the guards.
+      - name: The name Disled
+        working-directory: .
+        run: |
+          found=$(git grep -n -I DISLED -- ':!*CHANGELOG.md' ':!.github/workflows/app.yml' \
+            ':!app/src-tauri/src/i18n.rs' | grep -v -E 'DISLED_[A-Z0-9_]|DISLED2-' || true)
+          if [ -n "$found" ]; then
+            echo "$found"
+            echo "::error::the name is Disled"
+            exit 1
+          fi
+
+  # The code behind #[cfg(target_os = ...)] compiles and runs its tests on
+  # the systems of the releases too, long before a release. On macOS, the
+  # job also builds the disk image as the release does, wchisp included,
+  # checks it, and attaches it: the test build of the Mac.
+  native:
+    if: ${{ !github.event.pull_request.draft }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, macos-15]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: app/package.json
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # The version of rust-toolchain.toml, with clippy.
+      - run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+
+      # The app embeds the built front end.
+      - name: Front end
+        run: |
+          npm ci
+          npm run build
+
+      - name: App and flashing crate
+        working-directory: .
+        run: |
+          cargo clippy -p disled-app -p disled-flash --all-targets -- -D warnings
+          cargo test -p disled-app -p disled-flash
+
+      # As in the release workflow.
+      - name: wchisp
+        if: runner.os == 'macOS'
+        run: |
+          cargo install "wchisp@$WCHISP_VERSION" --locked --root "$RUNNER_TEMP/wchisp"
+          triple=$(rustc -vV | sed -n 's/^host: //p')
+          mkdir -p src-tauri/binaries
+          cp "$RUNNER_TEMP/wchisp/bin/wchisp" "src-tauri/binaries/wchisp-$triple"
+
+      # Without the updater configuration, so without its signing secrets.
+      - name: Build the disk image
+        if: runner.os == 'macOS'
+        env:
+          TAURI_BUNDLER_DMG_IGNORE_CI: "true"
+        run: npm run tauri build -- --bundles app,dmg --config src-tauri/tauri.wchisp.conf.json
+
+      - name: Check the macOS signature
+        if: runner.os == 'macOS'
+        working-directory: target/release/bundle/macos
+        run: codesign --verify --deep --strict --verbose=2 Disled.app
+
+      # The calls come from the microphone without any permission: a bundle
+      # that declared the use of the microphone or of the camera would have
+      # macOS ask the user, and the detection of the calls would be gone.
+      - name: No microphone or camera permission
+        if: runner.os == 'macOS'
+        working-directory: target/release/bundle/macos
+        run: |
+          plist=$(plutil -convert xml1 -o - Disled.app/Contents/Info.plist)
+          if grep -E -q 'NS(Microphone|Camera)UsageDescription' <<< "$plist"; then
+            echo "::error::Info.plist asks for the microphone or the camera"
+            exit 1
+          fi
+
+      - name: Check the disk image layout
+        if: runner.os == 'macOS'
+        working-directory: target/release/bundle/dmg
+        run: |
+          mount=$(mktemp -d)
+          hdiutil attach -readonly -nobrowse -mountpoint "$mount" Disled_*.dmg
+          trap 'hdiutil detach "$mount"' EXIT
+          grep -q backgroundImageAlias "$mount/.DS_Store"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: runner.os == 'macOS'
+        with:
+          name: disled-macos-${{ github.sha }}
+          path: target/release/bundle/dmg/Disled_*.dmg
+          if-no-files-found: error

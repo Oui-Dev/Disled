@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! English and French. The windows translate themselves with vue-i18n, and the backend
 //! reads the same files in `app/src/locales` for the texts the system draws: the tray
@@ -73,6 +73,14 @@ impl Locale {
             .unwrap_or(key)
             .to_owned()
     }
+
+    /// The message at `key`, with each named mark, such as `{name}`,
+    /// replaced by its value.
+    pub fn format(self, key: &str, values: &[(&str, &str)]) -> String {
+        values.iter().fold(self.t(key), |text, (mark, value)| {
+            text.replace(&format!("{{{mark}}}"), value)
+        })
+    }
 }
 
 /// The language in force, shared by the tray, the windows and the commands.
@@ -127,9 +135,9 @@ mod tests {
         );
     }
 
-    /// The tray and the titles show the messages as they are, so what the
-    /// backend reads has no vue-i18n syntax: no placeholders, links or
-    /// plurals.
+    /// The tray and the titles show the messages that the backend reads, so
+    /// they hold no vue-i18n syntax but the named marks that `format` fills:
+    /// no links, no plurals, no other placeholders.
     #[test]
     fn the_messages_of_the_backend_are_plain_text() {
         for locale in [Locale::En, Locale::Fr] {
@@ -143,15 +151,285 @@ mod tests {
             }
             assert!(!found.is_empty());
             for key in found {
-                let text = locale.t(&key);
+                let text = locale.format(&key, &[("name", "x")]);
                 assert!(!text.contains(['{', '}', '@', '|', '$']), "{key}: {text}");
             }
         }
     }
 
     #[test]
+    fn a_named_mark_takes_its_value() {
+        assert_eq!(
+            Locale::En.format("tray.tooltip.color", &[("name", "Musique")]),
+            "Disled: Musique"
+        );
+        assert_eq!(
+            Locale::En.format("tray.open", &[("name", "x")]),
+            "Open Disled"
+        );
+    }
+
+    /// Every message of a language, with its dotted key.
+    fn messages(locale: Locale) -> Vec<(String, String)> {
+        let mut found = BTreeSet::new();
+        keys(locale.messages(), "", &mut found);
+        found
+            .into_iter()
+            .map(|key| {
+                let text = locale.t(&key);
+                (key, text)
+            })
+            .collect()
+    }
+
+    /// The writing rules of the French texts: no semicolon, typographic
+    /// apostrophes, a thin no-break space before a colon, a question mark or
+    /// an exclamation mark, and nothing done "manuellement", since every
+    /// update of the lamp is.
+    #[test]
+    fn the_french_texts_follow_the_writing_rules() {
+        for (key, text) in messages(Locale::Fr) {
+            assert!(!text.contains(';'), "{key}: a semicolon in {text}");
+            assert!(
+                !text.contains('\''),
+                "{key}: a straight apostrophe in {text}"
+            );
+            assert!(!text.contains("manuellement"), "{key}: {text}");
+            for (at, mark) in text.match_indices([':', '?', '!']) {
+                let before = text[..at].chars().next_back();
+                assert!(
+                    !matches!(before, Some(' ' | '\u{a0}')),
+                    "{key}: a wide space before {mark} in {text}"
+                );
+            }
+        }
+    }
+
+    /// The menus and settings speak no jargon: BOOT and RESET belong to the
+    /// update guide. The window that reinstalls a firmware names no driver
+    /// tool either.
+    #[test]
+    fn the_menus_use_no_jargon() {
+        for locale in [Locale::En, Locale::Fr] {
+            for (key, text) in messages(locale) {
+                let section = key.split('.').next().unwrap_or_default();
+                if matches!(section, "updates" | "settings") {
+                    assert!(
+                        !text.contains("BOOT") && !text.contains("RESET"),
+                        "{key}: {text}"
+                    );
+                }
+                if section == "lampInstall" {
+                    for word in ["Zadig", "pilote", "driver"] {
+                        assert!(!text.contains(word), "{key}: {text}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_texts_name_the_app_disled() {
+        for locale in [Locale::En, Locale::Fr] {
+            for (key, text) in messages(locale) {
+                assert!(!text.contains("DISLED"), "{key}: {text}");
+            }
+        }
+    }
+
+    /// Buttons and menus show no ellipsis; the messages that wait keep theirs.
+    #[test]
+    fn button_and_menu_labels_have_no_ellipsis() {
+        const LABELS: &[&str] = &[
+            "common.settings",
+            "common.back",
+            "common.quit",
+            "common.cancel",
+            "common.close",
+            "settings.diagnostics",
+            "settings.more",
+            "updates.install",
+            "updates.updateLamp",
+            "updates.check",
+            "updates.reinstall",
+            "lampV1.action",
+            "lampUpdate.start",
+            "lampUpdate.reinstall",
+            "lampUpdate.retry",
+            "lampInstall.others",
+            "lampInstall.install",
+            "lampInstall.reinstall",
+            "modes.manual",
+            "modes.manage",
+            "calls.mic",
+            "common.copy",
+            "integrations.openFolder",
+            "integrations.import",
+            "integrations.reviewNote",
+            "integrations.regenerate",
+            "integrations.remove",
+            "integrations.approve.action",
+            "integrations.regenerateConfirm.action",
+            "integrations.removeConfirm.action",
+            "diagnostics.restart",
+            "selfTest.run",
+            "telemetry.record",
+            "telemetry.stop",
+            "telemetry.export",
+            "tray.open",
+            "tray.diagnostics",
+            "tray.quit",
+        ];
+        for locale in [Locale::En, Locale::Fr] {
+            for key in LABELS {
+                let text = locale.t(key);
+                assert_ne!(text, *key, "no message {key}");
+                assert!(
+                    !text.ends_with('…') && !text.ends_with("..."),
+                    "{key}: {text}"
+                );
+            }
+        }
+    }
+
+    /// The French texts that the owner reviewed, word for word.
+    #[test]
+    fn the_reviewed_texts_stay_as_reviewed() {
+        let reviewed = [
+            ("lampV1.title", "Mise à jour nécessaire"),
+            (
+                "lampV1.text",
+                "Cette lampe a encore le firmware v1, et Disled v2 a besoin du firmware v2.",
+            ),
+            ("lampV1.action", "Mettre à jour"),
+            (
+                "lampV1.line",
+                "Cette lampe a le firmware v1, et Disled v2 a besoin du firmware v2.",
+            ),
+            (
+                "colors.library.appOnly",
+                "Sans l’app, la lampe reprend ses quatre couleurs et le cycle d’origine.",
+            ),
+            ("updates.reinstall", "Réinstaller le firmware"),
+            (
+                "updates.reinstallHint",
+                "Version au choix. Il faut ouvrir la lampe.",
+            ),
+            ("window.lampInstall", "Réinstaller le firmware"),
+            ("lampInstall.title", "Réinstaller le firmware"),
+            (
+                "lampInstall.intro",
+                "Une intervention manuelle est obligatoire\u{202f}: il faut ouvrir la lampe, \
+                 et tout sera guidé étape par étape. Comptez environ une minute, lampe \
+                 branchée à cet ordinateur.",
+            ),
+            ("lampInstall.rollback.title", "Retour au firmware v1"),
+            (
+                "lampInstall.rollback.text",
+                "La lampe ne marchera plus qu’avec Disled v1.",
+            ),
+            (
+                "lampUpdate.retryOrGuide",
+                "Réessayez, ou suivez le {guide}.",
+            ),
+            ("lampUpdate.guide", "guide de mise à jour"),
+            ("modes.label", "La lampe suit"),
+            ("modes.button", "La lampe suit\u{202f}: {source}"),
+            ("modes.manual", "Manuel"),
+            ("modes.manualHint", "Vous choisissez la couleur."),
+            ("modes.integrations", "Intégrations"),
+            ("modes.on", "Allumée\u{202f}: suit {name}"),
+            ("modes.turnOn", "Rallumer\u{202f}: suivre {name}"),
+            ("modes.clickToTurnOn", "Cliquez pour rallumer"),
+            ("modes.since", "depuis {time}"),
+            ("calls.title", "Appels"),
+            ("calls.manualOnly", "Seulement en mode Manuel"),
+            ("calls.mic", "Micro utilisé"),
+            ("calls.during", "Pendant un appel\u{202f}:"),
+            (
+                "calls.colorLabel",
+                "Couleur pendant un appel\u{202f}: {name}",
+            ),
+            ("calls.popoverTitle", "Pendant un appel"),
+            ("calls.popoverLabel", "Couleur pendant un appel"),
+            ("calls.inCall", "En appel"),
+            ("calls.then", "· puis {name}"),
+            ("calls.detected", "Appel détecté par le micro"),
+            ("calls.micPrefix", "Micro utilisé\u{202f}:"),
+            ("modes.manage", "Gérer les intégrations"),
+            ("window.integrations", "Intégrations Disled"),
+            ("integrations.title", "Intégrations"),
+            ("integrations.subtitle", "Elles viennent de vos plugins."),
+            ("integrations.openFolder", "Ouvrir le dossier des plugins"),
+            ("integrations.import", "Importer un plugin"),
+            ("integrations.driving", "Pilote la lampe"),
+            ("integrations.new", "Nouveau\u{202f}: à vérifier"),
+            ("integrations.noEvent", "Aucun événement reçu"),
+            (
+                "integrations.noEventYet",
+                "Aucun événement reçu pour l’instant.",
+            ),
+            (
+                "integrations.lastEvent",
+                "Dernier événement reçu il y a {ago}\u{202f}: {state}.",
+            ),
+            (
+                "integrations.neverEdits",
+                "Disled ne modifie jamais les réglages de {name}\u{202f}: c’est vous qui collez ce bloc.",
+            ),
+            (
+                "integrations.installed",
+                "Installation faite\u{202f}: {name} envoie ses événements.",
+            ),
+            ("integrations.reviewNote", "Revoir la note"),
+            ("integrations.can", "Ce que ce plugin peut faire"),
+            (
+                "integrations.perm.color",
+                "Choisir la couleur de la lampe, quand elle le suit",
+            ),
+            ("integrations.perm.alert", "Faire une alerte sur la lampe"),
+            (
+                "integrations.perm.events",
+                "Recevoir les événements de {name}, en local",
+            ),
+            (
+                "integrations.perm.process",
+                "Lancer un programme sur cet ordinateur, avec vos droits\u{202f}: {command}",
+            ),
+            (
+                "integrations.perm.nothingElse",
+                "Rien d’autre\u{202f}: aucun programme, pas d’Internet",
+            ),
+            (
+                "integrations.colorsHint",
+                "Quand la lampe suit {name}\u{202f}:",
+            ),
+            ("integrations.tokenOwn", "Jeton propre à ce plugin"),
+            ("integrations.regenerate", "Régénérer le jeton"),
+            ("integrations.remove", "Retirer le plugin"),
+            (
+                "integrations.approve.title",
+                "Activer «\u{202f}{name}\u{202f}»\u{202f}?",
+            ),
+            (
+                "integrations.approve.meta",
+                "Plugin {version} · par {author} · trouvé dans le dossier des plugins",
+            ),
+            ("integrations.approve.can", "Ce plugin pourra\u{202f}:"),
+            (
+                "integrations.approve.trust",
+                "N’activez que les plugins de personnes en qui vous avez confiance. Si ses \
+                 fichiers changent, Disled vous redemandera votre accord.",
+            ),
+        ];
+        for (key, text) in reviewed {
+            assert_eq!(Locale::Fr.t(key), text, "{key}");
+        }
+    }
+
+    #[test]
     fn a_missing_message_falls_back_to_its_key() {
-        assert_eq!(Locale::Fr.t("tray.open"), "Ouvrir DISLED");
+        assert_eq!(Locale::Fr.t("tray.open"), "Ouvrir Disled");
         assert_eq!(Locale::Fr.t("no.such.key"), "no.such.key");
     }
 

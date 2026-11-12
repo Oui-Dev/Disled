@@ -5,7 +5,9 @@
   "windows": [
     "popup",
     "diagnostics",
-    "lamp-update"
+    "lamp-update",
+    "lamp-install",
+    "integrations"
   ],
   "permissions": [
     "core:event:allow-listen",

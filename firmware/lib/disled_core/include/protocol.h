@@ -1,11 +1,12 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
- * Codec of the USB HID protocol v1.1 (protocol/README.md), without I/O. A
+ * Codec of the USB HID protocol v2.0 (protocol/README.md), without I/O. A
  * payload is [0] type, [1] seq, [2] body length, then the body, zero padded,
- * with multi-byte fields in little-endian.
+ * with multi-byte fields in little-endian. INFO starts with the protocol
+ * version, as in version 1, so that a host tells the two apart.
  */
 #ifndef DISLED_PROTOCOL_H
 #define DISLED_PROTOCOL_H
@@ -14,11 +15,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "alert.h"
 #include "disled_types.h"
 #include "lamp_fsm.h"
+#include "palette.h"
+#include "touch_cycle.h"
 
-#define PROTO_VERSION_MAJOR 1u
-#define PROTO_VERSION_MINOR 1u
+#define PROTO_VERSION_MAJOR 2u
+#define PROTO_VERSION_MINOR 0u
 
 /* HID report IDs: commands go from the host to the device, messages from
  * the device to the host. */
@@ -37,10 +41,17 @@
 #define PROTO_CMD_SET_TELEMETRY 0x04u
 #define PROTO_CMD_RESET         0x05u
 /* Version 1.1, each announced by a capability bit. */
-#define PROTO_CMD_SET_AUTO_BIAS    0x06u
-#define PROTO_CMD_GET_DIAGNOSTICS  0x07u
-#define PROTO_CMD_SELF_TEST        0x08u
-#define PROTO_CMD_ENTER_BOOTLOADER 0x09u
+#define PROTO_CMD_SET_AUTO_BIAS   0x06u
+#define PROTO_CMD_GET_DIAGNOSTICS 0x07u
+#define PROTO_CMD_SELF_TEST       0x08u
+/* Version 2. 0x09 (ENTER_BOOTLOADER in version 1.1, which no lamp announced)
+ * and 0x0F are reserved: unknown commands. */
+#define PROTO_CMD_SET_COLOR             0x0Au
+#define PROTO_CMD_GET_COLOR             0x0Bu
+#define PROTO_CMD_SET_TOUCH_CYCLE       0x0Cu
+#define PROTO_CMD_GET_TOUCH_CYCLE       0x0Du
+#define PROTO_CMD_ALERT                 0x0Eu
+#define PROTO_CMD_SET_TOUCH_SENSITIVITY 0x10u
 
 /* From the device to the host. */
 #define PROTO_MSG_INFO             0x81u
@@ -48,26 +59,52 @@
 #define PROTO_MSG_TELEMETRY        0x83u
 #define PROTO_MSG_DIAGNOSTICS      0x84u
 #define PROTO_MSG_SELF_TEST_RESULT 0x85u
-#define PROTO_MSG_ACK              0x8Eu
-#define PROTO_MSG_ERROR            0x8Fu
+/* Version 2. */
+#define PROTO_MSG_COLOR       0x86u
+#define PROTO_MSG_TOUCH_CYCLE 0x87u
+#define PROTO_MSG_ALERT_DONE  0x88u
+#define PROTO_MSG_ACK         0x8Eu
+#define PROTO_MSG_ERROR       0x8Fu
 
-/* Body sizes. */
-#define PROTO_SET_STATE_SIZE        5u
-#define PROTO_SET_TELEMETRY_SIZE    2u
-#define PROTO_INFO_SIZE             56u
-#define PROTO_STATE_SIZE            9u
-#define PROTO_TELEMETRY_SIZE        32u
-#define PROTO_SET_AUTO_BIAS_SIZE    1u
-#define PROTO_DIAGNOSTICS_SIZE      36u
-#define PROTO_SELF_TEST_RESULT_SIZE 9u
+/* Body sizes. Version 2 adds the touch mode to SET_STATE, and the touch mode
+ * and the color of the lamp to STATE. */
+#define PROTO_SET_STATE_SIZE 6u
+#define PROTO_STATE_SIZE     16u
+/* Version 2 sets a touch sensitivity correction, which ends DIAGNOSTICS. */
+#define PROTO_SET_TOUCH_SENSITIVITY_SIZE 1u
+#define PROTO_DIAGNOSTICS_SIZE           37u
+#define PROTO_SET_TELEMETRY_SIZE         2u
+#define PROTO_INFO_SIZE                  56u
+#define PROTO_TELEMETRY_SIZE             32u
+#define PROTO_SET_AUTO_BIAS_SIZE         1u
+#define PROTO_SELF_TEST_RESULT_SIZE      9u
+#define PROTO_SET_COLOR_SIZE             7u
+#define PROTO_GET_COLOR_SIZE             1u
+#define PROTO_COLOR_SIZE                 7u
+#define PROTO_TOUCH_CYCLE_SIZE           10u
+#define PROTO_ALERT_SIZE                 3u
+#define PROTO_ALERT_DONE_SIZE            1u
 
 /* INFO capabilities. */
-#define PROTO_CAP_TELEMETRY        (1u << 0)
-#define PROTO_CAP_DEBUG_CONSOLE    (1u << 1)
-#define PROTO_CAP_AUTO_BIAS        (1u << 2)
-#define PROTO_CAP_DIAGNOSTICS      (1u << 3)
-#define PROTO_CAP_SELF_TEST        (1u << 4)
-#define PROTO_CAP_ENTER_BOOTLOADER (1u << 5)
+#define PROTO_CAP_TELEMETRY     (1u << 0)
+#define PROTO_CAP_DEBUG_CONSOLE (1u << 1)
+#define PROTO_CAP_AUTO_BIAS     (1u << 2)
+#define PROTO_CAP_DIAGNOSTICS   (1u << 3)
+#define PROTO_CAP_SELF_TEST     (1u << 4)
+/* Version 2. Bits 5 (ENTER_BOOTLOADER in version 1.1, never announced) and
+ * 10 are reserved. */
+#define PROTO_CAP_CUSTOM_COLORS     (1u << 6)
+#define PROTO_CAP_TOUCH_CYCLE       (1u << 7)
+#define PROTO_CAP_TOUCH_MODE        (1u << 8)
+#define PROTO_CAP_ALERT             (1u << 9)
+#define PROTO_CAP_TOUCH_SENSITIVITY (1u << 11)
+
+/* ALERT_DONE reasons. */
+#define PROTO_ALERT_COMPLETED 0u /* every breath shown */
+#define PROTO_ALERT_LAMP_OFF  1u /* the lamp was turned off */
+#define PROTO_ALERT_SUSPENDED 2u /* USB suspend */
+#define PROTO_ALERT_CANCELLED 3u /* ALERT with a count of 0 */
+#define PROTO_ALERT_SELF_TEST 4u /* SELF_TEST took the LED */
 
 /* INFO flags. */
 #define PROTO_INFO_FLAG_DEBUG_BUILD (1u << 0)
@@ -87,6 +124,10 @@
 #define PROTO_AUTO_BIAS_MIN (-50)
 #define PROTO_AUTO_BIAS_MAX 50
 
+/* Touch sensitivity correction, percent (version 2). */
+#define PROTO_TOUCH_SENSITIVITY_MIN (-50)
+#define PROTO_TOUCH_SENSITIVITY_MAX 50
+
 #define PROTO_FW_VERSION_SIZE 24u
 
 /* Shortest telemetry period, in ms (0 stops the stream). */
@@ -97,7 +138,8 @@ typedef enum {
     PROTO_ERR_UNKNOWN_COMMAND = 1,
     PROTO_ERR_BAD_LENGTH = 2,
     PROTO_ERR_BAD_VALUE = 3,
-    PROTO_ERR_BUSY = 4, /* version 1.1 */
+    PROTO_ERR_BUSY = 4,     /* version 1.1 */
+    PROTO_ERR_LAMP_OFF = 5, /* version 2: no alert while the lamp is off */
 } proto_status_t;
 
 typedef struct {
@@ -107,6 +149,19 @@ typedef struct {
         lamp_request_t set_state;
         uint16_t telemetry_period_ms;
         int8_t auto_bias; /* percent */
+        struct {
+            uint8_t slot; /* custom: PALETTE_FIXED_SLOTS and up */
+            rgb16_t color;
+        } set_color;
+        uint8_t color_slot; /* GET_COLOR */
+        /* Slots in range and none twice; the application checks they hold
+         * a color. */
+        touch_cycle_t touch_cycle;
+        struct {
+            uint8_t count; /* breaths; 0 stops a running alert */
+            uint16_t period_ms;
+        } alert;
+        int8_t touch_sensitivity; /* percent */
     } body;
 } proto_command_t;
 
@@ -130,6 +185,7 @@ typedef struct {
     uint8_t applied_percent;
     usb_link_t link;
     change_source_t source;
+    rgb16_t rgb; /* the lamp color at full brightness, linear */
 } proto_state_t;
 
 typedef struct {
@@ -162,8 +218,9 @@ typedef struct {
     uint16_t touch_samples_lost;
     uint16_t touch_recalibrations;
     uint16_t usb_suspends;
-    int8_t auto_bias; /* percent */
-    uint8_t flags;    /* PROTO_DIAG_FLAG_* */
+    int8_t auto_bias;         /* percent */
+    uint8_t flags;            /* PROTO_DIAG_FLAG_* */
+    int8_t touch_sensitivity; /* percent */
 } proto_diagnostics_t;
 
 typedef struct {
@@ -189,5 +246,11 @@ void proto_encode_self_test_result(uint8_t payload[PROTO_REPORT_SIZE], uint8_t s
 void proto_encode_ack(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, uint8_t command_type);
 void proto_encode_error(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, uint8_t command_type,
                         proto_status_t error);
+void proto_encode_color(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, uint8_t slot,
+                        rgb16_t color);
+void proto_encode_touch_cycle(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq,
+                              const touch_cycle_t *cycle);
+/* `seq` is that of the ALERT command; `reason` one of PROTO_ALERT_*. */
+void proto_encode_alert_done(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, uint8_t reason);
 
 #endif /* DISLED_PROTOCOL_H */

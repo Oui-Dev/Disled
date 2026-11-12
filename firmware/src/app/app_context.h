@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
  * State shared by the application modules (app.c, app_host.c,
@@ -12,14 +12,18 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "alert.h"
 #include "brightness.h"
 #include "bsp/bsp_fault.h"
 #include "disled_types.h"
 #include "lamp_fsm.h"
 #include "led_output.h"
+#include "palette.h"
 #include "protocol.h"
 #include "self_test.h"
+#include "touch_cycle.h"
 #include "touch_detector.h"
+#include "touch_gate.h"
 
 typedef struct {
     bool present;
@@ -36,6 +40,7 @@ typedef struct {
     change_source_t source; /* cause of the latest lamp change */
     brightness_t brightness;
     touch_detector_t touch;
+    touch_gate_t touch_gate; /* no gesture during an alert */
     led_output_t output;
     uint16_t duty[LED_CHANNEL_COUNT];
     usb_link_t link;
@@ -48,13 +53,48 @@ typedef struct {
     self_test_t self_test;
     uint8_t self_test_seq; /* seq of the SELF_TEST command, for the result */
     bool self_test_report; /* a result is waiting to be sent */
+    palette_t palette;
+    touch_cycle_t cycle;
+    uint32_t host_seen_ms; /* last command, for the touch mode fallback */
+    alert_t alert;
+    uint8_t alert_seq;      /* seq of the ALERT command running */
+    uint8_t alert_done_seq; /* the ALERT_DONE waiting to be sent: seq and reason */
+    uint8_t alert_done_reason;
+    bool alert_report;
 } app_context_t;
 
 /* The single instance, owned by app.c. */
 extern app_context_t app;
 
-/* Applies a lamp request coming from the host or the console. */
+/* Applies a lamp request coming from the host or the console, valid and
+ * allowed. */
 void app_apply_request(const lamp_request_t *request);
+
+/* A valid request may still name a color slot that holds no color. */
+static inline bool app_request_allowed(const lamp_request_t *request)
+{
+    return (request->fields & LAMP_FIELD_COLOR) == 0u ||
+           palette_defined(&app.palette, (uint32_t)request->color);
+}
+
+/* The lamp color at full brightness, linear (STATE). */
+rgb16_t app_lamp_rgb(void);
+
+/* Sets or empties (black) a custom slot. An emptied color leaves the touch
+ * cycle, and the lamp showing it goes to the first color of the cycle. */
+bool app_set_color(uint32_t slot, rgb16_t color);
+
+/* False if a slot of the cycle holds no color. */
+bool app_set_touch_cycle(const touch_cycle_t *cycle);
+
+/* Starts `count` breaths, or replaces the running alert; 0 stops it. No
+ * alert while the lamp is off. ALERT_DONE then carries `seq`. */
+proto_status_t app_alert(uint8_t seq, uint8_t count, uint16_t period_ms);
+
+/* The perceived swing of the breaths, per mille, APP_ALERT_DEPTH_PERMILLE
+ * until the debug console changes it, to compare depths on a closed lamp. */
+uint16_t app_alert_depth(void);
+void app_set_alert_depth(uint16_t depth_permille);
 
 /* Starts the self-test; its result is reported to the host with `seq`.
  * Never while one runs: the host gets BUSY instead. */

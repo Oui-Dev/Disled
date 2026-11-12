@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 The DISLED contributors
+# SPDX-FileCopyrightText: 2026 The Disled contributors
 #
 # Build and check tools of the firmware, at the versions the CI uses:
 # `uv sync` installs them in .venv, `uv run pio ...` runs them. uv.lock pins
@@ -11,11 +11,11 @@
 [project]
 name = "disled-firmware-tools"
 version = "0.0.0"
-description = "Build and check tools of the DISLED firmware"
+description = "Build and check tools of the Disled firmware"
 requires-python = ">=3.14.9"
 dependencies = [
     "platformio==6.2.0",
-    "clang-format==23.1.3",
+    "clang-format==23.1.5",
 ]
 
 [tool.uv]

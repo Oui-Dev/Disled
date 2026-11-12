@@ -1,6 +1,6 @@
 [package]
 name = "disled-factory"
-description = "DISLED production tool: flashes, checks and self-tests each board, and logs the results"
+description = "Disled production tool: flashes, checks and self-tests each board, and logs the results"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true

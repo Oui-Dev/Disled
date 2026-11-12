@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   Lamp tab of the Diagnostics window: off and the four colors, the
   brightness, as in the popup, and the details of the last STATE.
@@ -19,7 +19,7 @@ const lamp = useLampStore();
   </p>
   <p v-else-if="!lamp.state" class="text-sm text-muted">{{ t('diagnostics.waiting') }}</p>
   <div v-else class="flex flex-col gap-4">
-    <LampColorPicker />
+    <LampColorPicker standalone />
     <LampBrightness />
     <p class="text-xs text-muted">
       {{

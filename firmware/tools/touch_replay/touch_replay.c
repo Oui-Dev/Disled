@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
  * Replays a touch recording through touch_detector on the build machine,
@@ -32,6 +32,9 @@ static touch_config_t config = {
     .inverted_ms = 1000,
 };
 
+/* Sensitivity correction in percent, as SET_TOUCH_SENSITIVITY sets it. */
+static int sensitivity;
+
 typedef struct {
     const char *name;
     uint16_t *field;
@@ -46,6 +49,14 @@ static const option_t options[] = {
 
 static int parse_option(const char *arg)
 {
+    static const char sensitivity_name[] = "sensitivity=";
+    int percent = 0;
+    if (strncmp(arg, sensitivity_name, sizeof sensitivity_name - 1u) == 0 &&
+        sscanf(arg + sizeof sensitivity_name - 1u, "%d", &percent) == 1 &&
+        percent >= TOUCH_SENSITIVITY_MIN && percent <= TOUCH_SENSITIVITY_MAX) {
+        sensitivity = percent;
+        return 1;
+    }
     for (size_t i = 0; i < sizeof options / sizeof options[0]; i++) {
         const size_t length = strlen(options[i].name);
         unsigned value = 0;
@@ -61,8 +72,10 @@ static int parse_option(const char *arg)
 int main(int argc, char **argv)
 {
     if (argc < 2) {
-        fprintf(stderr, "usage: touch_replay <recording> [name=value ...]\n"
-                        "names: press release rise proximity debounce rearm long object\n");
+        fprintf(stderr,
+                "usage: touch_replay <recording> [name=value ...]\n"
+                "names: press release rise proximity debounce rearm long object (per mille, ms)\n"
+                "       sensitivity (percent, -50 to 50)\n");
         return 2;
     }
     for (int i = 2; i < argc; i++) {
@@ -79,6 +92,11 @@ int main(int argc, char **argv)
 
     touch_detector_t td;
     touch_detector_init(&td, &config);
+    touch_detector_set_sensitivity(&td, (int8_t)sensitivity);
+    const touch_thresholds_t thresholds = touch_detector_thresholds(&td);
+    printf("sensitivity %+d%%: press %u, release %u, rise %u per mille\n",
+           (int)touch_detector_sensitivity(&td), (unsigned)thresholds.press,
+           (unsigned)thresholds.release, (unsigned)thresholds.rise);
     uint32_t now_ms = 0;
     unsigned windows = 0;
     unsigned recorded = 0;

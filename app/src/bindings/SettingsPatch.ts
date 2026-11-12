@@ -6,4 +6,4 @@ import type { Language } from "./Language";
 /**
  * Fields the front end may change; `None` keeps the current value.
  */
-export type SettingsPatch = { brightness_mode?: BrightnessMode, manual_level?: number, auto_bias?: number, check_updates?: boolean, color_mode?: ColorMode, language?: Language, };
+export type SettingsPatch = { brightness_mode?: BrightnessMode, manual_level?: number, auto_bias?: number, check_updates?: boolean, color_mode?: ColorMode, language?: Language, touch_sensitivity?: number, color_preview?: boolean, calls_mic?: boolean, calls_color?: number, };

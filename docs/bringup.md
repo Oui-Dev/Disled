@@ -41,7 +41,7 @@ Equipment:
 - [ ] `pio run -e debug -t upload`, then RESET.
 - [ ] The lamp fades in green.
 - [ ] Device Manager or System Information shows `1209:0002` with a HID
-      interface and a serial port.
+      interface, "Disled control", and a serial port, "Disled console".
 - [ ] The desktop app (`npm run tauri dev` in `app/`) connects and shows the
       firmware version.
 - [ ] Its Diagnostics window shows a 24-digit serial (the chip UID) and the
@@ -56,10 +56,17 @@ Equipment:
       closed enclosure, because the PLA shifts them. The palette is
       `app_color_config`, and the self-test repeats its warm white in
       `app_self_test_config.white`.
-- [ ] Warm white keeps the same hue at 3, 10, 30 and 100 % (`set level`).
-      If the low levels drift, yellow when blue is missing or pink when
-      green is, raise the pulse loss of the missing channel,
-      `app_led_pulse_loss_ns`, starting at 3 %.
+- [ ] Warm white keeps the same hue at 1, 3, 10, 30 and 100 %
+      (`set level`), and so does a custom white from 2 to 30 %. If a low
+      level drifts, yellow-green when red is missing, yellow when blue is or
+      pink when green is, raise the pulse loss of the missing channel in
+      `app_led_pulse_loss`, at the light of its pulses there; lower the
+      loss of a channel that is too strong.
+- [ ] A custom white, `#FFFFFF` from the app, looks neutral through the
+      closed enclosure at 30 % and keeps its hue from 2 to 100 %. If it
+      leans to a hue, pick the hex that looks neutral in the color editor:
+      the gains of `app_led_white_balance` times the linear light of that
+      hex make the new gains.
 - [ ] `set level 1` is still visible in a dark room, and `set level 100` is
       bright.
 - [ ] `state` shows sensible duties and the estimated current.
@@ -76,6 +83,12 @@ Equipment:
       ____ mA (at most 63).
 - [ ] Warm white at 100 % stays under the 125 mA cap: red ____ + green
       ____ + blue ____ = ____ mA, against ____ mA estimated by `state`.
+- [ ] `alert 3 1500` breathes three times over the lamp color, then stops
+      by itself, and `state` says "alert running" meanwhile. Watch it with
+      the enclosure closed, in a dark room and in a lit one: the breaths
+      stay soft and visible, and in automatic brightness the level after
+      the alert is the level before it, since the sensor also sees the
+      breaths.
 - [ ] On a **phone charger**, with no host, the lamp works. Two short
       touches give red, and the flashlight on the sensor window takes it to
       the top of the automatic range: red ____ mA, under the 70 mA cap.
@@ -114,7 +127,7 @@ change.
 ## 6. Touch
 
 Record with the desktop app (telemetry at 50 ms, **Record**, then **Export
-CSV…**) or with `watch 20` on the console, which prints every 20 ms window.
+CSV**) or with `watch 20` on the console, which prints every 20 ms window.
 Note the drop below the baseline, in per mille.
 
 Test with the enclosure **closed** and one hand only. Holding the board,
@@ -130,12 +143,27 @@ board ground and doubles the drop, which hides a weak signal.
       on, and a phone left on the lid fires once, then the lamp ignores it.
 - [ ] Twenty light, quick taps with the hand resting near the lid: one
       color step per tap, no skipped color, no long press.
+- [ ] `set sensitivity 50`, then `set sensitivity -50`: `state` shows the
+      press, release and rise thresholds scaled by the correction. A light
+      tap fires at +50 %, and misses more often at −50 %. `set sensitivity
+      0` restores the factory thresholds.
+- [ ] During `alert 10 1500`, short and long presses do nothing, and a
+      press still held when the alert ends does nothing at its release.
+
+Reference, measured on the first board with the debug firmware 2.0, the lid
+closed and no correction: a firm finger on the electrode ring 182 to
+198 ‰, a long press on the ring 192 to 206 ‰, a light touch in the center
+69 to 105 ‰, a hand held 1 cm above 80 to 89 ‰ and 2 cm above 29 to
+42 ‰, a hand passing 1 cm above 21 to 54 ‰, quick light taps with the hand
+resting near the lid 83 to 155 ‰. With the LED in automatic brightness in
+a dark room, the idle noise stayed within −5.7 to 5.7 ‰, 8.5 ‰ at the
+peak.
 
 Matrix, for each setup with the LED at 0, 50 and 100 % (`set level`):
 
-| Setup | LED | Idle noise (‰ peak to peak) | Finger drop (‰) | False triggers? |
+| Setup | LED | Idle noise (‰) | Finger drop (‰) | False triggers? |
 |---|---|---|---|---|
-| Windows PC, monitor hub (earthed) | 0 / 50 / 100 % | | | |
+| Windows PC, monitor hub (earthed) | 0 / 50 / 100 % | 1st to 99th percentile: −5.7 to 5.2 / −6.2 to 6.2 / −6.2 to 5.2. Peak: 8.1 / 14.2 (one window) / 9.0 | firm on the ring 182 to 198, light in the center 69 to 105 | none at rest, at any sensitivity step |
 | MacBook, monitor hub (earthed) | 0 / 50 / 100 % | | | |
 | MacBook on battery, charger unplugged, direct (no earth) | 0 / 50 / 100 % | | | |
 
@@ -161,6 +189,11 @@ thresholds before flashing them.
       `firmware/src/bsp/bsp_power.c` is the first remedy.
 - [ ] Wake it up: the previous color and brightness come back, and the app
       reconnects.
+- [ ] On Windows, with the release firmware and no app running, the lamp
+      turns off 1 to 2 s after the last program closes it: Windows
+      suspends an idle USB device on its own (selective suspend), and the
+      suspend counter of `DIAGNOSTICS` goes up. Opening the lamp again, as
+      the app does, wakes it. The debug build is not suspended.
 
 ## 8. Heat
 
@@ -188,7 +221,15 @@ for instance, at room temperature.
 ## 9. Diagnostics and self-test
 
 - [ ] Diagnostics window, Health: no crashes, a stack margin above 1 KB, no
-      I2C errors.
+      I2C errors. The margin stays above 1 KB after an alert too.
+- [ ] Set a touch sensitivity in the app's settings, unplug the lamp and
+      plug it back: the Diagnostics window shows the same correction under
+      Health, sent again at the connection. Check both ends, −50 % and
+      +50 %.
+- [ ] Follow an integration in the app (the mode button of the popup):
+      short presses do nothing for minutes on end, as the app repeats the
+      power-only mode every 3 s. End the app's process without quitting:
+      after about 10 s, a short press changes the color again.
 - [ ] Self-test tab, **Run the self-test**: check the four colors by eye and
       touch the lid while it glows blue. Every check passes, and the lamp is
       back in its previous state.
@@ -196,4 +237,6 @@ for instance, at room temperature.
 ## 10. Release firmware
 
 - [ ] `pio run -e release -t upload`: the lamp shows up as `1209:0001`,
-      HID only, and the app works the same.
+      HID only, and the app works the same. `1209:0001` is the test PID of
+      pid.codes, which the release builds keep until the lamp gets its own
+      ([LICENSING.md](../LICENSING.md#usb-identifiers)).

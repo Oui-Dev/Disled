@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 The DISLED contributors
+# SPDX-FileCopyrightText: 2026 The Disled contributors
 #
-# Gives the logged-in user access to the DISLED lamp, which Linux otherwise
+# Gives the logged-in user access to the Disled lamp, which Linux otherwise
 # reserves to root. The .deb package installs this file, and app/README.md
 # tells how to install it by hand. "uaccess" grants access to the active
 # local session only, so the file must sort before 73-seat-late.

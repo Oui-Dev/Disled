@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   A live chart of the telemetry history, newest sample on the right, drawn at most
   every REFRESH_MS, with its legend under it. The plot takes the height its parent

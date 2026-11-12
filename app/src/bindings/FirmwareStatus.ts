@@ -2,7 +2,7 @@
 import type { Flash } from "./Flash";
 
 /**
- * What the popup and the update window show about firmware updates.
+ * What the popup and the update windows show about firmware updates.
  */
 export type FirmwareStatus = { 
 /**
@@ -10,9 +10,14 @@ export type FirmwareStatus = {
  */
 checking: boolean, 
 /**
- * Newest firmware the app can install.
+ * The newest firmware 2.x, which the update buttons install.
  */
 latest: string | null, 
+/**
+ * The firmware the app can install, newest first: the signed 2.x, then
+ * the last 1.x, to go back to Disled v1.
+ */
+versions: Array<string>, 
 /**
  * Why the last check failed; cleared by the next success.
  */
@@ -20,4 +25,9 @@ error: string | null,
 /**
  * Last successful check, seconds since 1970-01-01 UTC.
  */
-checked_at: number | null, flash: Flash, };
+checked_at: number | null, 
+/**
+ * The version the update installs, from its start until the window
+ * forgets its result.
+ */
+target: string | null, flash: Flash, };

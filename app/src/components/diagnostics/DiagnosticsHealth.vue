@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   Health tab of the Diagnostics window: the lamp diagnostics (GET_DIAGNOSTICS)
   by theme, one value per row, and a warning on the rows that need a look.
@@ -12,6 +12,7 @@ import { useI18n } from 'vue-i18n';
 import { useFaultText } from '@/composables/useFaultText';
 import { useDiagnosticsStore } from '@/stores/diagnostics';
 import { useLampStore } from '@/stores/lamp';
+import { useSignedPercent } from '@/utils/format';
 import { healthIssues } from '@/utils/health';
 
 interface Row {
@@ -25,6 +26,7 @@ const { t, n } = useI18n();
 const lamp = useLampStore();
 const diagnostics = useDiagnosticsStore();
 const faultText = useFaultText();
+const signedPercent = useSignedPercent();
 
 const groups = computed<{ title: string; rows: Row[] }[]>(() => {
   const d = diagnostics.diagnostics;
@@ -84,7 +86,8 @@ const groups = computed<{ title: string; rows: Row[] }[]>(() => {
     {
       title: t('health.brightness'),
       rows: [
-        { label: t('health.correction'), value: n(d.auto_bias / 100, 'signedPercent') },
+        { label: t('health.correction'), value: signedPercent(d.auto_bias) },
+        { label: t('health.touchCorrection'), value: signedPercent(d.touch_sensitivity) },
         { label: t('health.uptime'), value: n(d.uptime_ms / 60_000, 'minutes') },
       ],
     },
@@ -97,9 +100,6 @@ const groups = computed<{ title: string; rows: Row[] }[]>(() => {
   <h2 class="sr-only">{{ t('health.title') }}</h2>
   <p v-if="!lamp.connection.connected" class="text-sm text-muted">
     {{ t('diagnostics.noLamp') }}
-  </p>
-  <p v-else-if="lamp.info && !lamp.info.diagnostics" class="text-sm text-muted">
-    {{ t('health.unsupported') }}
   </p>
   <p v-else-if="!groups.length" class="text-sm text-muted">{{ t('health.reading') }}</p>
   <div v-else class="flex flex-col gap-5">

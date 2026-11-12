@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   One page for every window. The window label picks the view, loaded on its
   own, and the stores it follows; main.ts has started the settings.
@@ -10,9 +10,12 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { useColorMode } from '@vueuse/core';
 import { type Component, computed, defineAsyncComponent, onMounted, watch, watchEffect } from 'vue';
 import { nuxtUiLocales, setLocale } from '@/i18n';
+import { useColorsStore } from '@/stores/colors';
+import { useControlStore } from '@/stores/control';
 import { useDiagnosticsStore } from '@/stores/diagnostics';
 import { useFirmwareStore } from '@/stores/firmware';
 import { useLampStore } from '@/stores/lamp';
+import { usePluginsStore } from '@/stores/plugins';
 import { useSettingsStore } from '@/stores/settings';
 import { useTelemetryStore } from '@/stores/telemetry';
 import { useUpdatesStore } from '@/stores/updates';
@@ -26,14 +29,22 @@ interface WindowSetup {
 const WINDOWS: Record<string, WindowSetup> = {
   popup: {
     view: defineAsyncComponent(() => import('@/views/PopupView.vue')),
-    stores: [useLampStore, useFirmwareStore, useUpdatesStore],
+    stores: [useLampStore, useColorsStore, useControlStore, useFirmwareStore, useUpdatesStore],
   },
   diagnostics: {
     view: defineAsyncComponent(() => import('@/views/DiagnosticsView.vue')),
-    stores: [useLampStore, useTelemetryStore, useDiagnosticsStore],
+    stores: [useLampStore, useColorsStore, useControlStore, useTelemetryStore, useDiagnosticsStore],
+  },
+  integrations: {
+    view: defineAsyncComponent(() => import('@/views/IntegrationsView.vue')),
+    stores: [useColorsStore, useControlStore, usePluginsStore],
   },
   'lamp-update': {
     view: defineAsyncComponent(() => import('@/views/LampUpdateView.vue')),
+    stores: [useLampStore, useFirmwareStore],
+  },
+  'lamp-install': {
+    view: defineAsyncComponent(() => import('@/views/LampInstallView.vue')),
     stores: [useLampStore, useFirmwareStore],
   },
 };

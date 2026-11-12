@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
-//! DISLED production tool (docs/production.md). For each board, it flashes the
+//! Disled production tool (docs/production.md). For each board, it flashes the
 //! release build with wchisp, checks what the lamp reports, runs its self-test
 //! with the operator and appends a row to a CSV log.
 
@@ -21,7 +21,7 @@ use semver::Version;
 use board::Station;
 use report::Report;
 
-/// Flashes, checks and self-tests DISLED boards one after the other, and
+/// Flashes, checks and self-tests Disled boards one after the other, and
 /// logs each one. Stop with Ctrl+C.
 #[derive(Parser)]
 struct Args {
@@ -133,7 +133,7 @@ fn run(args: Args) -> Result<(), String> {
     let report = Report::open(&args.log)?;
     let api = HidApi::new().map_err(|e| format!("cannot use USB HID: {e}"))?;
 
-    println!("DISLED factory");
+    println!("Disled factory");
     match &firmware.version {
         Some(version) => println!(
             "  firmware  {} ({version}, signature checked)",

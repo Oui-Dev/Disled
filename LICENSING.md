@@ -1,6 +1,6 @@
 # Licensing
 
-DISLED is free software and open hardware.
+Disled is free software and open hardware.
 
 | Part | Path | License |
 |---|---|---|
@@ -14,10 +14,11 @@ Third-party code keeps its own license:
 - **wchisp** (the flasher of the lamp updates, in the desktop app installers): GPL-2.0. A separate program that the app runs, never linked with it. Its license and notice are in `app/src-tauri/third-party/wchisp`, and its source is attached to every app release.
 - **Montserrat** (the font of the desktop app, bundled from the `@fontsource-variable/montserrat` package): SIL Open Font License 1.1, The Montserrat Project Authors.
 - **Lucide** (the icons of the desktop app, bundled from the `@iconify-json/lucide` package): ISC, Lucide Contributors.
+- **hyphen** (the hyphenation of the color names in the desktop app, bundled from the `hyphen` package): ISC, Yevhen Tiurin. Its patterns come from the hyph-utf8 project: the French ones under the MIT license, Daniel Flipo, Bernard Gaulle and Arthur Reutenauer; the American English ones under the terms of Gerard D.C. Kuiken, which allow copying and distribution provided the copyright notice and these terms are preserved.
 
 ## Software notice
 
-Copyright (C) 2026 The DISLED contributors
+Copyright (C) 2026 The Disled contributors
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the Free
@@ -52,7 +53,7 @@ Every source file points to this permission with a header like:
 
 ```
 SPDX-License-Identifier: GPL-3.0-or-later
-SPDX-FileCopyrightText: 2026 The DISLED contributors
+SPDX-FileCopyrightText: 2026 The Disled contributors
 Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
 ```
 
@@ -63,10 +64,10 @@ permission above.
 
 ## USB identifiers
 
-During development the firmware uses the
-[pid.codes test PIDs](https://pid.codes/1209/0001/) `1209:0001` (release
-builds) and `1209:0002` (debug builds). They are reserved for private
-testing and must not ship on devices that are redistributed, sold or
-manufactured. Dedicated PIDs are requested from pid.codes, `1209:D1ED`
-for the release builds and `1209:D1EE` for the debug builds; the firmware
-moves to them once they are granted, before the first batch is built.
+The [pid.codes test PIDs](https://pid.codes/1209/0001/) are meant for
+private testing. Release builds still use `1209:0001` until pid.codes grants
+the lamp its own PID, `1209:D1ED`, requested for them, and the lamps
+published until then carry it too. A normal firmware update moves them to
+`1209:D1ED` once it is granted, after a version of the desktop app that
+knows it. Debug builds keep `1209:0002` for good: they serve private
+testing only and never ship.

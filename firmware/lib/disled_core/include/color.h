@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
  * Colors in linear light, 0 to 65535, proportional to the PWM duty. Levels
@@ -23,8 +23,17 @@ typedef struct {
 /* Perceived brightness (per mille of L*) to linear light. */
 uint16_t color_perceived_to_linear(uint16_t level_permille);
 
-/* Palette color scaled to a perceived brightness level. */
-rgb16_t color_compose(const color_config_t *config, lamp_color_t color, uint16_t level_permille);
+/* A color at full brightness scaled to a perceived brightness level. */
+rgb16_t color_shade(rgb16_t base, uint16_t level_permille);
+
+/* Every channel times num / den (den not 0), saturated: the same hue,
+ * brighter or dimmer. */
+rgb16_t color_gain(rgb16_t color, uint16_t num, uint16_t den);
+
+/* A color given in linear light, as a host shows it, on this LED: every
+ * channel times its gain, a fraction of 65535, then scaled back so that the
+ * largest channel is COLOR_LINEAR_MAX again. Black stays black. */
+rgb16_t color_balance(rgb16_t color, rgb16_t gains);
 
 /* Linear interpolation; `t` = 0 gives `from`, 65535 gives `to`. */
 rgb16_t color_mix(rgb16_t from, rgb16_t to, uint16_t t);

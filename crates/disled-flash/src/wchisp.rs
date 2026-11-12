@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! The wchisp flasher, GPL-2.0, which this code cannot link: it runs as a separate
 //! program, read through its log lines. Those below are of wchisp 0.3.0, which the
@@ -109,6 +109,20 @@ impl Wchisp {
         parse_probe(&text)
     }
 
+    /// Erases the whole code flash of the bootloader that `probe` found.
+    /// `flash` erases only the sectors the new firmware covers, which would
+    /// leave the end of a longer firmware behind it.
+    pub fn erase(&self) -> Result<(), String> {
+        let output = self.command().arg("erase").output().map_err(cannot_run)?;
+        let text =
+            String::from_utf8_lossy(&output.stdout) + String::from_utf8_lossy(&output.stderr);
+        if output.status.success() {
+            parse_erase(&text)
+        } else {
+            Err(failure(&text))
+        }
+    }
+
     /// Flashes a firmware file into the bootloader that `probe` found, then
     /// restarts the chip. Reports each stage as wchisp reaches it.
     pub fn flash(&self, file: &Path, mut on_stage: impl FnMut(Stage)) -> Result<(), String> {
@@ -180,6 +194,18 @@ fn parse_probe(text: &str) -> Result<Probe, String> {
         Some(_) => Ok(Probe::Several),
         None => Err(failure(text)),
     }
+}
+
+/// wchisp ends an erase with "Erased 32 code flash sectors", the 32 KB of
+/// the CH32V203G6.
+fn parse_erase(text: &str) -> Result<(), String> {
+    let erased = text.lines().any(|line| {
+        line.split("Erased ")
+            .nth(1)
+            .and_then(|rest| rest.strip_suffix(" code flash sectors"))
+            .is_some_and(|sectors| sectors.parse::<u32>().is_ok())
+    });
+    if erased { Ok(()) } else { Err(failure(text)) }
 }
 
 fn parse_stage(line: &str) -> Option<Stage> {
@@ -276,6 +302,28 @@ mod tests {
         assert_eq!(
             failure("03:29:57 [INFO] Opening USB device #0\n"),
             "wchisp: 03:29:57 [INFO] Opening USB device #0"
+        );
+    }
+
+    // The lines of `wchisp erase`, read in the source of wchisp 0.3.0, until
+    // the test lamp confirms them.
+
+    #[test]
+    fn a_full_erase() {
+        let text = "03:30:00 [INFO] Opening USB device #0\n\
+                    03:30:01 [INFO] Erased 32 code flash sectors\n";
+        assert_eq!(parse_erase(text), Ok(()));
+    }
+
+    #[test]
+    fn a_failed_erase_carries_the_wchisp_error() {
+        let text = "03:30:00 [INFO] Opening USB device #0\n\
+                    Error: erase failed\n";
+        assert_eq!(parse_erase(text), Err("wchisp: erase failed".into()));
+        // An erase that wchisp does not report did not happen.
+        assert_eq!(
+            parse_erase("03:30:00 [INFO] Opening USB device #0\n"),
+            Err("wchisp: 03:30:00 [INFO] Opening USB device #0".into())
         );
     }
 

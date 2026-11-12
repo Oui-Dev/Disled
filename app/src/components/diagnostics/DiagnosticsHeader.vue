@@ -1,6 +1,6 @@
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 The DISLED contributors
+  SPDX-FileCopyrightText: 2026 The Disled contributors
 
   Top of the Diagnostics window: connection, firmware and identity of the
   lamp, its restart, the last crash and the last error.
@@ -38,7 +38,7 @@ function restart(): Promise<void> {
     <div class="flex items-start justify-between gap-4">
       <div class="flex min-w-0 flex-col gap-1">
         <div class="flex flex-wrap items-center gap-3">
-          <h1 class="text-lg font-bold tracking-wide text-highlighted">DISLED</h1>
+          <h1 class="text-lg font-bold tracking-wide text-highlighted">Disled</h1>
           <UBadge
             :color="connected ? 'primary' : 'neutral'"
             variant="subtle"
@@ -80,6 +80,7 @@ function restart(): Promise<void> {
         size="sm"
         icon="i-lucide-rotate-ccw"
         class="shrink-0"
+        :disabled="lamp.locked"
         @click="confirmingRestart = true"
       >
         {{ t('diagnostics.restart') }}

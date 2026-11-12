@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 //! One board on the station: its bootloader, the flash, what the lamp then
 //! reports, the self-test with the operator, and its row in the log.
@@ -131,7 +131,7 @@ fn show_stage(stage: Stage) {
     let _ = io::stdout().flush();
 }
 
-/// Waits for the bootloader of a DISLED board, telling the operator what
+/// Waits for the bootloader of a Disled board, telling the operator what
 /// holds it up. A bootloader that just appeared may not open at once, so a
 /// problem shows only when two probes in a row see it.
 fn wait_for_bootloader(api: &mut HidApi, flasher: &Wchisp) -> Result<(), String> {
@@ -164,7 +164,7 @@ fn wait_for_bootloader(api: &mut HidApi, flasher: &Wchisp) -> Result<(), String>
             ),
             Probe::Nothing => None,
             _ if previous.as_ref() != Some(&probe) => None,
-            Probe::Ready(chip) => Some(format!("{chip} is not a DISLED board: unplug it.")),
+            Probe::Ready(chip) => Some(format!("{chip} is not a Disled board: unplug it.")),
             Probe::Several => {
                 Some("Several boards are in their bootloader: keep only one plugged in.".to_owned())
             }

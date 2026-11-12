@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
  * Application wiring: the drivers feed the core logic, which drives the
@@ -35,6 +35,98 @@ void app_apply_request(const lamp_request_t *request)
     if (lamp_fsm_apply(&app.lamp, request)) {
         app.source = CHANGE_SOURCE_HOST;
     }
+}
+
+rgb16_t app_lamp_rgb(void)
+{
+    return palette_color(&app.palette, (uint32_t)app.lamp.color);
+}
+
+/* --- Colors and touch cycle (version 2) ------------------------------ */
+
+static uint32_t defined_slots(void)
+{
+    return app.palette.defined;
+}
+
+bool app_set_touch_cycle(const touch_cycle_t *cycle)
+{
+    return touch_cycle_set(&app.cycle, cycle->slots, cycle->count, defined_slots());
+}
+
+bool app_set_color(uint32_t slot, rgb16_t color)
+{
+    if (!palette_set(&app.palette, slot, color)) {
+        return false;
+    }
+    if (palette_defined(&app.palette, slot)) {
+        return true; /* a lamp showing it fades to the new color */
+    }
+    touch_cycle_remove(&app.cycle, slot);
+    const lamp_color_t fallback = (lamp_color_t)app.cycle.slots[0];
+    if ((uint32_t)app.lamp.color == slot) {
+        app.lamp.color = fallback;
+        app.source = CHANGE_SOURCE_HOST;
+    }
+    return true;
+}
+
+/* --- Alert (version 2) ----------------------------------------------- */
+
+static void report_alert_end(uint8_t reason)
+{
+    app.alert_done_seq = app.alert_seq;
+    app.alert_done_reason = reason;
+    app.alert_report = true;
+}
+
+/* Cut short: the light fades back from where the breath left it. */
+static void end_alert(uint8_t reason, uint32_t now_ms)
+{
+    if (!alert_running(&app.alert)) {
+        return;
+    }
+    alert_stop(&app.alert);
+    led_output_settle(&app.output, now_ms);
+    report_alert_end(reason);
+}
+
+proto_status_t app_alert(uint8_t seq, uint8_t count, uint16_t period_ms)
+{
+    const uint32_t now_ms = bsp_time_ms();
+    if (count == 0u) {
+        end_alert(PROTO_ALERT_CANCELLED, now_ms);
+        return PROTO_OK;
+    }
+    if (!app.lamp.on) {
+        return PROTO_ERR_LAMP_OFF;
+    }
+    if (alert_running(&app.alert)) {
+        /* Replaced without an ALERT_DONE: the ACK of the new one says it. */
+        led_output_settle(&app.output, now_ms);
+    }
+    app.alert_seq = seq;
+    alert_start(&app.alert, count, period_ms, now_ms);
+    return PROTO_OK;
+}
+
+/* The touch acts on nothing during an alert (task_touch()). An alert ends
+ * with the lamp turned off by the host, at a USB suspend, when the self-test
+ * takes the LED, and after its last breath. Returns the breath to show now. */
+static uint16_t update_alert(uint32_t now_ms, bool testing)
+{
+    if (app.link == USB_LINK_SUSPENDED) {
+        end_alert(PROTO_ALERT_SUSPENDED, now_ms);
+    } else if (testing) {
+        end_alert(PROTO_ALERT_SELF_TEST, now_ms);
+    } else if (!app.lamp.on) {
+        end_alert(PROTO_ALERT_LAMP_OFF, now_ms);
+    }
+    uint16_t breath;
+    if (alert_update(&app.alert, now_ms, &breath)) {
+        report_alert_end(PROTO_ALERT_COMPLETED);
+    }
+    return breath;
 }
 
 /* --- Tasks ----------------------------------------------------------- */
@@ -102,12 +194,15 @@ static void task_touch(uint32_t now_ms)
     uint16_t raw;
     uint32_t sample_ms;
     while (tkey_read(&raw, &sample_ms)) {
-        const touch_event_t event = touch_detector_feed(&app.touch, raw, sample_ms);
+        /* No gesture acts during an alert, nor at the release of a press it
+         * covered. The alert ends in task_output(), between two samples. */
+        const touch_event_t event =
+            touch_gate_feed(&app.touch_gate, &app.touch, raw, sample_ms, alert_running(&app.alert));
         bool changed = false;
         if (self_test_running(&app.self_test)) {
             /* The self-test watches the touch signal itself. */
         } else if (event == TOUCH_EVENT_SHORT_PRESS) {
-            changed = lamp_fsm_short_press(&app.lamp);
+            changed = lamp_fsm_short_press(&app.lamp, &app.cycle);
         } else if (event == TOUCH_EVENT_LONG_PRESS) {
             lamp_fsm_long_press(&app.lamp);
             changed = true;
@@ -204,14 +299,16 @@ static void task_output(uint32_t now_ms)
 {
     brightness_set_mode(&app.brightness, app.lamp.brightness_mode, app.lamp.manual_level);
     const bool testing = self_test_running(&app.self_test);
+    const uint16_t breath = update_alert(now_ms, testing);
     const led_output_inputs_t inputs = {
         .on = app.lamp.on,
-        .color = app.lamp.color,
+        .color = palette_light(&app.palette, (uint32_t)app.lamp.color, app_led_white_balance),
         .level_permille = brightness_level_permille(&app.brightness),
         .link = app.link,
         .cap_override_ma = app.cap_override_ma,
         .show_override = testing,
         .override_rgb = testing ? run_self_test(now_ms) : (rgb16_t){ 0, 0, 0 },
+        .breath = breath,
     };
     led_output_update(&app.output, &inputs, now_ms, app.duty);
     led_pwm_set(app.duty);
@@ -242,6 +339,7 @@ void app_diagnostics(proto_diagnostics_t *diagnostics)
         .auto_bias = brightness_auto_bias(&app.brightness),
         .flags = (uint8_t)((app.als.present ? PROTO_DIAG_FLAG_LIGHT_SENSOR : 0u) |
                            (app.crystal_ok ? PROTO_DIAG_FLAG_CRYSTAL : 0u)),
+        .touch_sensitivity = touch_detector_sensitivity(&app.touch),
     };
 }
 
@@ -262,6 +360,34 @@ static scheduler_task_t tasks[] = {
 
 static led_output_config_t output_config; /* led_output keeps a pointer to it */
 
+uint16_t app_alert_depth(void)
+{
+    return output_config.alert_depth_permille;
+}
+
+void app_set_alert_depth(uint16_t depth_permille)
+{
+    output_config.alert_depth_permille = depth_permille;
+}
+
+static uint16_t to_subticks(uint16_t ns)
+{
+    const uint32_t timer_mhz = bsp_apb1_timer_clock_hz() / 1000000u;
+    return (uint16_t)((ns * timer_mhz * LED_DUTY_SUBTICKS + 500u) / 1000u);
+}
+
+/* app_led_pulse_loss in sub-ticks of the timer clock. */
+static void set_pulse_loss(void)
+{
+    for (size_t c = 0; c < LED_CHANNEL_COUNT; c++) {
+        const app_loss_curve_t *curve = &app_led_pulse_loss[c];
+        for (size_t i = 0; i < LED_LOSS_POINTS; i++) {
+            output_config.pulse_loss[c].signal[i] = to_subticks(curve->signal_ns[i]);
+            output_config.pulse_loss[c].loss[i] = to_subticks(curve->loss_ns[i]);
+        }
+    }
+}
+
 void app_init(const fault_record_t *fault)
 {
     app.fault = *fault;
@@ -271,20 +397,18 @@ void app_init(const fault_record_t *fault)
     /* LED first, dark: from here on only led_output drives it. */
     led_pwm_init(APP_PWM_FREQUENCY_HZ);
     output_config = (led_output_config_t){
-        .color = &app_color_config,
         .power = &app_power_config,
         .fade_ms = APP_LED_FADE_MS,
         .pwm_period = led_pwm_period(),
+        .alert_depth_permille = APP_ALERT_DEPTH_PERMILLE,
     };
-    const uint32_t timer_mhz = bsp_apb1_timer_clock_hz() / 1000000u;
-    for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
-        output_config.pulse_loss[i] =
-            (uint16_t)((app_led_pulse_loss_ns[i] * timer_mhz * LED_DUTY_SUBTICKS + 500u) / 1000u);
-    }
+    set_pulse_loss();
     led_output_init(&app.output, &output_config);
 
     lamp_fsm_init(&app.lamp);
     app.source = CHANGE_SOURCE_BOOT;
+    palette_init(&app.palette, app_color_config.palette);
+    touch_cycle_init(&app.cycle);
     brightness_init(&app.brightness, &app_brightness_config);
     self_test_init(&app.self_test, &app_self_test_config);
 
@@ -292,6 +416,7 @@ void app_init(const fault_record_t *fault)
     als_probe(&app.als, bsp_time_ms(), APP_ALS_FIRST_RETRY_MS);
 
     touch_detector_init(&app.touch, &app_touch_config);
+    touch_gate_init(&app.touch_gate);
     tkey_init(&app_tkey_config);
     tkey_start();
 

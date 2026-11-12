@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 The DISLED contributors
+// SPDX-FileCopyrightText: 2026 The Disled contributors
 
 // Telemetry recordings as CSV, one row per sample, for the tuning campaigns
 // of docs/bringup.md. Tools read the columns, so new ones go at the end.

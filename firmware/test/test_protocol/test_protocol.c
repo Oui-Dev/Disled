@@ -1,12 +1,14 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  */
 #include <string.h>
 #include <unity.h>
 
 #include "protocol.h"
+
+/* protocol/vectors/v2.json, turned into C by scripts/gen_vectors.py. */
 #include "protocol_vectors.h"
 
 static uint8_t payload[PROTO_REPORT_SIZE];
@@ -79,6 +81,29 @@ static void test_decode_set_auto_bias_limits(void)
     TEST_ASSERT_EQUAL(PROTO_ERR_BAD_LENGTH, proto_decode_command(payload, &command));
 }
 
+/* The same limits and the same coding as the brightness bias. */
+static void test_decode_set_touch_sensitivity_limits(void)
+{
+    const uint8_t plus_50[] = { 50 };
+    command_payload(PROTO_CMD_SET_TOUCH_SENSITIVITY, 1, plus_50, sizeof plus_50);
+    TEST_ASSERT_EQUAL(PROTO_OK, proto_decode_command(payload, &command));
+    TEST_ASSERT_EQUAL_INT8(50, command.body.touch_sensitivity);
+
+    const uint8_t minus_50[] = { 0xCE };
+    command_payload(PROTO_CMD_SET_TOUCH_SENSITIVITY, 1, minus_50, sizeof minus_50);
+    TEST_ASSERT_EQUAL(PROTO_OK, proto_decode_command(payload, &command));
+    TEST_ASSERT_EQUAL_INT8(-50, command.body.touch_sensitivity);
+
+    const uint8_t outside[] = { 51, 0xCD, 0x7F, 0x80 };
+    for (size_t i = 0; i < sizeof outside; i++) {
+        command_payload(PROTO_CMD_SET_TOUCH_SENSITIVITY, 1, &outside[i], 1);
+        TEST_ASSERT_EQUAL(PROTO_ERR_BAD_VALUE, proto_decode_command(payload, &command));
+    }
+
+    command_payload(PROTO_CMD_SET_TOUCH_SENSITIVITY, 1, NULL, 0);
+    TEST_ASSERT_EQUAL(PROTO_ERR_BAD_LENGTH, proto_decode_command(payload, &command));
+}
+
 static void test_decode_unknown_command(void)
 {
     command_payload(0x42, 9, NULL, 0);
@@ -93,9 +118,12 @@ static void test_decode_rejects_an_oversized_length(void)
     TEST_ASSERT_EQUAL(PROTO_ERR_BAD_LENGTH, proto_decode_command(payload, &command));
 }
 
+/* SET_STATE bodies have 6 bytes, the touch mode last. */
 static void test_decode_set_state(void)
 {
-    const uint8_t body[] = { LAMP_FIELD_ALL, 1, LAMP_COLOR_WARM_WHITE, BRIGHTNESS_MODE_MANUAL, 42 };
+    const uint8_t body[] = {
+        LAMP_FIELD_ALL, 1, LAMP_COLOR_WARM_WHITE, BRIGHTNESS_MODE_MANUAL, 42, 1
+    };
     command_payload(PROTO_CMD_SET_STATE, 3, body, sizeof body);
     TEST_ASSERT_EQUAL(PROTO_OK, proto_decode_command(payload, &command));
     const lamp_request_t *request = &command.body.set_state;
@@ -104,26 +132,27 @@ static void test_decode_set_state(void)
     TEST_ASSERT_EQUAL(LAMP_COLOR_WARM_WHITE, request->color);
     TEST_ASSERT_EQUAL(BRIGHTNESS_MODE_MANUAL, request->brightness_mode);
     TEST_ASSERT_EQUAL_UINT8(42, request->manual_level);
+    TEST_ASSERT_EQUAL(TOUCH_MODE_POWER_ONLY, request->touch_mode);
 }
 
 static void test_decode_set_state_bad_values(void)
 {
-    const uint8_t bad_color[] = { LAMP_FIELD_COLOR, 0, 4, 0, 0 };
+    const uint8_t bad_color[] = { LAMP_FIELD_COLOR, 0, LAMP_SLOT_COUNT, 0, 0, 0 };
     command_payload(PROTO_CMD_SET_STATE, 1, bad_color, sizeof bad_color);
     TEST_ASSERT_EQUAL(PROTO_ERR_BAD_VALUE, proto_decode_command(payload, &command));
 
-    const uint8_t bad_power[] = { LAMP_FIELD_POWER, 2, 0, 0, 0 };
+    const uint8_t bad_power[] = { LAMP_FIELD_POWER, 2, 0, 0, 0, 0 };
     command_payload(PROTO_CMD_SET_STATE, 1, bad_power, sizeof bad_power);
     TEST_ASSERT_EQUAL(PROTO_ERR_BAD_VALUE, proto_decode_command(payload, &command));
 
-    const uint8_t bad_level[] = { LAMP_FIELD_MANUAL_LEVEL, 0, 0, 0, 0 };
+    const uint8_t bad_level[] = { LAMP_FIELD_MANUAL_LEVEL, 0, 0, 0, 0, 0 };
     command_payload(PROTO_CMD_SET_STATE, 1, bad_level, sizeof bad_level);
     TEST_ASSERT_EQUAL(PROTO_ERR_BAD_VALUE, proto_decode_command(payload, &command));
 }
 
 static void test_decode_set_state_ignores_unselected_fields(void)
 {
-    const uint8_t body[] = { LAMP_FIELD_COLOR, 0xFF, LAMP_COLOR_RED, 0xFF, 0xFF };
+    const uint8_t body[] = { LAMP_FIELD_COLOR, 0xFF, LAMP_COLOR_RED, 0xFF, 0xFF, 0xFF };
     command_payload(PROTO_CMD_SET_STATE, 1, body, sizeof body);
     TEST_ASSERT_EQUAL(PROTO_OK, proto_decode_command(payload, &command));
 }
@@ -156,10 +185,29 @@ static void test_encode_state_bytes(void)
         .applied_percent = 30,
         .link = USB_LINK_CONFIGURED,
         .source = CHANGE_SOURCE_TOUCH,
+        .rgb = { 0x0102, 0x0304, 0x0506 },
     };
     proto_encode_state(payload, 5, &state);
     const uint8_t expected[] = {
-        PROTO_MSG_STATE, 5, PROTO_STATE_SIZE, 0x34, 0x12, 1, 1, 1, 30, 30, 1, 1
+        PROTO_MSG_STATE,
+        5,
+        PROTO_STATE_SIZE,
+        0x34,
+        0x12,
+        1,
+        1,
+        1,
+        30,
+        30,
+        1,
+        1,
+        0, /* touch mode */
+        0x02,
+        0x01,
+        0x04,
+        0x03,
+        0x06,
+        0x05,
     };
     TEST_ASSERT_EQUAL_HEX8_ARRAY(expected, payload, sizeof expected);
     for (size_t i = sizeof expected; i < PROTO_REPORT_SIZE; i++) {
@@ -237,6 +285,7 @@ static void test_encode_diagnostics_layout(void)
         .stack_free_min = 0x0102,
         .auto_bias = -1,
         .flags = PROTO_DIAG_FLAG_LIGHT_SENSOR | PROTO_DIAG_FLAG_CRYSTAL,
+        .touch_sensitivity = -2,
     };
     proto_encode_diagnostics(payload, 7, &diagnostics);
     TEST_ASSERT_EQUAL_HEX8(PROTO_MSG_DIAGNOSTICS, payload[0]);
@@ -246,6 +295,8 @@ static void test_encode_diagnostics_layout(void)
     TEST_ASSERT_EQUAL_HEX8(0x01, payload[3 + 23]);
     TEST_ASSERT_EQUAL_HEX8(0xFF, payload[3 + 34]);
     TEST_ASSERT_EQUAL_HEX8(0x03, payload[3 + 35]);
+    TEST_ASSERT_EQUAL_UINT8(37, PROTO_DIAGNOSTICS_SIZE);
+    TEST_ASSERT_EQUAL_HEX8(0xFE, payload[3 + 36]);
     TEST_ASSERT_EQUAL_HEX8(0, payload[3 + PROTO_DIAGNOSTICS_SIZE]);
 }
 
@@ -302,6 +353,36 @@ static void test_command_vectors(void)
         if (v->has_auto_bias) {
             TEST_ASSERT_EQUAL_INT8_MESSAGE(v->auto_bias, command.body.auto_bias, v->name);
         }
+        if (v->has_set_state && (v->set_state.fields & LAMP_FIELD_TOUCH_MODE) != 0u) {
+            TEST_ASSERT_EQUAL_MESSAGE(v->set_state.touch_mode, command.body.set_state.touch_mode,
+                                      v->name);
+        }
+        if (v->has_set_color) {
+            TEST_ASSERT_EQUAL_UINT8_MESSAGE(v->set_color_slot, command.body.set_color.slot,
+                                            v->name);
+            TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&v->set_color, &command.body.set_color.color,
+                                             sizeof(rgb16_t), v->name);
+        }
+        if (v->has_color_slot) {
+            TEST_ASSERT_EQUAL_UINT8_MESSAGE(v->color_slot, command.body.color_slot, v->name);
+        }
+        if (v->has_touch_cycle) {
+            TEST_ASSERT_EQUAL_UINT8_MESSAGE(v->touch_cycle.count, command.body.touch_cycle.count,
+                                            v->name);
+            TEST_ASSERT_EQUAL_UINT8_ARRAY_MESSAGE(
+                v->touch_cycle.slots, command.body.touch_cycle.slots, TOUCH_CYCLE_MAX, v->name);
+        }
+        if (v->has_alert) {
+            TEST_ASSERT_EQUAL_UINT8_MESSAGE(v->alert_count, command.body.alert.count, v->name);
+            if (v->alert_count > 0u) {
+                TEST_ASSERT_EQUAL_UINT16_MESSAGE(v->alert_period_ms, command.body.alert.period_ms,
+                                                 v->name);
+            }
+        }
+        if (v->has_touch_sensitivity) {
+            TEST_ASSERT_EQUAL_INT8_MESSAGE(v->touch_sensitivity, command.body.touch_sensitivity,
+                                           v->name);
+        }
     }
 }
 
@@ -331,6 +412,15 @@ static void test_message_vectors(void)
             case MSG_ACK:
                 proto_encode_ack(payload, v->seq, v->command);
                 break;
+            case MSG_COLOR:
+                proto_encode_color(payload, v->seq, v->color_slot, v->color);
+                break;
+            case MSG_TOUCH_CYCLE:
+                proto_encode_touch_cycle(payload, v->seq, &v->touch_cycle);
+                break;
+            case MSG_ALERT_DONE:
+                proto_encode_alert_done(payload, v->seq, v->reason);
+                break;
             case MSG_ERROR:
             default:
                 proto_encode_error(payload, v->seq, v->command, v->error);
@@ -346,6 +436,7 @@ int main(void)
     RUN_TEST(test_decode_get_state);
     RUN_TEST(test_decode_ignores_extra_body_bytes);
     RUN_TEST(test_decode_set_auto_bias_limits);
+    RUN_TEST(test_decode_set_touch_sensitivity_limits);
     RUN_TEST(test_decode_unknown_command);
     RUN_TEST(test_decode_rejects_an_oversized_length);
     RUN_TEST(test_decode_set_state);

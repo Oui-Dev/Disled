@@ -4,12 +4,16 @@
     "back": "Retour",
     "quit": "Quitter",
     "cancel": "Annuler",
-    "close": "Fermer"
+    "close": "Fermer",
+    "save": "Enregistrer",
+    "copy": "Copier",
+    "copied": "Copié"
   },
   "status": {
     "noLamp": "Aucune lampe connectée",
     "connecting": "Connexion…",
-    "connected": "Lampe connectée"
+    "connected": "Lampe connectée",
+    "needsUpdate": "Lampe à mettre à jour"
   },
   "popup": {
     "lampPage": "Lampe"
@@ -18,11 +22,15 @@
     "unplugged": "Branchez la lampe à cet ordinateur. Les réglages ci-dessous lui seront appliqués.",
     "colors": {
       "legend": "Couleur de la lampe",
+      "title": "Couleur",
       "off": "Éteinte",
-      "green": "Vert",
-      "orange": "Orange",
-      "red": "Rouge",
-      "warm_white": "Blanc chaud"
+      "green": "Disponible",
+      "orange": "Occupé",
+      "red": "Ne pas déranger",
+      "warm_white": "Lumière douce",
+      "more": "Autres",
+      "moreLabel": "Autres couleurs",
+      "moreCurrent": "Autres couleurs, actuelle : {name}"
     },
     "brightness": {
       "title": "Luminosité",
@@ -33,12 +41,122 @@
       "fixed": "Niveau fixe",
       "follows": "Suit la lumière de la pièce",
       "correction": "correction {value}",
-      "noCorrection": "sans correction",
-      "needsFirmware": "Suit la lumière de la pièce ; la correction demande une mise à jour du firmware de la lampe"
+      "noCorrection": "sans correction"
+    }
+  },
+  "modes": {
+    "label": "La lampe suit",
+    "button": "La lampe suit : {source}",
+    "manual": "Manuel",
+    "manualHint": "Vous choisissez la couleur.",
+    "integrations": "Intégrations",
+    "pluginTag": "plugin",
+    "manage": "Gérer les intégrations",
+    "on": "Allumée : suit {name}",
+    "turnOn": "Rallumer : suivre {name}",
+    "clickToTurnOn": "Cliquez pour rallumer",
+    "since": "depuis {time}"
+  },
+  "calls": {
+    "title": "Appels",
+    "manualOnly": "Seulement en mode Manuel",
+    "mic": "Micro utilisé",
+    "during": "Pendant un appel :",
+    "colorLabel": "Couleur pendant un appel : {name}",
+    "popoverTitle": "Pendant un appel",
+    "popoverLabel": "Couleur pendant un appel",
+    "inCall": "En appel",
+    "then": "· puis {name}",
+    "detected": "Appel détecté par le micro",
+    "micPrefix": "Micro utilisé :"
+  },
+  "integrations": {
+    "noEvent": "Aucun événement reçu",
+    "title": "Intégrations",
+    "subtitle": "Elles viennent de vos plugins.",
+    "openFolder": "Ouvrir le dossier des plugins",
+    "import": "Importer un plugin",
+    "list": "Plugins",
+    "details": "Détails",
+    "empty": "Aucun plugin",
+    "enable": "Activer {name}",
+    "on": "Activé",
+    "off": "Désactivé",
+    "driving": "Pilote la lampe",
+    "new": "Nouveau : à vérifier",
+    "unreadable": "{file} illisible",
+    "noEventYet": "Aucun événement reçu pour l’instant.",
+    "lastEvent": "Dernier événement reçu il y a {ago} : {state}.",
+    "lastEventNoState": "Dernier événement reçu il y a {ago}.",
+    "ago": {
+      "seconds": "{n} s",
+      "minutes": "{n} min",
+      "hours": "{n} h"
+    },
+    "newDetail": "Nouveau : lisez ce qu’il pourra faire avant de l’activer.",
+    "meta": "Plugin {version} · par {author}",
+    "install": "Installation",
+    "noteSource": "Note du plugin",
+    "filled": "{address} et {token} remplis par Disled",
+    "address": "adresse",
+    "token": "jeton",
+    "blockLabel": "Bloc à ajouter à {file}",
+    "neverEdits": "Disled ne modifie jamais les réglages de {name} : c’est vous qui collez ce bloc.",
+    "installed": "Installation faite : {name} envoie ses événements.",
+    "reviewNote": "Revoir la note",
+    "can": "Ce que ce plugin peut faire",
+    "perm": {
+      "process": "Lancer un programme sur cet ordinateur, avec vos droits : {command}",
+      "color": "Choisir la couleur de la lampe, quand elle le suit",
+      "alert": "Faire une alerte sur la lampe",
+      "events": "Recevoir les événements de {name}, en local",
+      "nothingElse": "Rien d’autre : aucun programme, pas d’Internet"
+    },
+    "colors": "Couleurs",
+    "colorsHint": "Quand la lampe suit {name} :",
+    "tokenOwn": "Jeton propre à ce plugin",
+    "regenerate": "Régénérer le jeton",
+    "remove": "Retirer le plugin",
+    "approve": {
+      "title": "Activer « {name} » ?",
+      "meta": "Plugin {version} · par {author} · trouvé dans le dossier des plugins",
+      "can": "Ce plugin pourra :",
+      "trust": "N’activez que les plugins de personnes en qui vous avez confiance. Si ses fichiers changent, Disled vous redemandera votre accord.",
+      "action": "Activer"
+    },
+    "regenerateConfirm": {
+      "title": "Régénérer le jeton de « {name} » ?",
+      "text": "L’ancien jeton cessera de marcher. Il faudra recopier le bloc de la note d’installation.",
+      "action": "Régénérer"
+    },
+    "removeConfirm": {
+      "title": "Retirer « {name} » ?",
+      "text": "Son dossier sera supprimé, avec son jeton.",
+      "action": "Retirer"
+    },
+    "status": {
+      "modified": "Modifié : à vérifier",
+      "failed": "Arrêté après plusieurs erreurs",
+      "running": "En marche",
+      "stopped": "Le programme s’est arrêté.",
+      "notFound": "Programme introuvable : {program}",
+      "portTaken": "Le port {port} est pris par un autre programme."
+    },
+    "importFailed": "Import refusé",
+    "reason": {
+      "missing": "Fichier plugin.json absent.",
+      "json": "JSON invalide, ligne {line}.",
+      "field": "Champ manquant : {field}.",
+      "invalid": "Champ invalide : {field}.",
+      "api": "Version d’API non prise en charge : {api}.",
+      "id": "L’identifiant ne correspond pas au nom du dossier.",
+      "link": "Lien symbolique refusé : {path}.",
+      "size": "Plugin trop volumineux.",
+      "path": "Chemin refusé dans l’archive : {path}."
     }
   },
   "settings": {
-    "autostart": "Lancer DISLED à l’ouverture de session",
+    "autostart": "Lancer Disled à l’ouverture de session",
     "checkUpdates": "Rechercher les mises à jour chaque jour",
     "colorMode": "Apparence",
     "colorModes": {
@@ -48,25 +166,32 @@
     },
     "language": "Langue",
     "systemLanguage": "Système",
-    "diagnostics": "Ouvrir les diagnostics…",
+    "diagnostics": "Ouvrir les diagnostics",
     "versions": "App {app} · firmware de la lampe {firmware}",
-    "more": "Plus d’actions"
+    "more": "Plus d’actions",
+    "touch": {
+      "title": "Sensibilité du toucher",
+      "less": "Moins sensible",
+      "more": "Plus sensible",
+      "label": "Correction de la sensibilité du toucher",
+      "hint": "Calibrée par la lampe"
+    }
   },
   "updates": {
     "install": "Installer et redémarrer",
-    "updateLamp": "Mettre à jour la lampe…",
+    "updateLamp": "Mettre à jour",
     "check": "Rechercher les mises à jour",
     "downloading": "Téléchargement de {version}… {progress}",
     "checking": "Recherche des mises à jour…",
     "error": "Erreur de mise à jour : {detail}",
-    "available": "DISLED {version} est disponible.",
+    "available": "Disled {version} est disponible.",
     "upToDate": "À jour (vérifié le {date}).",
     "lampError": "Erreur de recherche du firmware de la lampe : {detail}",
     "lampAvailable": "Le firmware {version} de la lampe est disponible.",
-    "lampAfterApp": "Le firmware {version} de la lampe est disponible. Installez d’abord DISLED {app}.",
-    "reinstall": "Réinstaller le firmware de la lampe…",
-    "toApp": "Mettre à jour en {version}",
-    "toLamp": "Mettre à jour la lampe"
+    "lampAfterApp": "Le firmware {version} de la lampe est disponible. Installez d’abord Disled {app}.",
+    "reinstall": "Réinstaller le firmware",
+    "reinstallHint": "Version au choix. Il faut ouvrir la lampe.",
+    "toApp": "Mettre à jour en {version}"
   },
   "diagnostics": {
     "connected": "Connectée",
@@ -90,7 +215,6 @@
     "title": "Santé",
     "issues": "{n} point à vérifier | {n} points à vérifier",
     "issue": "à vérifier",
-    "unsupported": "Le firmware de cette lampe ne fournit pas de diagnostics.",
     "reading": "Lecture…",
     "stability": "Stabilité",
     "boots": "Démarrages",
@@ -114,11 +238,11 @@
     "crystalFailed": "En panne",
     "brightness": "Luminosité",
     "correction": "Correction automatique",
+    "touchCorrection": "Correction du toucher",
     "uptime": "En marche depuis"
   },
   "selfTest": {
     "title": "Autotest",
-    "unsupported": "Le firmware de cette lampe n’a pas d’autotest.",
     "instructions": "La lampe affiche rouge, vert, bleu et blanc chaud (vérifiez-les), puis brille en bleu : touchez le couvercle dans les 10 s.",
     "run": "Lancer l’autotest",
     "running": "En cours…",
@@ -154,11 +278,10 @@
     "record": "Enregistrer",
     "stop": "Arrêter",
     "rows": "{n} ligne | {n} lignes",
-    "export": "Exporter en CSV…",
+    "export": "Exporter en CSV",
     "saveTitle": "Exporter l’enregistrement",
     "permille": "{value} ‰",
     "lux": "{value} lx",
-    "unsupported": "Le firmware de cette lampe n’envoie pas de télémétrie.",
     "stopped": "Télémétrie arrêtée",
     "stoppedHint": "Choisissez une période pour recevoir les mesures de la lampe.",
     "waiting": "En attente des mesures…",
@@ -194,9 +317,9 @@
       "install": "Choisissez {winusb}, puis {install} (ou {replace}).",
       "waiting": "La mise à jour reprend d’elle-même une fois le pilote installé."
     },
-    "noPermission": "Cet ordinateur ne laisse pas l’app ouvrir la lampe en mode mise à jour. Réinstallez le paquet DISLED (il ajoute la règle d’accès), puis relancez le mode mise à jour.",
+    "noPermission": "Cet ordinateur ne laisse pas l’app ouvrir la lampe en mode mise à jour. Réinstallez le paquet Disled (il ajoute la règle d’accès), puis relancez le mode mise à jour.",
     "severalBootloaders": "Plusieurs périphériques sont en mode mise à jour. Débranchez-les tous sauf la lampe.",
-    "otherChip": "Un périphérique qui n’est pas une lampe DISLED est en mode mise à jour ({chip}). Débranchez-le.",
+    "otherChip": "Un périphérique qui n’est pas une lampe Disled est en mode mise à jour ({chip}). Débranchez-le.",
     "stages": {
       "erasing": "Effacement de l’ancien firmware…",
       "writing": "Écriture du nouveau firmware…",
@@ -207,11 +330,28 @@
     "waitingForLamp": "La lampe démarre son nouveau firmware : cela prend quelques secondes.",
     "done": "Terminé : la lampe utilise le firmware {version}. Vous pouvez la refermer.",
     "failed": "La mise à jour s’est arrêtée : {detail}",
-    "notDamaged": "La lampe n’est pas abîmée : son mode mise à jour fonctionne toujours. Réessayez, ou suivez le {guide}.",
-    "guide": "guide de flashage",
+    "retryOrGuide": "Réessayez, ou suivez le {guide}.",
+    "guide": "guide de mise à jour",
     "start": "Lancer la mise à jour",
     "reinstall": "Le réinstaller",
     "retry": "Réessayer"
+  },
+  "lampInstall": {
+    "title": "Réinstaller le firmware",
+    "intro": "Une intervention manuelle est obligatoire : il faut ouvrir la lampe, et tout sera guidé étape par étape. Comptez environ une minute, lampe branchée à cet ordinateur.",
+    "version": "Version à installer",
+    "notes": "Notes de version {version}",
+    "notesTitle": "S’ouvre dans le navigateur",
+    "recommended": "Recommandée",
+    "current": "Actuelle",
+    "others": "Autres versions",
+    "group": "Firmware v{major}",
+    "install": "Installer {version}",
+    "reinstall": "Réinstaller {version}",
+    "rollback": {
+      "title": "Retour au firmware v1",
+      "text": "La lampe ne marchera plus qu’avec Disled v1."
+    }
   },
   "errors": {
     "backend": "Erreur : {detail}",
@@ -223,7 +363,8 @@
       "unknown_command": "commande inconnue",
       "bad_length": "longueur incorrecte",
       "bad_value": "valeur invalide",
-      "busy": "occupée"
+      "busy": "occupée",
+      "lamp_off": "lampe éteinte"
     },
     "resetCause": {
       "unknown": "inconnue",
@@ -239,7 +380,8 @@
       "touch": "toucher",
       "host": "cet ordinateur",
       "auto_brightness": "luminosité automatique",
-      "usb": "USB"
+      "usb": "USB",
+      "host_silence": "silence de l’app"
     },
     "usbLink": {
       "unconfigured": "non configuré",
@@ -253,20 +395,104 @@
     }
   },
   "tray": {
-    "open": "Ouvrir DISLED",
-    "diagnostics": "Diagnostics…",
-    "quit": "Quitter DISLED",
+    "open": "Ouvrir Disled",
+    "diagnostics": "Diagnostics",
+    "quit": "Quitter Disled",
     "tooltip": {
-      "noLamp": "DISLED : aucune lampe",
-      "off": "DISLED : éteinte",
-      "green": "DISLED : vert",
-      "orange": "DISLED : orange",
-      "red": "DISLED : rouge",
-      "warm_white": "DISLED : blanc chaud"
+      "noLamp": "Disled : aucune lampe",
+      "off": "Disled : éteinte",
+      "color": "Disled : {name}",
+      "needsUpdate": "Disled : lampe à mettre à jour",
+      "newer": "Disled : lampe plus récente que l’app"
     }
   },
   "window": {
-    "diagnostics": "Diagnostics DISLED",
-    "lampUpdate": "Mise à jour de la lampe DISLED"
+    "diagnostics": "Diagnostics Disled",
+    "integrations": "Intégrations Disled",
+    "lampUpdate": "Mise à jour de la lampe Disled",
+    "lampInstall": "Réinstaller le firmware"
+  },
+  "lampV1": {
+    "title": "Mise à jour nécessaire",
+    "text": "Cette lampe a encore le firmware v1, et Disled v2 a besoin du firmware v2.",
+    "action": "Mettre à jour",
+    "line": "Cette lampe a le firmware v1, et Disled v2 a besoin du firmware v2."
+  },
+  "lampNewer": {
+    "text": "Cette lampe a un firmware plus récent que cette app. Mettez Disled à jour."
+  },
+  "colors": {
+    "mine": {
+      "title": "Mes couleurs",
+      "manage": "Gérer",
+      "new": "Nouvelle"
+    },
+    "library": {
+      "title": "Couleurs",
+      "touch": "Toucher",
+      "new": "Nouvelle couleur",
+      "cycle": "Au toucher du couvercle :",
+      "appOnly": "Sans l’app, la lampe reprend ses quatre couleurs et le cycle d’origine.",
+      "share": "Partager",
+      "more": "Plus d’actions pour {name}",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "deleted": "{name} supprimée."
+    },
+    "cycle": {
+      "add": "Ajouter {name} au cycle du toucher",
+      "remove": "{name}, {rank} au toucher : retirer du cycle",
+      "addTitle": "Ajouter au toucher",
+      "removeTitle": "Retirer du toucher",
+      "added": "{name}, {rank} au toucher.",
+      "removed": "{name} retirée du cycle.",
+      "last": "{name} reste : le cycle garde au moins une couleur.",
+      "rank": {
+        "one": "{n}re",
+        "two": "{n}e",
+        "few": "{n}e",
+        "other": "{n}e"
+      }
+    },
+    "editor": {
+      "new": "Nouvelle couleur",
+      "edit": "Modifier la couleur",
+      "name": "Nom",
+      "suggestions": "Suggestions",
+      "suggestion": {
+        "yellow": "Jaune",
+        "cyan": "Cyan",
+        "blue": "Bleu",
+        "violet": "Violet",
+        "magenta": "Magenta",
+        "pink": "Rose",
+        "coolWhite": "Blanc froid"
+      },
+      "hue": "Teinte",
+      "pale": "Pâle",
+      "vivid": "Vive",
+      "vividLabel": "Pâle ou vive",
+      "hex": "Code hexadécimal",
+      "preview": "Aperçu sur la lampe",
+      "restore": "Rétablir « {name} »",
+      "fixed": "Les couleurs d’origine gardent leur teinte. Pour une autre nuance, créez une couleur."
+    },
+    "share": {
+      "title": "Partager vos couleurs",
+      "send": "Envoyer",
+      "sendHint": "Vos noms, vos couleurs et votre cycle du toucher, dans un code à coller dans un message.",
+      "copy": "Copier le code",
+      "receive": "Recevoir",
+      "placeholder": "Collez le code reçu",
+      "invalid": "Impossible de lire ce code."
+    },
+    "import": {
+      "title": "Importer ces couleurs ?",
+      "originals": "Couleurs de la lampe",
+      "custom": "Couleurs ajoutées",
+      "cycle": "Toucher du couvercle",
+      "replaces": "Remplace vos noms, vos couleurs et votre cycle.",
+      "action": "Importer"
+    }
   }
 }

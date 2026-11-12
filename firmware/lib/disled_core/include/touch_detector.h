@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: 2026 The DISLED contributors
+ * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
  * Touch gestures from raw TouchKey readings: short and long presses, and an
@@ -54,6 +54,17 @@ typedef struct {
     uint16_t inverted_ms;        /* how long the rise must hold */
 } touch_config_t;
 
+/* The thresholds that the sensitivity correction scales, per mille. */
+typedef struct {
+    uint16_t press;
+    uint16_t release;
+    uint16_t rise;
+} touch_thresholds_t;
+
+/* Limits of the sensitivity correction in percent, those of SET_TOUCH_SENSITIVITY. */
+#define TOUCH_SENSITIVITY_MIN (-50)
+#define TOUCH_SENSITIVITY_MAX 50
+
 typedef struct {
     const touch_config_t *config;
     touch_state_t state;
@@ -81,6 +92,10 @@ typedef struct {
     touch_zone_t zone;
     uint32_t zone_since_ms;
     uint16_t recalibrations; /* automatic re-baselines since init */
+    /* Correction in percent: the one set, and the one in force. They differ
+     * only until the press under way ends. */
+    int8_t sensitivity;
+    int8_t sensitivity_applied;
 } touch_detector_t;
 
 void touch_detector_init(touch_detector_t *td, const touch_config_t *config);
@@ -95,6 +110,23 @@ void touch_detector_recalibrate(touch_detector_t *td);
 
 /* The current press (TOUCH_STATE_PRESSED) fires no gesture. */
 void touch_detector_consume(touch_detector_t *td);
+
+/* Sensitivity correction in percent, positive for a more sensitive lid: the
+ * press, release and rise thresholds are multiplied by (100 - percent) / 100,
+ * so +50 asks for half the drop and -50 for one and a half times it. 0 keeps
+ * the configured thresholds, and the hysteresis keeps its ratio. The
+ * proximity and inverted bands and the timings never change. The correction
+ * is clamped to the TOUCH_SENSITIVITY_ limits, then brought toward 0 until
+ * the release stays half a band above the proximity band, itself just above
+ * the idle noise. It applies from the next window, or once the press under
+ * way ends, and keeps the baseline. */
+void touch_detector_set_sensitivity(touch_detector_t *td, int8_t percent);
+
+/* The correction set, after the clamp and the release floor. */
+int8_t touch_detector_sensitivity(const touch_detector_t *td);
+
+/* The press, release and rise thresholds in force. */
+touch_thresholds_t touch_detector_thresholds(const touch_detector_t *td);
 
 touch_state_t touch_detector_state(const touch_detector_t *td);
 uint16_t touch_detector_raw(const touch_detector_t *td);

@@ -1,8 +1,8 @@
-# DISLED hardware
+# Disled hardware
 
 This folder holds the board and the enclosure of the lamp. Each has its own
 versions, released with its files on the
-[releases page](https://github.com/Oui-Dev/DISLED/releases) as
+[releases page](https://github.com/Oui-Dev/Disled/releases) as
 `pcb-vX.Y.Z` and `enclosure-vX.Y.Z`
 ([docs/releasing.md](../docs/releasing.md#hardware-releases)).
 
@@ -40,12 +40,13 @@ the touch electrode is soldered by hand.
 ### Constraints the firmware must respect
 
 They come from the design review of the board before production
-([PDF, in French](https://github.com/Oui-Dev/DISLED/blob/d5e8749603c0b48a2b3b314eaaab88630da2aa92/hardware/review/Review_PCB_v4_connected_status_light_2026-10-10.pdf),
+([PDF, in French](https://github.com/Oui-Dev/Disled/blob/d5e8749603c0b48a2b3b314eaaab88630da2aa92/hardware/review/Review_PCB_v4_connected_status_light_2026-10-10.pdf),
 in the git history):
 
 - **N1, touch.** The touch trace runs next to LED_B. Synchronize TouchKey sampling with the LED PWM.
 - **N2, LED power.** Typical currents at 100 % are R 75, G 52 and B 98 mA, and 86, 63 and 125 mA in the worst case. White at 100 % draws about 225 mA and 1.1 W inside a closed PLA cube, so the firmware caps the total LED current. Declare `bMaxPower` = 300 mA.
 - **N3, shared pins.** Pin 19 bonds PA10 to PA11 (USB D−). Never drive PA10, never enable a pull-up on it and never route USART1 RX to it. Pin 1 bonds BOOT0 to PB8, so never drive PB8 at boot.
+- **N4, LED gates.** Found after production, with firmware 2.0. The gates of the three MOSFETs charge through 100 Ω (R7 to R9) and switch in about 100 ns, so a pulse of a few timer ticks gives no light and the next ticks give up to twice the light of those of a long pulse. The firmware adds a pulse loss per channel that follows the length of the pulse (`app_led_pulse_loss` in `firmware/src/app/app_config.c`, [docs/architecture.md](../docs/architecture.md)). The next revision of the board should take 10 to 22 Ω, for edges about five times faster, and the loss curves will then have to be measured again.
 
 ## Enclosure
 
