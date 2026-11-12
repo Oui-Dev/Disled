@@ -6,7 +6,7 @@
   "license": "GPL-3.0-or-later",
   "type": "module",
   "engines": {
-    "node": "^24.22.1 || ^26.12.1"
+    "node": "^26.12.1"
   },
   "scripts": {
     "dev": "vite",
@@ -20,25 +20,25 @@
   "dependencies": {
     "@fontsource-variable/montserrat": "^5.3.0",
     "@nuxt/ui": "^4.12.0",
-    "@tanstack/charts": "^1.1.0",
+    "@tanstack/charts": "^1.5.0",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "^2.8.4",
     "@vueuse/core": "^14.4.0",
     "hyphen": "^1.14.1",
     "pinia": "^4.1.0",
-    "tailwindcss": "^4.3.3",
-    "vue": "^3.5.44",
-    "vue-i18n": "^11.4.16"
+    "tailwindcss": "^4.3.5",
+    "vue": "^3.5.45",
+    "vue-i18n": "^11.4.18"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.4",
-    "@iconify-json/lucide": "^1.2.149",
+    "@biomejs/biome": "^2.6.7",
+    "@iconify-json/lucide": "^1.2.153",
     "@intlify/unplugin-vue-i18n": "^11.2.8",
     "@tauri-apps/cli": "2.11.5",
-    "@types/node": "^24",
+    "@types/node": "^26",
     "@vitejs/plugin-vue": "^6.0.10",
     "typescript": "^6.0.3",
-    "vite": "^8.3.5",
+    "vite": "^8.3.8",
     "vue-tsc": "^3.3.14"
   }
 }

@@ -9,7 +9,7 @@ works. This page is for working on it.
 
 ## Run it
 
-You need Node.js 24 or 26 and Rust through `rustup`, at the pinned versions
+You need Node.js 26 and Rust through `rustup`, at the pinned versions
 ([CONTRIBUTING.md](../CONTRIBUTING.md#before-you-start)), plus the Visual
 Studio Build Tools with the C++ workload on Windows, or the Xcode command
 line tools on macOS.

@@ -17,14 +17,14 @@ disled-protocol.workspace = true
 tauri = { version = "^2.12.5", features = ["tray-icon"] }
 tauri-plugin-dialog = "^2.8.4"
 tauri-plugin-positioner = { version = "^2.4.0", features = ["tray-icon"] }
-tauri-plugin-store = "^2.5.0"
+tauri-plugin-store = "^2.5.1"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 hidapi.workspace = true
 tauri-plugin-autostart = "^2.7.0"
 tauri-plugin-single-instance = "^2.5.5"
 tauri-plugin-updater = "^2.14.1"
-tauri-plugin-opener = "^2.7.2"
+tauri-plugin-opener = "^2.7.3"
 # Lamp firmware updates: the signed firmware files and wchisp, shared with
 # the production tool, then the HTTP client and the TLS stack of the updater.
 disled-flash.workspace = true
@@ -44,8 +44,8 @@ axum = { version = "^0.8.9", default-features = false, features = ["http1", "jso
 tokio = { version = "^1.54.1", features = ["net", "rt", "sync", "time"] }
 sha2 = "^0.10.9"
 subtle = "^2.6.1"
-getrandom = "^0.3.4"
-zip = { version = "^9.1.3", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+getrandom = "^0.4.3"
+zip = { version = "^9.5.1", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 # The programs of the plugins die with the app: a job object on Windows,
 # their process group elsewhere, and on Linux the death signal of the app.
@@ -65,7 +65,7 @@ objc2-core-audio = { version = "^0.3.2", default-features = false, features = ["
 # The calls come from the sound server through libpulse, loaded at run time,
 # so that the app starts without it.
 [target.'cfg(target_os = "linux")'.dependencies]
-dlopen2 = "^0.8.2"
+dlopen2 = "^0.9.0"
 
 # The tests write the TypeScript types of the front end with ts-rs, set up
 # in .cargo/config.toml. Release builds never compile ts-rs.

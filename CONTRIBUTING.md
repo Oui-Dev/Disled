@@ -21,7 +21,7 @@ the part you work on:
 | Part | Tools | Setup |
 |---|---|---|
 | Firmware | PlatformIO and clang-format through [uv](https://docs.astral.sh/uv/), a host C compiler for the unit tests | [firmware/README.md](firmware/README.md) |
-| Desktop app | Node.js 24 or 26, Rust through `rustup`, the build tools of your system | [app/README.md](app/README.md) |
+| Desktop app | Node.js 26, Rust through `rustup`, the build tools of your system | [app/README.md](app/README.md) |
 | Production tool, shared crates | Rust through `rustup` | [docs/production.md](docs/production.md) |
 | Hardware | EasyEDA Pro (PCB), a 3D editor for the 3MF parts | [hardware/README.md](hardware/README.md) |
 
