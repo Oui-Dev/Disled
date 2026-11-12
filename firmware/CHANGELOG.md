@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.0.0](https://github.com/Oui-Dev/Disled/compare/fw-v1.0.0...fw-v2.0.0) (2026-11-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **firmware:** protocol 2.0 with custom colors, touch cycle, alerts and touch sensitivity
+
+### 🚀 Enhancements
+
+* **firmware:** alert breaths of 1.5 s, chosen on a closed lamp, and their depth in the debug console ([2d2905e](https://github.com/Oui-Dev/Disled/commit/2d2905e6a27daf2c786a42a0aeb390e81fc4a9c6))
+* **firmware:** balance the custom colors so that white shows white ([70a8165](https://github.com/Oui-Dev/Disled/commit/70a81652c0be199d080b38866a521c4ed48b0edd))
+* **firmware:** ignore the touch during an alert ([d710a16](https://github.com/Oui-Dev/Disled/commit/d710a164c09da7d24d9e0ef52bb827117ff33faa))
+* **firmware:** name the lamp Disled in its USB strings ([5ddba1f](https://github.com/Oui-Dev/Disled/commit/5ddba1f30c19c2b124e6db7f385a2b20dba35f82))
+* **firmware:** protocol 2.0 with custom colors, touch cycle, alerts and touch sensitivity ([b04ef57](https://github.com/Oui-Dev/Disled/commit/b04ef57326d5a5181580bfb8a9f959537659df02))
+
+
+### 🩹 Fixes
+
+* **deps:** update the dependencies of the app, the firmware tools and the CI ([1dcd7b1](https://github.com/Oui-Dev/Disled/commit/1dcd7b172665ce324599f7859e45112c9c32797d))
+* **firmware:** a pulse loss that follows the length of the pulse ([eec17b3](https://github.com/Oui-Dev/Disled/commit/eec17b38deba01f713e04b1ad211326190b08360))
+* **firmware:** a warmer white for the custom colors ([80bed8a](https://github.com/Oui-Dev/Disled/commit/80bed8a777bc2555ef8c8b4b9cc470da2d93125a))
+* **firmware:** drive the LED gates with 10 MHz edges ([8124b9b](https://github.com/Oui-Dev/Disled/commit/8124b9b0c4e66c3e6b239429721d661adaba0d73))
+* **firmware:** keep the red in dim colors ([c8e4cba](https://github.com/Oui-Dev/Disled/commit/c8e4cba10fe21a5bc7001e8e4781a8ffaf81259e))
+
 ## [1.0.0](https://github.com/Oui-Dev/DISLED/compare/fw-v0.3.2...fw-v1.0.0) (2026-10-27)
 
 

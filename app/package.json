@@ -1,7 +1,7 @@
 {
   "name": "disled-app",
   "private": true,
-  "version": "1.1.2",
+  "version": "2.0.0",
   "description": "Desktop app for the Disled USB status light",
   "license": "GPL-3.0-or-later",
   "type": "module",
