@@ -23,7 +23,7 @@
     "@tanstack/charts": "^1.5.0",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "^2.8.4",
-    "@vueuse/core": "^14.4.0",
+    "@vueuse/core": "^15.0.0",
     "hyphen": "^1.14.1",
     "pinia": "^4.1.0",
     "tailwindcss": "^4.3.5",
