@@ -252,12 +252,16 @@ jobs:
   app-publish:
     # Only once every installer is attached, since a published release can
     # no longer change. If one platform failed, re-run it, and this job
-    # follows.
-    needs: [release-please, app]
-    if: needs.release-please.outputs.app-released == 'true'
-    # Waits for the approval of a maintainer, who gives it once the firmware
-    # of the same day is published (docs/releasing.md).
-    environment: app-publish
+    # follows. When the firmware releases too, only once it is published:
+    # an app never goes out before the firmware it installs, and never
+    # while the firmware build has failed.
+    needs: [release-please, app, firmware-publish]
+    if: >-
+      always()
+      && needs.release-please.outputs.app-released == 'true'
+      && needs.app.result == 'success'
+      && (needs.release-please.outputs.firmware-released != 'true'
+      || needs.firmware-publish.result == 'success')
     runs-on: ubuntu-24.04
     env:
       TAG: ${{ needs.release-please.outputs.app-tag }}

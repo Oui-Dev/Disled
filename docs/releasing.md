@@ -47,9 +47,8 @@ changelog. The maintainers release the hardware by hand
 5. When both components release, the firmware is published only once the
    app installers are attached too: a failed app build must not leave a new
    firmware alone, which the app before it would offer to every lamp. The
-   app release then waits for the approval of a maintainer
-   ([App updates](#app-updates)), given right after the firmware is
-   published.
+   app release follows as soon as the firmware is published, so that an
+   app never goes out before the firmware it installs.
 
 Both components are past 1.0.0: a breaking change raises the major
 version, `feat` the minor version and the other releasing types the patch
@@ -61,9 +60,8 @@ in the release pull request (step 3).
 
 ## When a release build fails
 
-The release stays a draft, with its tag, and nothing is published. Do not
-approve `app-publish` while a firmware or app job of the same run has
-failed.
+The release stays a draft, with its tag, and nothing is published. When
+both components release, a failed job of one also holds the other back.
 
 - If the cause is outside the code (runner, secret), re-run the failed
   jobs, and the publication follows. Not all the jobs: release-please
@@ -130,8 +128,8 @@ The installed apps update themselves from the latest GitHub release:
 
 - the `app` job signs the installers with the update key (the secrets
   below) and attaches a `.sig` next to each one;
-- once the three installers are attached, the `app-publish` job waits for
-  the approval of a maintainer, then writes `latest.json` from these
+- once the three installers are attached, and the firmware published when
+  it releases too, the `app-publish` job writes `latest.json` from these
   signatures (`app/scripts/updater-manifest.mjs`), attaches it, and
   publishes the release as the latest;
 - the app installs an update only if its signature names the version that
@@ -142,18 +140,6 @@ The installed apps update themselves from the latest GitHub release:
 Local builds (`npm run tauri build`) need no key, because only the release
 workflow adds `src-tauri/tauri.updater.conf.json`, which asks for the
 update files.
-
-### The approval of `app-publish` (once)
-
-`app-publish` runs in the GitHub environment of the same name. Create it
-before the first release that needs it, in Settings, Environments, **New
-environment**, named `app-publish`, with the maintainers as **Required
-reviewers**. Without the environment, GitHub creates it at the first run,
-with no protection, and the app goes out unapproved. Each app release then
-waits in the Actions tab for a reviewer: **Review deployments**, then
-**Approve and deploy**. When the firmware releases in the same run, approve
-once its release is published, so that the app that knows it follows at
-once.
 
 ### Update key (once)
 
@@ -222,12 +208,11 @@ needs the other. The same steps suit the next major version:
    squash, only its title would count for release-please.
 4. Write the notes of both components in the release pull request (step 3
    of the [flow](#flow)), then merge it.
-5. The firmware release is published first, then the app, the same day:
-   approve `app-publish` as soon as the firmware is out. In between, the
-   app of the previous major may offer the new firmware to a lamp, and a
-   lamp updated then works on its own but no longer takes colors from that
-   app, until the new app is installed. The previous app offers its own
-   update first once the new app is out.
+5. The firmware release is published first, then the app, right after it
+   in the same run. In between, the app of the previous major may offer the
+   new firmware to a lamp, and a lamp updated then works on its own but no
+   longer takes colors from that app, until the new app is installed. The
+   previous app offers its own update first once the new app is out.
 
 ## Notes
 
