@@ -1,5 +1,57 @@
 # Changelog
 
+## [2.0.0](https://github.com/Oui-Dev/Disled/compare/app-v1.1.2...app-v2.0.0) (2026-11-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **app:** drive protocol 2.0 lamps and lock version 1 lamps
+
+### 🚀 Enhancements
+
+* **app:** a color chosen in Diagnostics takes the lamp back from an integration ([db39b1b](https://github.com/Oui-Dev/Disled/commit/db39b1bc7ba4124e04715af8d180c3b179129b11))
+* **app:** alerts of three breaths of 1.5 s ([342e7c0](https://github.com/Oui-Dev/Disled/commit/342e7c05c5c45a93943960cc05f3006e6d083e9d))
+* **app:** button and menu labels without an ellipsis, and guards on the texts ([0d8164e](https://github.com/Oui-Dev/Disled/commit/0d8164e352bf8244000c8020b6908d5b16808ca4))
+* **app:** calls told by the microphone in use, on Windows, macOS and Linux, with libpulse loaded at run time ([950c990](https://github.com/Oui-Dev/Disled/commit/950c9901f1cb819ee6759055f8336a9e81ce17e9))
+* **app:** custom colors in the popup: six tiles, library and touch cycle, editors, sharing ([8d321d7](https://github.com/Oui-Dev/Disled/commit/8d321d776fd1aae1c90cb8f26b2099219cf21eaf))
+* **app:** custom colors, touch cycle, deletion fallbacks and share codes in the backend ([fa5d5c3](https://github.com/Oui-Dev/Disled/commit/fa5d5c312c5811e1dda92f6567c1cb9d69e6922b))
+* **app:** Diagnostics for protocol 2.0, closed to a lamp the app does not drive ([90b90ad](https://github.com/Oui-Dev/Disled/commit/90b90ad877eb44b2aecc29a3806a1066ffe9b1ee))
+* **app:** drive protocol 2.0 lamps and lock version 1 lamps ([69b5298](https://github.com/Oui-Dev/Disled/commit/69b52989b9b651c42d4fa15b54f32196357e40df))
+* **app:** every firmware 2.x and 1.0.0 on offer, the install of a chosen version, the whole flash erased first ([acdecb0](https://github.com/Oui-Dev/Disled/commit/acdecb0ab85cc8c697ef3bb8765a4386a1c07704))
+* **app:** name the app Disled, at the new address of the repository ([f90f809](https://github.com/Oui-Dev/Disled/commit/f90f809ad27447564bb4e522c6adc4deba4d4e68))
+* **app:** pass the color choices of the popup to the backend with lamp_choose ([6b4d6d1](https://github.com/Oui-Dev/Disled/commit/6b4d6d18a4c96aa9035b3f6dd5b046a527d8f8fb))
+* **app:** show the lock of a version 1 lamp, with the update it needs ([f5ff9dd](https://github.com/Oui-Dev/Disled/commit/f5ff9dd383085dec0afbd67c32a55613a9f5116e))
+* **app:** the control of the lamp, with its heartbeat, its alert guards and one way out that hands the lamp back ([641ab4e](https://github.com/Oui-Dev/Disled/commit/641ab4e421d6f21d6cc5c1e3d646d10a11e3af27))
+* **app:** the integrations window, its approval question, and the plugins in the mode menu ([a8c47a1](https://github.com/Oui-Dev/Disled/commit/a8c47a13586a8076496494fa28ab7a518f704301))
+* **app:** the line of the calls under the tiles, with the color of the calls ([4f597b0](https://github.com/Oui-Dev/Disled/commit/4f597b058ecbb700cf68b447e90810adaa6f146c))
+* **app:** the mode menu of the lamp and the row of an integration ([13828d4](https://github.com/Oui-Dev/Disled/commit/13828d40fce10798c3db09991927c473e47e49a9))
+* **app:** the plugin host: manifests, rules and states by key, fingerprints and approvals, the local server and its tokens, the programs ([78d5f5b](https://github.com/Oui-Dev/Disled/commit/78d5f5bcc3e0a841e62cce11545d2d3b49510a5e))
+* **app:** the reinstall window and its version list, and the guided update fit for a version 1 lamp ([fe7701f](https://github.com/Oui-Dev/Disled/commit/fe7701f4c5250a78c1035e5a736e31a45c50c52a))
+* **app:** touch sensitivity setting, true minus signs and the vertical settings menu ([f4d02b7](https://github.com/Oui-Dev/Disled/commit/f4d02b7b81eeec42bb615f595c168837c3e2b15e))
+* **app:** widen the popup to 340 px ([a7c2293](https://github.com/Oui-Dev/Disled/commit/a7c2293644325b6f7d04492bfe8d3dd533b629a6))
+
+
+### 🩹 Fixes
+
+* **app:** a remove link for every plugin, and a red or orange dot for a stopped program ([7e012a4](https://github.com/Oui-Dev/Disled/commit/7e012a437e245dedaa7fd033e3433a6803a15044))
+* **app:** English texts without the turns of phrase of the French ([6c8a14c](https://github.com/Oui-Dev/Disled/commit/6c8a14cff7281d62964514e9d0e9b8ced23e8b18))
+* **app:** radios named once, in the current language, and arrows that browse the colors of a popover ([3e50891](https://github.com/Oui-Dev/Disled/commit/3e508919df63431d22cfe0927d6e36d6db0458d4))
+* **app:** the arrows browse the suggestions of the color editor ([dead161](https://github.com/Oui-Dev/Disled/commit/dead161fc01d54f3359b7c439f2b7e919b96a6aa))
+* **app:** the card of an integration level with the Off tile ([c9d5739](https://github.com/Oui-Dev/Disled/commit/c9d573924541717a436f6f11725251359a4b1f95))
+* **app:** the left column of Diagnostics as wide as the popup, so that the tile names fit as there ([1e5a614](https://github.com/Oui-Dev/Disled/commit/1e5a61451a5d4d1a9bc1a0531f8276381362656a))
+* **app:** the not-allowed cursor on the colors of a lamp the app does not drive ([582585f](https://github.com/Oui-Dev/Disled/commit/582585f76a38ccd9dcc3fa16ad8580d019168620))
+* **app:** the pointer cursor on the enabled buttons, which Tailwind 4 no longer gives ([714869a](https://github.com/Oui-Dev/Disled/commit/714869a2445161edbf405ac126116bab13d89652))
+* **app:** ticks of the light chart that a dim room no longer shows twice ([c312c6e](https://github.com/Oui-Dev/Disled/commit/c312c6ecf3f219a7d9038c4e9159525bf17dec11))
+* **deps:** update the dependencies of the app, the firmware tools and the CI ([1dcd7b1](https://github.com/Oui-Dev/Disled/commit/1dcd7b172665ce324599f7859e45112c9c32797d))
+
+
+### 💅 Refactors
+
+* **app:** no pointer class on the buttons, which get it from the base style ([74af02a](https://github.com/Oui-Dev/Disled/commit/74af02a1d36daba6b6b77310d34b11e5d6cbb111))
+* **app:** Nuxt UI buttons instead of native ones ([48ab010](https://github.com/Oui-Dev/Disled/commit/48ab01093d19455dccbcdb1bf87e27d2af8894b9))
+* **app:** Nuxt UI components in place of hand-made markup ([ff4b8fb](https://github.com/Oui-Dev/Disled/commit/ff4b8fbf6f98f882ecd0ffff7a432a2c8146335c))
+* **app:** Tailwind scale values in place of arbitrary ones ([8de3ef4](https://github.com/Oui-Dev/Disled/commit/8de3ef4b540f30754374928a99aa1f0cb34f5e9f))
+
 ## [1.1.2](https://github.com/Oui-Dev/DISLED/compare/app-v1.1.1...app-v1.1.2) (2026-10-30)
 
 
