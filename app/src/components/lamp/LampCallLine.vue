@@ -48,7 +48,7 @@ const items = computed(() => {
     // The custom colors start a row of their own, under a line across the popover.
     class:
       color.slot === firstCustom
-        ? 'col-start-1 before:absolute before:-top-[9px] before:-left-0.5 before:w-[292px] before:border-t before:border-default'
+        ? 'col-start-1 before:absolute before:-top-2 before:-left-0.5 before:w-73 before:border-t before:border-default'
         : undefined,
   }));
 });
@@ -87,7 +87,7 @@ function choose(slot: unknown): void {
         v-model:open="open"
         arrow
         :content="{ side: 'bottom', align: 'start', sideOffset: 6, collisionPadding: 16 }"
-        :ui="{ content: 'w-[308px] p-2' }"
+        :ui="{ content: 'w-77 p-2' }"
       >
         <UButton
           color="neutral"
@@ -115,8 +115,7 @@ function choose(slot: unknown): void {
               indicator="hidden"
               :ui="{
                 legend: 'sr-only',
-                fieldset:
-                  'grid grid-cols-[repeat(7,2rem)] gap-x-1.5 gap-y-[17px] px-0.5 pt-1.5 pb-0.5',
+                fieldset: 'grid grid-cols-[repeat(7,2rem)] gap-x-1.5 gap-y-4 px-0.5 pt-1.5 pb-0.5',
                 item: 'group relative rounded-lg p-0.5',
                 wrapper: 'block',
                 label: 'block cursor-pointer',

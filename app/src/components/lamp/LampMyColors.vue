@@ -83,7 +83,7 @@ function go(page: 'manage' | 'create'): void {
     v-model:open="open"
     arrow
     :content="{ side: 'bottom', align: 'end', sideOffset: 6, collisionPadding: 16 }"
-    :ui="{ content: 'w-[308px] p-3' }"
+    :ui="{ content: 'w-77 p-3' }"
   >
     <!-- A tile like those of the row: no background on hover. -->
     <UButton
@@ -100,7 +100,7 @@ function go(page: 'manage' | 'create'): void {
       <UChip
         position="bottom-right"
         :ui="{
-          base: 'size-4 translate-x-[37.5%] translate-y-[37.5%] bg-default ring-1 ring-default ring-inset',
+          base: 'size-4 translate-x-3/8 translate-y-3/8 bg-default ring-1 ring-default ring-inset',
         }"
       >
         <span

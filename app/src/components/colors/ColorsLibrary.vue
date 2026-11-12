@@ -83,18 +83,20 @@ const groups = computed(() => [colors.builtIn, colors.custom].filter((group) => 
 
 <template>
   <div class="flex flex-col gap-3">
-    <!-- The column header stands over the cycle badges, left of the menus. -->
-    <div class="flex items-center justify-between gap-2">
+    <!-- The column header stands over the cycle badges, laid out as a row of
+         colors, with an empty cell in place of the menu button. -->
+    <div class="flex items-center gap-2.5">
       <h2
         data-page-heading
         tabindex="-1"
-        class="text-sm font-semibold text-highlighted focus:outline-none"
+        class="flex-1 text-sm font-semibold text-highlighted focus:outline-none"
       >
         {{ t('colors.library.title') }}
       </h2>
-      <span aria-hidden="true" class="me-[34px] w-6 text-center text-[11px] text-muted">
+      <span aria-hidden="true" class="w-6 text-center text-[11px] text-muted">
         {{ t('colors.library.touch') }}
       </span>
+      <span aria-hidden="true" class="w-6" />
     </div>
 
     <div class="flex flex-col">

@@ -46,14 +46,15 @@ const tabs = computed<TabsItem[]>(() => [
 
     <p v-if="lockedLine" class="p-5 text-sm text-muted">{{ lockedLine }}</p>
     <div v-else class="flex min-h-0 flex-1">
-      <!-- As wide as the popup, its border aside: the tiles and their names
-           lay out as they do there. -->
+      <!-- As wide as the popup, so that the tiles and their names lay out as
+           they do there. The border goes to the telemetry, so that it takes
+           nothing from them. -->
       <UTabs
         :items="tabs"
         default-value="lamp"
         variant="link"
         size="sm"
-        class="w-[341px] shrink-0 border-e border-default"
+        class="w-85 shrink-0"
         :ui="{ root: 'gap-0', list: 'px-3 pt-2', content: 'min-h-0 flex-1 overflow-y-auto p-4' }"
       >
         <!-- The number goes through the label, which takes the text color of
@@ -75,7 +76,7 @@ const tabs = computed<TabsItem[]>(() => [
         <template #self-test><DiagnosticsSelfTest /></template>
       </UTabs>
 
-      <DiagnosticsTelemetry class="min-w-0 flex-1" />
+      <DiagnosticsTelemetry class="min-w-0 flex-1 border-s border-default" />
     </div>
   </main>
 </template>
