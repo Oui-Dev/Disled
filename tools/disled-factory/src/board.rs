@@ -71,8 +71,16 @@ impl Station {
             Some(flasher) => {
                 println!("  Plug the board in with BOOT held.");
                 wait_for_bootloader(&mut self.api, flasher)?;
-                flasher.flash(&self.firmware.path, show_stage)?;
-                println!();
+                // The whole flash first, as the app does: `flash` erases only
+                // the sectors the firmware covers, and would leave the end of
+                // a longer firmware, such as a debug build, behind it.
+                print!("  Flashing: erase all");
+                let _ = io::stdout().flush();
+                let flashed = flasher
+                    .erase()
+                    .and_then(|()| flasher.flash(&self.firmware.path, show_stage));
+                println!(); // ends the line of the stages, failed or not
+                flashed?;
                 wait_for_lamp(&mut self.api, Some(LAMP_TIMEOUT))?
             }
             None => {
@@ -122,7 +130,8 @@ fn now() -> String {
 
 fn show_stage(stage: Stage) {
     let text = match stage {
-        Stage::Erasing => "  Flashing: erase",
+        // The sectors of the firmware, already empty after `erase`.
+        Stage::Erasing => "",
         Stage::Writing => ", write",
         Stage::Verifying => ", verify",
         Stage::Restarting => ", restart",

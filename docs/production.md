@@ -48,8 +48,9 @@ Stop with Ctrl+C. The log already holds every finished board.
 ## For each board
 
 1. Plug the board in with **BOOT** held, the only way a blank board starts
-   its bootloader. The tool finds the bootloader and flashes the board:
-   erase, write, verify, restart.
+   its bootloader. The tool finds the bootloader and flashes the board: it
+   erases the whole flash, as the app does, then writes, verifies and
+   restarts.
 2. The lamp starts its firmware. The tool checks what it reports
    (`INFO`): the version of the release, a release build, protocol 2.
 3. **Self-test.** The lamp shows red, green, blue and warm white, 1.5 s
