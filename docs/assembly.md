@@ -20,6 +20,8 @@ The files come from a pair of releases, `pcb-vX.Y.Z` and
 | JST-XH 2-pin housing with one crimped wire | 1 | From CN1 to the copper ring |
 | Copper tape with adhesive, 30 mm wide or more | 1 piece | The touch electrode, a Ø28.5/Ø17.5 mm ring. A 60 mm tape gives two rings across its width. |
 | White PLA, black PETG and TPU | | The printed parts ([step 2](#2-print-the-parts)) |
+| M2 × 3 heat-set insert, 3.2 mm outer diameter | 2 | In the base, under the two holes of the board |
+| M2 × 4 screw | 2 | Hold the board on its inserts. 3 or 5 mm screws also fit, not longer. |
 | Cyanoacrylate glue (super glue) | | The four feet |
 | USB-C cable that carries data | 1 | |
 
@@ -118,13 +120,19 @@ empty.
 ## 6. Assemble the base
 
 1. Glue the four feet into their recesses under the base.
-2. Lay the board in the base: the USB-C receptacle in the opening of the
+2. Press the two M2 inserts into the two bosses of the base with the
+   soldering iron, flush with their top.
+3. Lay the board in the base: the USB-C receptacle in the opening of the
    back wall, the light sensor (U3) against the window of the left wall.
-   The board rests on a ledge, and the lip of the cube keeps it there.
-3. Press the sensor hood over the light sensor. Its ribs hold it, and ribs
-   of the base close the slot at the board edge under it, so that the
-   sensor sees its window only, not the LED.
-4. Plug the lead into CN1.
+   It rests on a ledge. Screw it to the inserts with the two M2 × 4
+   screws.
+4. Press the sensor hood over the light sensor until it sits on the
+   board. Its front goes between the wall and the face of the sensor,
+   which keeps it against the wall, and ribs of the base close the slot
+   at the board edge under it, so that the sensor sees its window only,
+   not the LED. To take it off, lift it by its two ears, with tweezers or
+   a small flat screwdriver.
+5. Plug the lead into CN1.
 
 ## 7. Close the lamp
 

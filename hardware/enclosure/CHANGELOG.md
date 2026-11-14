@@ -4,6 +4,29 @@ The versions of the DISLED enclosure, written by hand
 ([docs/releasing.md](../../docs/releasing.md#hardware-releases)). The
 dates are those of the designs.
 
+## 1.1.2 (2026-11-14)
+
+### 🚀 Enhancements
+
+* **ALS cover:** two ears at its top, one on each end, lift it out with
+  tweezers or a small flat screwdriver.
+
+### 🩹 Fixes
+
+* **ALS cover:** its front fills the gap between the wall of the base and
+  the face of the sensor, on both sides of a 4.4 mm light channel, so it
+  can no longer move back. Held by its crush ribs alone, it could be
+  pushed back by the wall of the cube, which bends in when the box is
+  closed or pinched open, and the LED then lit the sensor.
+* **ALS cover:** the edge of the step that sits under the cube has a 45°
+  chamfer: a wall bent in at closing slides over it instead of landing on
+  the cover.
+
+### ⚠ Compatibility
+
+* The base and the cube do not change: a lamp already built only needs
+  the new cover.
+
 ## 1.1.1 (2026-10-31)
 
 ### 🚀 Enhancements

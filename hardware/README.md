@@ -56,8 +56,8 @@ under the lid of the cube is the touch electrode.
 | File | Part |
 |---|---|
 | `top.3mf` | The cube (white PLA), printed top face down, with the recess of the copper ring under its lid |
-| `bottom.3mf` | The base (black PETG): USB-C mask, light sensor window, clip pockets, feet recesses |
-| `als_light_cover.3mf` | The hood over the light sensor (black PETG), so that it sees its window only, not the LED |
+| `bottom.3mf` | The base (black PETG): USB-C mask, light sensor window, clip pockets, feet recesses, two bosses for the M2 × 3 inserts that hold the board |
+| `als_light_cover.3mf` | The hood over the light sensor (black PETG), so that it sees its window only, not the LED. Its front is wedged between the wall and the sensor, and two ears lift it out. |
 | `anti_slip_foot.3mf` | A foot (TPU), glued in a recess under the base. Print four. |
 | `copper_ring_cutter.3mf` | A rotary head for a drill press that cuts the Ø28.5/Ø17.5 mm ring from copper tape, with two snap-off blade segments clamped by M3 screws in heat-set inserts |
 
