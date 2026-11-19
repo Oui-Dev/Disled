@@ -60,7 +60,7 @@ fn popup(app: &AppHandle) -> Option<WebviewWindow> {
 
 /// Places the popup next to the tray icon, above it on Windows and below it
 /// on macOS, or in a screen corner while the icon position is unknown,
-/// before the first click or on Linux.
+/// before the first click or on Linux. The panel of macOS places itself.
 fn place(window: &WebviewWindow) {
     let (tray, fallback) = if cfg!(target_os = "macos") {
         (Position::TrayBottomCenter, Position::TopRight)
@@ -76,11 +76,11 @@ fn place(window: &WebviewWindow) {
 
 pub fn show_popup(app: &AppHandle) {
     if let Some(window) = popup(app) {
-        place(&window);
         #[cfg(target_os = "macos")]
         if panel::show(&window) {
             return;
         }
+        place(&window);
         let _ = window.show();
         let _ = window.set_focus();
     }
@@ -139,6 +139,10 @@ pub fn resize_popup(app: &AppHandle, height: f64) -> f64 {
         .max(POPUP_MIN_HEIGHT)
         .min(screen - SCREEN_MARGIN)
         .max(1.0);
+    #[cfg(target_os = "macos")]
+    if panel::resize(&window, POPUP_WIDTH, height) {
+        return height;
+    }
     let resized = window.set_size(LogicalSize::new(POPUP_WIDTH, height));
     if resized.is_ok() && window.is_visible().unwrap_or(false) {
         place(&window);
@@ -284,23 +288,58 @@ fn open_update_window(app: &AppHandle, label: &str, other: &str) {
     }
 }
 
+/// The edges of a rectangle as AppKit counts them on macOS: in points, from
+/// the bottom left corner of the main screen, upwards.
+#[cfg(any(target_os = "macos", test))]
+#[derive(Debug, Clone, Copy)]
+struct Edges {
+    left: f64,
+    right: f64,
+    bottom: f64,
+    top: f64,
+}
+
+/// The top left corner of the popup on macOS: centred under the tray icon,
+/// within the screen, and against the bottom of the icon, or of the menu bar
+/// when that is lower. `screen` is the part that the menu bar and the Dock
+/// leave.
+#[cfg(any(target_os = "macos", test))]
+fn top_left_under(icon: Edges, screen: Edges, width: f64) -> (f64, f64) {
+    let centred = (icon.left + icon.right - width) / 2.0;
+    let x = centred.min(screen.right - width).max(screen.left);
+    (x, icon.bottom.min(screen.top))
+}
+
 /// The popup as a panel on macOS. A plain window belongs to a single Space,
 /// and macOS shows none over an app in full screen; giving it the keyboard
 /// also activated the app, upon which macOS can switch to another Space. A
 /// panel joins every Space, full screen ones included, and takes the keyboard
-/// without activating the app.
+/// without activating the app. AppKit places and sizes it at once, in points
+/// under the tray icon: tao would move it only once shown, at first from the
+/// middle of the screen, and the positioner mixes the scales of two displays
+/// and gives up on a window that a display took away with it.
 #[cfg(target_os = "macos")]
 mod panel {
+    use objc2::MainThreadMarker;
+    use objc2_app_kit::{NSApplication, NSScreen, NSWindow};
+    use objc2_foundation::{NSPoint, NSRect, NSSize};
     use tauri::{Manager, WebviewWindow};
     use tauri_nspanel::{CollectionBehavior, Panel, StyleMask};
 
-    tauri_nspanel::tauri_panel! {
-        panel!(PopupPanel {
-            config: {
-                // A window without a title bar refuses the keyboard otherwise.
-                can_become_key_window: true
-            }
-        })
+    use self::class::PopupPanel;
+    use super::{Edges, top_left_under};
+
+    /// The class of the panel, in a module of its own: its macro imports
+    /// AppKit names too.
+    mod class {
+        tauri_nspanel::tauri_panel! {
+            panel!(PopupPanel {
+                config: {
+                    // A window without a title bar refuses the keyboard otherwise.
+                    can_become_key_window: true
+                }
+            })
+        }
     }
 
     /// Turns the popup into the panel, from the setup, on the main thread.
@@ -320,22 +359,144 @@ mod panel {
         window.app_handle().manage(panel);
     }
 
-    /// Brings the panel to the front with the keyboard, on the main thread
-    /// that AppKit requires. False until the setup has made the panel, while
-    /// a second launch can already ask for the popup.
+    /// Shows the panel under the tray icon, in front and with the keyboard,
+    /// on the main thread that AppKit requires. False until the setup has
+    /// made the panel, while a second launch can already ask for the popup.
     pub fn show(window: &WebviewWindow) -> bool {
         if window.try_state::<PopupPanel>().is_none() {
             return false;
         }
         let popup = window.clone();
         let _ = window.run_on_main_thread(move || {
+            let (Some(panel), Some(mtm)) =
+                (popup.try_state::<PopupPanel>(), MainThreadMarker::new())
+            else {
+                return;
+            };
+            // A hidden app shows none of its windows, after Cmd+H or the Hide
+            // Others of another app. Activating it, as for a plain window,
+            // would take the keyboard from the app in front.
+            let app = NSApplication::sharedApplication(mtm);
+            if app.isHidden() {
+                app.unhideWithoutActivation();
+            }
+            place(panel.as_panel(), &popup, mtm);
+            // In front before taking the keyboard, or it stays off the Space
+            // of an app in full screen.
+            panel.order_front_regardless();
+            panel.make_key_window();
+        });
+        true
+    }
+
+    /// Gives the panel a new size, its top edge where it was, under the tray
+    /// icon. False until the setup has made the panel.
+    pub fn resize(window: &WebviewWindow, width: f64, height: f64) -> bool {
+        if window.try_state::<PopupPanel>().is_none() {
+            return false;
+        }
+        let popup = window.clone();
+        let _ = window.run_on_main_thread(move || {
             if let Some(panel) = popup.try_state::<PopupPanel>() {
-                // In front before taking the keyboard, or it stays off the
-                // Space of an app in full screen.
-                panel.order_front_regardless();
-                panel.make_key_window();
+                let panel = panel.as_panel();
+                let frame = panel.frame();
+                let origin = NSPoint::new(frame.origin.x, frame.max().y - height);
+                panel.setFrame_display(NSRect::new(origin, NSSize::new(width, height)), true);
             }
         });
         true
+    }
+
+    /// Puts the panel under the tray icon, or in the top right corner of the
+    /// screen in use while the icon has no place in a menu bar.
+    fn place(panel: &NSWindow, popup: &WebviewWindow, mtm: MainThreadMarker) {
+        let width = panel.frame().size.width;
+        let in_use = NSScreen::mainScreen(mtm).map(|screen| edges(screen.visibleFrame()));
+        let top_left = match crate::tray::icon_frame(popup.app_handle()) {
+            Some((icon, screen)) => screen
+                .map(edges)
+                .or(in_use)
+                .map(|screen| top_left_under(edges(icon), screen, width)),
+            None => in_use.map(|screen| (screen.right - width, screen.top)),
+        };
+        if let Some((x, y)) = top_left {
+            panel.setFrameTopLeftPoint(NSPoint::new(x, y));
+        }
+    }
+
+    fn edges(rect: NSRect) -> Edges {
+        Edges {
+            left: rect.min().x,
+            right: rect.max().x,
+            bottom: rect.min().y,
+            top: rect.max().y,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A screen of 1512 × 982 points under a menu bar of 37 points.
+    const SCREEN: Edges = Edges {
+        left: 0.0,
+        right: 1512.0,
+        bottom: 0.0,
+        top: 945.0,
+    };
+
+    fn icon(left: f64) -> Edges {
+        Edges {
+            left,
+            right: left + 30.0,
+            bottom: 945.0,
+            top: 982.0,
+        }
+    }
+
+    #[test]
+    fn the_popup_opens_under_the_tray_icon_within_its_screen() {
+        assert_eq!(
+            top_left_under(icon(1000.0), SCREEN, POPUP_WIDTH),
+            (845.0, 945.0)
+        );
+        // Near an edge, it stays on the screen: the right edge of the main
+        // display, the left edge of a display on its left.
+        assert_eq!(
+            top_left_under(icon(1470.0), SCREEN, POPUP_WIDTH),
+            (1172.0, 945.0)
+        );
+        let on_the_left = Edges {
+            left: -1512.0,
+            right: 0.0,
+            ..SCREEN
+        };
+        assert_eq!(
+            top_left_under(icon(-1505.0), on_the_left, POPUP_WIDTH),
+            (-1512.0, 945.0)
+        );
+    }
+
+    #[test]
+    fn the_popup_opens_under_the_menu_bar_of_an_app_in_full_screen() {
+        // A menu bar that hides itself leaves the whole screen; shown over
+        // the app, it holds the icon.
+        let whole = Edges {
+            top: 982.0,
+            ..SCREEN
+        };
+        assert_eq!(
+            top_left_under(icon(1000.0), whole, POPUP_WIDTH),
+            (845.0, 945.0)
+        );
+        // Hidden above the screen, the icon leaves the popup under the place
+        // of the menu bar.
+        let hidden = Edges {
+            bottom: 982.0,
+            top: 1019.0,
+            ..icon(1000.0)
+        };
+        assert_eq!(top_left_under(hidden, SCREEN, POPUP_WIDTH), (845.0, 945.0));
     }
 }

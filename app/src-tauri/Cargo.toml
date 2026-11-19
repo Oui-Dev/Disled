@@ -57,9 +57,13 @@ windows = { version = "^0.62.2", features = ["Win32_Foundation", "Win32_Media_Au
 libc = "^0.2.191"
 
 # The popup as a panel, the only kind of window that macOS shows over an app
-# in full screen. The calls come from the process objects of CoreAudio.
+# in full screen, which AppKit places under the icon of the menu bar and
+# shows at once. The calls come from the process objects of CoreAudio.
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-nspanel = "^2.1.1"
+objc2 = "^0.6.5"
+objc2-app-kit = { version = "^0.3.2", default-features = false, features = ["std", "NSApplication", "NSButton", "NSControl", "NSPanel", "NSResponder", "NSScreen", "NSStatusBarButton", "NSStatusItem", "NSView", "NSWindow"] }
+objc2-foundation = { version = "^0.3.2", default-features = false, features = ["std", "NSGeometry", "objc2-core-foundation"] }
 objc2-core-audio = { version = "^0.3.2", default-features = false, features = ["std", "AudioHardware"] }
 
 # The calls come from the sound server through libpulse, loaded at run time,
