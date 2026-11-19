@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.1](https://github.com/Oui-Dev/Disled/compare/app-v2.0.0...app-v2.0.1) (2026-11-19)
+
+
+### 🩹 Fixes
+
+* **app:** the lamp handed back to its own behavior when macOS ends the app, on Cmd+Q or at logout ([54a34b2](https://github.com/Oui-Dev/Disled/commit/54a34b29404ba4bf4e26e5f638729e02f854c5a0))
+* **app:** the macOS popup under its icon from the first click, even after the app was hidden ([19f7ada](https://github.com/Oui-Dev/Disled/commit/19f7adac4a026f92a9246b9a59f5123148c27cb9))
+
 ## [2.0.0](https://github.com/Oui-Dev/Disled/compare/app-v1.1.2...app-v2.0.0) (2026-11-12)
 
 
