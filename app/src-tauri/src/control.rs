@@ -668,9 +668,10 @@ fn carry_out(app: &AppHandle, effects: Vec<Effect>) -> Result<(), String> {
     result
 }
 
-/// Hands the lamp back to its own behavior before the app quits, and waits
-/// a moment for its replies: "Sans l’app, la lampe reprend ses quatre
-/// couleurs et le cycle d’origine." Both "Quit" go through here.
+/// Hands the lamp back to its own behavior when the app quits, and waits a
+/// moment for its replies: "Sans l’app, la lampe reprend ses quatre
+/// couleurs et le cycle d’origine." Every way out but the restart of an
+/// update goes through here.
 pub fn release(app: &AppHandle) {
     let effects = app.state::<ControlState>().read(|core| core.quit());
     if effects.is_empty() {

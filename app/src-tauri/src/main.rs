@@ -564,12 +564,19 @@ fn quit(app: AppHandle) {
     quit_app(&app);
 }
 
-/// The one way out of the app, for "Quit" in the popup and in the tray
-/// menu: the lamp first gets its own behavior back.
+/// "Quit" in the popup and in the tray menu. On the way out, the lamp gets
+/// its own behavior back (`leave`).
 fn quit_app(app: &AppHandle) {
+    app.exit(0);
+}
+
+/// Every way out of the app but the restart of an update, which keeps the
+/// lamp as it is: "Quit", and on macOS Cmd+Q or the end of the session,
+/// which end the app without asking it. The lamp gets its own behavior back
+/// and the programs of the plugins stop.
+fn leave(app: &AppHandle) {
     control::release(app);
     plugins::shutdown(app);
-    app.exit(0);
 }
 
 /// Loads the settings and the palette, and saves them once, corrected. At
@@ -705,14 +712,17 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("error while building the Disled app");
 
-    app.run(|_app, event| {
+    let mut restarting = false;
+    app.run(move |app, event| match event {
         // A tray app keeps running with no window open; Quit calls exit(0),
         // which comes with an exit code.
-        if let RunEvent::ExitRequested {
+        RunEvent::ExitRequested {
             code: None, api, ..
-        } = event
-        {
-            api.prevent_exit();
-        }
+        } => api.prevent_exit(),
+        RunEvent::ExitRequested {
+            code: Some(code), ..
+        } => restarting = code == tauri::RESTART_EXIT_CODE,
+        RunEvent::Exit if !restarting => leave(app),
+        _ => {}
     });
 }
