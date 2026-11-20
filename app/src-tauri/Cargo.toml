@@ -28,7 +28,7 @@ tauri-plugin-opener = "^2.7.3"
 # Lamp firmware updates: the signed firmware files and wchisp, shared with
 # the production tool, then the HTTP client and the TLS stack of the updater.
 disled-flash.workspace = true
-reqwest = { version = "^0.13.5", default-features = false, features = ["rustls-no-provider", "system-proxy"] }
+reqwest ={ version = "^0.13.5", default-features = false, features = ["rustls-no-provider", "system-proxy"] }
 rustls = { version = "^0.23.46", default-features = false, features = ["ring", "std"] }
 semver.workspace = true
 # The languages of the system, for the "System" language setting.
@@ -39,13 +39,15 @@ base64 = "^0.23.1"
 tauri-plugin-clipboard-manager = "^2.5.0"
 # The plugins: the local server of the plugins with events on the runtime of
 # Tauri, the fingerprint of their files, their tokens, compared in constant
-# time, and their import from a zip file.
+# time, their import from a zip file, and the index of the catalog, signed
+# with a key of its own.
 axum = { version = "^0.8.9", default-features = false, features = ["http1", "json", "tokio"] }
 tokio = { version = "^1.54.1", features = ["net", "rt", "sync", "time"] }
 sha2 = "^0.10.9"
 subtle = "^2.6.1"
 getrandom = "^0.4.3"
 zip = { version = "^9.5.1", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+minisign-verify = "^0.3.0"
 
 # The programs of the plugins die with the app: a job object on Windows,
 # their process group elsewhere, and on Linux the death signal of the app.
@@ -82,3 +84,6 @@ ts-rs.workspace = true
 tempfile = "^3.27.0"
 tower = { version = "^0.5.3", features = ["util"] }
 tokio = { version = "^1.54.1", features = ["macros"] }
+# The schema of the manifests (docs/plugins/plugin.schema.json) says what the
+# manifest reader says. Without its defaults, it fetches nothing.
+jsonschema = { version = "^0.61.2", default-features = false }

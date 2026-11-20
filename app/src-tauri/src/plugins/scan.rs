@@ -136,6 +136,16 @@ impl Unpacked {
         &self.id
     }
 
+    /// The fingerprint of its files, which the approval would compute.
+    pub fn fingerprint(&self) -> Result<String, Reason> {
+        fingerprint(&self.folder, &mut Cache::default())
+    }
+
+    /// Drops it, leaving the plugins as they were.
+    pub fn discard(self) {
+        let _ = fs::remove_dir_all(&self.folder);
+    }
+
     /// Puts the plugin in `plugins/<id>`, in place of the plugin of that id.
     pub fn install(self, plugins: &Path) -> Result<String, Reason> {
         let destination = plugins.join(&self.id);
@@ -312,6 +322,24 @@ mod tests {
         assert_eq!(
             fingerprint(folder.path(), &mut Cache::default()),
             Ok(digest(lines.as_bytes()))
+        );
+    }
+
+    /// The vector that the catalog of plugins checks its own fingerprints
+    /// with (Disled-plugins, scripts/lib.test.mjs): the index that it signs
+    /// gives the fingerprints that the approval computes here.
+    #[test]
+    fn the_catalog_computes_the_same_fingerprints() {
+        let folder = tempfile::tempdir().expect("folder");
+        write(&folder.path().join("LICENSE"), "MIT\n");
+        write(&folder.path().join("plugin.json"), "{\"api\":1}\n");
+        write(
+            &folder.path().join("src/index.js"),
+            "console.log(\"hello\");\n",
+        );
+        assert_eq!(
+            fingerprint(folder.path(), &mut Cache::default()).as_deref(),
+            Ok("ef3eb752bc5272b03e048c7b0967d67b4598f2fdd874635d73929dc1a9f8390a")
         );
     }
 

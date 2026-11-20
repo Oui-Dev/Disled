@@ -7,9 +7,12 @@
 //! again after any change of its files. The host reads the plugins, keeps
 //! their settings and their states, runs their programs, serves their events
 //! on the local server, and tells the control which integrations the lamp
-//! can follow, their states and their alerts.
+//! can follow, their states and their alerts. The programs of the plugins
+//! with the `lamp` capability get the state of the lamp and its presses.
 
+pub mod catalog;
 pub mod http;
+pub mod lamp;
 pub mod manifest;
 pub mod process;
 pub mod rules;
@@ -28,12 +31,13 @@ use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
-use crate::colors::{BUILT_IN, ColorsState, Palette};
-use crate::control::{self, Input, Integration, IntegrationState};
+use crate::colors::{BUILT_IN, ColorsState, Palette, PreviewState};
+use crate::control::{self, ControlState, Input, Integration, IntegrationState};
+use crate::device::DeviceHandle;
 use crate::i18n::{Locale, LocaleState};
 use crate::settings;
 use manifest::{Capabilities, Manifest, Reason};
-use process::{Notification, Program, ProgramStatus, Spec, Timing};
+use process::{Feed, Notification, Program, ProgramStatus, Spec, Timing};
 use rules::Action;
 use states::Keys;
 
@@ -256,11 +260,19 @@ pub struct Host {
     /// What the control last heard.
     announced: Vec<Integration>,
     announced_states: HashMap<String, Option<IntegrationState>>,
+    /// The `lamp` notification that the programs last got, which a program
+    /// that starts gets first.
+    lamp: String,
 }
 
 /// The host, once the app started it.
 #[derive(Default)]
-pub struct PluginsState(Mutex<Option<Host>>);
+pub struct PluginsState {
+    host: Mutex<Option<Host>>,
+    /// Taken while the state of the lamp goes to the programs, one change at
+    /// a time.
+    lamp: Mutex<()>,
+}
 
 fn language(app: &AppHandle) -> &'static str {
     match app.state::<LocaleState>().get() {
@@ -435,11 +447,16 @@ impl Host {
                 language: language(app).into(),
                 log: self.logs.join(format!("{id}.log")),
             };
+            let feed = self
+                .manifest(&id)
+                .is_some_and(|manifest| manifest.capabilities.lamp)
+                .then(|| Feed::new(Some(self.lamp.clone())));
             let (notes, statuses) = (app.clone(), app.clone());
             let (note_id, status_id) = (id.clone(), id.clone());
             let program = Program::start(
                 spec,
                 Timing::default(),
+                feed,
                 move |note| on_note(&notes, &note_id, note),
                 move |status| on_program(&statuses, &status_id, status),
             );
@@ -697,7 +714,7 @@ fn with<T>(app: &AppHandle, change: impl FnOnce(&mut Host, &mut Outbox) -> T) ->
     let mut outbox = Outbox::default();
     let result = {
         let state = app.state::<PluginsState>();
-        let mut host = state.0.lock().ok()?;
+        let mut host = state.host.lock().ok()?;
         let host = host.as_mut()?;
         let result = change(host, &mut outbox);
         host.sync(app, &palette, language, &mut outbox);
@@ -728,6 +745,7 @@ pub fn start(app: &AppHandle) {
     };
     let logs = paths.app_log_dir().unwrap_or_else(|_| local.join("logs"));
     let (events, mut received) = tokio::sync::mpsc::channel(http::QUEUE);
+    let lamp = lamp::line(&lamp_now(app));
     let host = Host {
         folder: config.join("plugins"),
         data: local.join("plugin-data"),
@@ -743,9 +761,10 @@ pub fn start(app: &AppHandle) {
         port_taken: Arc::default(),
         announced: Vec::new(),
         announced_states: HashMap::new(),
+        lamp,
     };
     let mode = host.stored.mode.clone();
-    if let Ok(mut state) = app.state::<PluginsState>().0.lock() {
+    if let Ok(mut state) = app.state::<PluginsState>().host.lock() {
         *state = Some(host);
     }
     with(app, |host, outbox| host.rescan(app, outbox));
@@ -774,7 +793,7 @@ fn tick(app: &AppHandle) {
     let now = Instant::now();
     let due = app
         .state::<PluginsState>()
-        .0
+        .host
         .lock()
         .ok()
         .and_then(|host| {
@@ -1033,16 +1052,64 @@ pub fn import(app: &AppHandle, zip: &Path) -> Result<String, Reason> {
     let folder = with(app, |host, _| host.folder.clone()).ok_or(Reason::Missing)?;
     let _ = std::fs::create_dir_all(&folder);
     let unpacked = scan::unpack(zip, &folder)?;
-    // The program of the plugin it replaces stops first, since its files go.
+    put_in_place(app, &folder, unpacked)
+}
+
+/// Imports a plugin of the catalog, as `import` does, once its zip proved to
+/// hold the plugin `id` with the files of `fingerprint`, those of the index.
+fn import_reviewed(
+    app: &AppHandle,
+    zip: &Path,
+    id: &str,
+    fingerprint: &str,
+) -> Result<String, catalog::CatalogError> {
+    let unreadable = |reason| catalog::CatalogError::Unreadable { reason };
+    let folder = with(app, |host, _| host.folder.clone()).ok_or(unreadable(Reason::Missing))?;
+    let _ = std::fs::create_dir_all(&folder);
+    let unpacked = scan::unpack(zip, &folder).map_err(unreadable)?;
+    if unpacked.id() != id || unpacked.fingerprint().as_deref() != Ok(fingerprint) {
+        unpacked.discard();
+        return Err(catalog::CatalogError::Mismatch);
+    }
+    put_in_place(app, &folder, unpacked).map_err(unreadable)
+}
+
+/// Puts an unpacked plugin in place of the plugin of its id, whose program
+/// stops first, since its files go.
+fn put_in_place(
+    app: &AppHandle,
+    folder: &Path,
+    unpacked: scan::Unpacked,
+) -> Result<String, Reason> {
     let id = unpacked.id().to_owned();
     with(app, |host, outbox| {
         if let Some(program) = host.programs.remove(&id) {
             outbox.stop.push(program);
         }
     });
-    let result = unpacked.install(&folder);
+    let result = unpacked.install(folder);
     with(app, |host, outbox| host.rescan(app, outbox));
     result
+}
+
+/// The plugins of the folder, read again: their version, while they read,
+/// and their fingerprint, for the catalog.
+fn installed(app: &AppHandle) -> catalog::Installed {
+    with(app, |host, outbox| {
+        host.rescan(app, outbox);
+        host.plugins
+            .iter()
+            .map(|(id, plugin)| {
+                let version = plugin
+                    .manifest
+                    .as_ref()
+                    .ok()
+                    .map(|manifest| manifest.version.clone());
+                (id.clone(), (version, plugin.fingerprint.clone()))
+            })
+            .collect()
+    })
+    .unwrap_or_default()
 }
 
 /// The folder of the plugins, which "Open the plugins folder" shows.
@@ -1069,7 +1136,8 @@ pub fn fallback_color(app: &AppHandle) -> Option<u8> {
     .flatten()
 }
 
-/// The palette changed: a state whose color left takes its default one.
+/// The palette changed: a state whose color left takes its default one, and
+/// the programs that read the lamp get the new names of the colors.
 pub fn colors_changed(app: &AppHandle) {
     let palette = app.state::<ColorsState>().get();
     with(app, |host, outbox| {
@@ -1085,18 +1153,79 @@ pub fn colors_changed(app: &AppHandle) {
             host.save(outbox);
         }
     });
+    lamp_changed(app);
 }
 
-/// The labels of the states follow a new language, on the lamp page too.
+/// The labels of the states follow a new language, on the lamp page too,
+/// and so do the default names of the colors that the programs read.
 pub fn relabel(app: &AppHandle) {
     with(app, |_, _| {});
+    lamp_changed(app);
+}
+
+/// The lamp as the plugins read it now.
+fn lamp_now(app: &AppHandle) -> lamp::Lamp {
+    let state = app
+        .try_state::<DeviceHandle>()
+        .and_then(|device| device.state());
+    let kept = app
+        .try_state::<PreviewState>()
+        .and_then(|preview| preview.kept());
+    let follows = app
+        .try_state::<ControlState>()
+        .and_then(|control| control.status().mode);
+    let palette = app.state::<ColorsState>().get();
+    let locale = app.state::<LocaleState>().get();
+    lamp::view(state.as_ref(), kept, &palette, locale, follows)
+}
+
+/// Something that the plugins read of the lamp may have changed: its state,
+/// the palette, the language or the integration it follows. The programs
+/// that read the lamp get its new state, once. Never under the lock of the
+/// host or of the control, which it takes.
+pub fn lamp_changed(app: &AppHandle) {
+    let Some(state) = app.try_state::<PluginsState>() else {
+        return;
+    };
+    // A state read before another never reaches the programs after it.
+    let Ok(_turn) = state.lamp.lock() else {
+        return;
+    };
+    let line = lamp::line(&lamp_now(app));
+    let Ok(mut host) = state.host.lock() else {
+        return;
+    };
+    let Some(host) = host.as_mut().filter(|host| host.lamp != line) else {
+        return;
+    };
+    for feed in host.programs.values().filter_map(Program::feed) {
+        feed.state(line.clone());
+    }
+    host.lamp = line;
+}
+
+/// A short press on the lid, for the programs that read the lamp.
+pub fn pressed(app: &AppHandle) {
+    let Some(state) = app.try_state::<PluginsState>() else {
+        return;
+    };
+    let Ok(host) = state.host.lock() else {
+        return;
+    };
+    for feed in host
+        .iter()
+        .flat_map(|host| host.programs.values())
+        .filter_map(Program::feed)
+    {
+        feed.press(lamp::TOUCH_LINE);
+    }
 }
 
 /// The programs stop with the app, all at once, and the server closes.
 pub fn shutdown(app: &AppHandle) {
     let programs: Vec<Program> = app
         .state::<PluginsState>()
-        .0
+        .host
         .lock()
         .ok()
         .and_then(|mut host| {

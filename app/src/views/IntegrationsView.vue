@@ -3,10 +3,11 @@
   SPDX-FileCopyrightText: 2026 The Disled contributors
 
   The integrations window: the plugins of the folder of the plugins, which
-  bring every integration. A plugin comes disabled; turning it on for the
-  first time, or after its files changed, asks the question of what it
-  will be able to do, as an import does. The folder is read again whenever
-  the window gets the focus.
+  bring every integration, and the catalog, in a tab of its own, read from
+  the network only when the tab opens. A plugin comes disabled; turning it
+  on for the first time, or after its files changed, asks the question of
+  what it will be able to do, as an import or an install from the catalog
+  does. The folder is read again whenever the window gets the focus.
 -->
 <script setup lang="ts">
 import type { UnlistenFn } from '@tauri-apps/api/event';
@@ -24,6 +25,19 @@ const plugins = usePluginsStore();
 const errors = useErrorStore();
 const errorText = useErrorText();
 const { reason } = usePluginTexts();
+
+/** The tab shown: the plugins installed, or the catalog. */
+const tab = ref<string>('installed');
+const tabs = computed(() => [
+  { label: t('integrations.tabs.installed'), value: 'installed', icon: 'i-lucide-puzzle' },
+  { label: t('integrations.tabs.catalog'), value: 'catalog', icon: 'i-lucide-store' },
+]);
+// The catalog comes from the network each time its tab opens.
+watch(tab, (shown) => {
+  if (shown === 'catalog') {
+    void plugins.loadCatalog();
+  }
+});
 
 const selected = ref<string | null>(null);
 const current = computed(
@@ -71,9 +85,17 @@ async function approve(id: string, fingerprint: string): Promise<void> {
 async function importPlugin(): Promise<void> {
   const id = await plugins.importPlugin();
   if (id) {
+    tab.value = 'installed';
     selected.value = id;
     approving.value = id;
   }
+}
+
+/** A plugin of the catalog arrived: its question follows, as after an import. */
+function installed(id: string): void {
+  tab.value = 'installed';
+  selected.value = id;
+  approving.value = id;
 }
 
 let stopFollowingFocus: UnlistenFn | undefined;
@@ -140,7 +162,17 @@ onBeforeUnmount(() => stopFollowingFocus?.());
       @update:open="errors.clear()"
     />
 
-    <div class="flex min-h-0 flex-1">
+    <UTabs
+      v-model="tab"
+      :items="tabs"
+      :content="false"
+      variant="link"
+      size="sm"
+      class="shrink-0 border-b border-default px-4"
+      :ui="{ list: 'border-0' }"
+    />
+
+    <div v-if="tab === 'installed'" class="flex min-h-0 flex-1">
       <IntegrationsList
         v-model="selected"
         class="w-72 shrink-0 border-e border-default"
@@ -150,6 +182,7 @@ onBeforeUnmount(() => stopFollowingFocus?.());
         <IntegrationsDetail v-if="current" :key="current.id" :plugin="current" @toggle="toggle" />
       </div>
     </div>
+    <IntegrationsCatalog v-else class="min-h-0 flex-1 overflow-y-auto" @installed="installed" />
 
     <IntegrationsApproval v-model:open="asking" :plugin="asked" @approve="approve" />
   </main>

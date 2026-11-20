@@ -3,20 +3,27 @@
 
 // The plugins, as the integrations window shows them. The backend reads
 // their folder, keeps their approvals and runs them (plugins/mod.rs); no
-// event carries a token, which only the note of a plugin asks for.
+// event carries a token, which only the note of a plugin asks for. The
+// catalog comes from the network, only when its tab opens
+// (plugins/catalog.rs).
 
 import { open } from '@tauri-apps/plugin-dialog';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import type { CatalogError } from '@/bindings/CatalogError';
+import type { CatalogView } from '@/bindings/CatalogView';
 import type { PluginView } from '@/bindings/PluginView';
 import type { Reason } from '@/bindings/Reason';
 import {
   pluginApprove,
   pluginCopyNote,
+  pluginInstall,
+  pluginOpenSource,
   pluginRegenerateToken,
   pluginRemove,
   pluginSetColor,
   pluginSetEnabled,
+  pluginsCatalog,
   pluginsImport,
   pluginsList,
   pluginsOpenFolder,
@@ -30,6 +37,47 @@ export const usePluginsStore = defineStore('plugins', () => {
   const plugins = ref<PluginView[]>([]);
   /** Why the last import was refused, until the next one. */
   const importRefused = ref<Reason | null>(null);
+
+  /** The plugins of the catalog, none until it was read. */
+  const catalog = ref<CatalogView[] | null>(null);
+  /** The catalog is being read. */
+  const catalogLoading = ref(false);
+  /** Why the last reading or install of the catalog failed, until the next one. */
+  const catalogError = ref<CatalogError | null>(null);
+  /** The plugin of the catalog being installed. */
+  const installing = ref<string | null>(null);
+
+  /** Reads the catalog again, from the network. */
+  async function loadCatalog(): Promise<void> {
+    catalogLoading.value = true;
+    try {
+      catalog.value = await pluginsCatalog();
+      catalogError.value = null;
+    } catch (error) {
+      catalogError.value = error as CatalogError;
+    } finally {
+      catalogLoading.value = false;
+    }
+  }
+
+  /**
+   * Installs a plugin of the catalog, whose id it returns for the question
+   * that follows; a failure keeps its cause.
+   */
+  async function install(id: string): Promise<string | null> {
+    installing.value = id;
+    try {
+      const installed = await pluginInstall(id);
+      catalogError.value = null;
+      await refresh();
+      return installed;
+    } catch (error) {
+      catalogError.value = error as CatalogError;
+      return null;
+    } finally {
+      installing.value = null;
+    }
+  }
 
   /** Runs a change; a failure becomes the last error, a success clears it. */
   async function change(action: () => Promise<void>): Promise<boolean> {
@@ -74,8 +122,15 @@ export const usePluginsStore = defineStore('plugins', () => {
   return {
     plugins,
     importRefused,
+    catalog,
+    catalogLoading,
+    catalogError,
+    installing,
     refresh,
     importPlugin,
+    loadCatalog,
+    install,
+    openSource: (id: string) => change(() => pluginOpenSource(id)),
     approve: (id: string, fingerprint: string) => change(() => pluginApprove(id, fingerprint)),
     setEnabled: (id: string, enabled: boolean) => change(() => pluginSetEnabled(id, enabled)),
     setColor: (id: string, state: string, slot: number) =>

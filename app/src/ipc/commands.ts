@@ -5,6 +5,7 @@
 // commands reject with the backend's error message.
 
 import { invoke } from '@tauri-apps/api/core';
+import type { CatalogView } from '@/bindings/CatalogView';
 import type { Command } from '@/bindings/Command';
 import type { Connection } from '@/bindings/Connection';
 import type { ControlStatus } from '@/bindings/ControlStatus';
@@ -87,6 +88,21 @@ export function pluginRemove(id: string): Promise<void> {
 /** Imports the plugin of a zip file; rejects with the reason of a refusal. */
 export function pluginsImport(path: string): Promise<string> {
   return invoke('plugins_import', { path });
+}
+
+/** The catalog of plugins, read from the network; rejects with a CatalogError. */
+export function pluginsCatalog(): Promise<CatalogView[]> {
+  return invoke('plugins_catalog');
+}
+
+/** Installs a plugin of the catalog; rejects with a CatalogError. */
+export function pluginInstall(id: string): Promise<string> {
+  return invoke('plugin_install', { id });
+}
+
+/** Opens the sources of a plugin of the catalog in the browser. */
+export function pluginOpenSource(id: string): Promise<void> {
+  return invoke('plugin_open_source', { id });
 }
 
 export function pluginsOpenFolder(): Promise<void> {

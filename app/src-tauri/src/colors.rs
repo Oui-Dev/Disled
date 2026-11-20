@@ -507,6 +507,15 @@ impl PreviewState {
             *kept = None;
         }
     }
+
+    /// While a preview runs, the state it took the lamp from, lit or not,
+    /// and its slot.
+    pub fn kept(&self) -> Option<(bool, u8)> {
+        self.0
+            .lock()
+            .ok()
+            .and_then(|kept| kept.map(|kept| (kept.on, kept.slot)))
+    }
 }
 
 /// The prefix of a share code, which keeps its capitals (decided on

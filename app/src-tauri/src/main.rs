@@ -15,6 +15,7 @@ mod control;
 mod device;
 mod firmware;
 mod i18n;
+mod net;
 mod plugins;
 mod settings;
 mod tray;
@@ -28,6 +29,7 @@ use disled_protocol::{Command, SetState};
 use firmware::{FirmwareState, FirmwareStatus};
 use i18n::{Locale, LocaleState};
 use plugins::PluginsState;
+use plugins::catalog::{CatalogError, CatalogState, CatalogView};
 use plugins::manifest::Reason;
 use serde::Deserialize;
 use settings::{Language, Settings, SettingsPatch, SettingsState};
@@ -165,6 +167,33 @@ async fn plugin_remove(app: AppHandle, id: String) -> Result<(), String> {
 #[tauri::command]
 async fn plugins_import(app: AppHandle, path: String) -> Result<String, Reason> {
     plugins::import(&app, std::path::Path::new(&path))
+}
+
+/// The catalog of plugins, read again from the network when its tab opens.
+#[tauri::command]
+async fn plugins_catalog(app: AppHandle) -> Result<Vec<CatalogView>, CatalogError> {
+    plugins::catalog::read(&app).await
+}
+
+/// Installs a plugin of the catalog, in place of the plugin of that id; its
+/// approval follows.
+#[tauri::command]
+async fn plugin_install(app: AppHandle, id: String) -> Result<String, CatalogError> {
+    plugins::catalog::install(&app, &id).await
+}
+
+/// Opens the page of a plugin of the catalog, its sources, in the browser.
+#[tauri::command]
+fn plugin_open_source(app: AppHandle, id: String) -> Result<(), String> {
+    if !plugins::manifest::valid_id(&id) {
+        return Err("no such plugin".into());
+    }
+    app.opener()
+        .open_url(
+            format!("{}{id}", plugins::catalog::SOURCE_URL),
+            None::<&str>,
+        )
+        .map_err(|e| e.to_string())
 }
 
 /// Opens the folder of the plugins in the file manager.
@@ -623,6 +652,7 @@ fn main() {
         .manage(UpdateState::default())
         .manage(FirmwareState::default())
         .manage(PluginsState::default())
+        .manage(CatalogState::default())
         .setup(move |app| {
             // No Dock icon, since the app lives in the menu bar.
             #[cfg(target_os = "macos")]
@@ -675,6 +705,9 @@ fn main() {
             plugin_regenerate_token,
             plugin_remove,
             plugins_import,
+            plugins_catalog,
+            plugin_install,
+            plugin_open_source,
             plugins_open_folder,
             open_integrations,
             colors_get,

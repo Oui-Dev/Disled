@@ -620,6 +620,8 @@ pub fn input(app: &AppHandle, input: Input) -> Result<(), String> {
     });
     if changed {
         let _ = app.emit(EVENT_CONTROL, status);
+        // The plugins that read the lamp also read the integration it follows.
+        crate::plugins::lamp_changed(app);
     }
     result
 }

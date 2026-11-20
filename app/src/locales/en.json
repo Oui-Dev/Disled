@@ -109,6 +109,7 @@
       "process": "Run a program on this computer, with your permissions: {command}",
       "color": "Choose the lamp color, when the lamp follows it",
       "alert": "Show an alert on the lamp",
+      "lamp": "Know the color and brightness of the lamp, and when you touch it",
       "events": "Receive events from {name}, locally",
       "nothingElse": "Nothing else: no program, no Internet"
     },
@@ -143,6 +144,39 @@
       "portTaken": "Port {port} is taken by another program."
     },
     "importFailed": "Import rejected",
+    "tabs": {
+      "installed": "Installed",
+      "catalog": "Catalog"
+    },
+    "catalog": {
+      "label": "Plugins of the catalog",
+      "intro": "Plugins that the Disled project reviews at every version. Once installed, each one asks for your approval, as any plugin does.",
+      "loading": "Reading the catalog…",
+      "empty": "The catalog has no plugin for this version of Disled yet.",
+      "retry": "Try again",
+      "meta": "{version} · by {author}",
+      "install": "Install",
+      "update": "Update to {version}",
+      "installed": "Installed",
+      "source": "Sources",
+      "sourceLabel": "Sources of {name}, on GitHub",
+      "cap": {
+        "run": "Runs a program",
+        "runs": "Runs {program}",
+        "color": "Lamp color",
+        "alert": "Alerts",
+        "lamp": "Reads the lamp",
+        "events": "Events from {name}"
+      },
+      "error": {
+        "network": "Cannot reach the catalog. Check the connection to the Internet.",
+        "signature": "The catalog is not signed with its key: Disled shows none of it.",
+        "index": "This version of Disled cannot read the catalog: update the app.",
+        "missing": "The catalog no longer lists this plugin.",
+        "mismatch": "The download does not match the catalog: nothing was installed.",
+        "unreadable": "The plugin cannot be installed: {reason}"
+      }
+    },
     "reason": {
       "missing": "No plugin.json file.",
       "json": "Invalid JSON, line {line}.",

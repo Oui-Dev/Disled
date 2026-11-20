@@ -4,10 +4,12 @@
 //! The programs of the plugins. Disled runs the command of the manifest in
 //! the folder of the plugin, reads one JSON-RPC 2.0 notification per line on
 //! its output, as the stdio transport of MCP does, keeps its error output as
-//! its log, and stops it by closing its input. A program that crashes starts
-//! again after 1, 5, 30 then 60 s, until its fifth crash in ten minutes. A
-//! job object on Windows, a process group elsewhere, and on Linux the death
-//! signal of its parent, take its own children down with it.
+//! its log, and stops it by closing its input. The program of a plugin with
+//! the `lamp` capability also gets notifications on its input, from a feed.
+//! A program that crashes starts again after 1, 5, 30 then 60 s, until its
+//! fifth crash in ten minutes. A job object on Windows, a process group
+//! elsewhere, and on Linux the death signal of its parent, take its own
+//! children down with it.
 
 use std::collections::VecDeque;
 use std::ffi::OsString;
@@ -15,7 +17,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{Arc, Condvar, Mutex, mpsc};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -28,6 +30,8 @@ const MAX_LINE: usize = 64 * 1024;
 const MAX_LOG: u64 = 256 * 1024;
 /// How often the supervisor looks at its program.
 const POLL: Duration = Duration::from_millis(100);
+/// The presses that wait for a program that does not read its input, at most.
+const MAX_PRESSES: usize = 16;
 
 /// What a program asks for.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -134,6 +138,144 @@ pub enum ProgramStatus {
     Failed,
 }
 
+/// A line of a feed: the state of the lamp, which a newer one replaces, or
+/// a press on the lid.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Line {
+    State(String),
+    Press(String),
+}
+
+impl Line {
+    fn text(self) -> String {
+        match self {
+            Line::State(text) | Line::Press(text) => text,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct Lines {
+    /// The latest state, which every start of the program gets first.
+    state: Option<String>,
+    /// What waits for the start that reads, in order.
+    waiting: VecDeque<Line>,
+    /// That start, none while the program does not run.
+    reader: Option<u64>,
+    starts: u64,
+}
+
+/// What Disled writes on the input of a program, one JSON-RPC 2.0
+/// notification per line: the state of the lamp, then its changes and the
+/// presses on the lid. Each start of the program gets the latest state
+/// first. While the program does not read, a new state takes the place of
+/// the one that waits, and the presses past `MAX_PRESSES` go, the oldest
+/// first, so that Disled never waits for it.
+#[derive(Debug, Default)]
+pub struct Feed {
+    lines: Mutex<Lines>,
+    ready: Condvar,
+}
+
+impl Feed {
+    pub fn new(state: Option<String>) -> Arc<Self> {
+        Arc::new(Self {
+            lines: Mutex::new(Lines {
+                state,
+                ..Lines::default()
+            }),
+            ready: Condvar::new(),
+        })
+    }
+
+    /// A new state of the lamp.
+    pub fn state(&self, line: String) {
+        if let Ok(mut lines) = self.lines.lock() {
+            if lines.reader.is_some() {
+                lines.waiting.retain(|line| matches!(line, Line::Press(_)));
+                lines.waiting.push_back(Line::State(line.clone()));
+            }
+            lines.state = Some(line);
+        }
+        self.ready.notify_all();
+    }
+
+    /// A press, for the program that runs only.
+    pub fn press(&self, line: &str) {
+        if let Ok(mut lines) = self.lines.lock() {
+            if lines.reader.is_none() {
+                return;
+            }
+            lines.waiting.push_back(Line::Press(line.to_owned()));
+            let presses = lines
+                .waiting
+                .iter()
+                .filter(|line| matches!(line, Line::Press(_)))
+                .count();
+            if presses > MAX_PRESSES
+                && let Some(oldest) = lines
+                    .waiting
+                    .iter()
+                    .position(|line| matches!(line, Line::Press(_)))
+            {
+                lines.waiting.remove(oldest);
+            }
+        }
+        self.ready.notify_all();
+    }
+
+    /// A start of the program, which gets the latest state first.
+    fn open(&self) -> u64 {
+        let Ok(mut lines) = self.lines.lock() else {
+            return 0;
+        };
+        lines.starts += 1;
+        let start = lines.starts;
+        lines.reader = Some(start);
+        lines.waiting = lines.state.clone().map(Line::State).into_iter().collect();
+        start
+    }
+
+    /// The end of a start: its writer leaves, which closes the input.
+    fn close(&self, start: u64) {
+        if let Ok(mut lines) = self.lines.lock()
+            && lines.reader == Some(start)
+        {
+            lines.reader = None;
+            lines.waiting.clear();
+        }
+        self.ready.notify_all();
+    }
+
+    /// The next line for a start, once there is one; none once it ended.
+    fn next(&self, start: u64) -> Option<String> {
+        let lines = self.lines.lock().ok()?;
+        let mut lines = self
+            .ready
+            .wait_while(lines, |lines| {
+                lines.reader == Some(start) && lines.waiting.is_empty()
+            })
+            .ok()?;
+        if lines.reader != Some(start) {
+            return None;
+        }
+        lines.waiting.pop_front().map(Line::text)
+    }
+}
+
+/// Writes the lines of a start on the input of its program, until the start
+/// ends or the program stops reading. Dropping the input closes it.
+fn write_lines(mut input: ChildStdin, feed: &Feed, start: u64) {
+    while let Some(line) = feed.next(start) {
+        if writeln!(input, "{line}")
+            .and_then(|()| input.flush())
+            .is_err()
+        {
+            return;
+        }
+    }
+}
+
 /// What a program needs to run.
 #[derive(Debug, Clone)]
 pub struct Spec {
@@ -173,21 +315,40 @@ impl Default for Timing {
 pub struct Program {
     stop: mpsc::Sender<()>,
     thread: Option<JoinHandle<()>>,
+    feed: Option<Arc<Feed>>,
 }
 
 impl Program {
+    /// Starts the program, which gets the lines of `feed` on its input, if
+    /// any, and nothing otherwise.
     pub fn start(
         spec: Spec,
         timing: Timing,
+        feed: Option<Arc<Feed>>,
         on_note: impl Fn(Notification) + Send + Sync + 'static,
         on_status: impl Fn(ProgramStatus) + Send + 'static,
     ) -> Self {
         let (stop, stopped) = mpsc::channel();
+        let supervised = feed.clone();
         let thread = thread::Builder::new()
             .name(format!("disled-plugin-{}", spec.id))
-            .spawn(move || supervise(&spec, timing, &stopped, Arc::new(on_note), &on_status))
+            .spawn(move || {
+                supervise(
+                    &spec,
+                    timing,
+                    supervised.as_ref(),
+                    &stopped,
+                    Arc::new(on_note),
+                    &on_status,
+                );
+            })
             .ok();
-        Self { stop, thread }
+        Self { stop, thread, feed }
+    }
+
+    /// What the program gets on its input, none when it gets nothing.
+    pub fn feed(&self) -> Option<&Feed> {
+        self.feed.as_deref()
     }
 
     /// Closes the input of the program, gives it its grace to stop, then
@@ -203,13 +364,14 @@ impl Program {
 fn supervise(
     spec: &Spec,
     timing: Timing,
+    feed: Option<&Arc<Feed>>,
     stopped: &mpsc::Receiver<()>,
     on_note: Arc<dyn Fn(Notification) + Send + Sync>,
     on_status: &dyn Fn(ProgramStatus),
 ) {
     let mut crashes: VecDeque<Instant> = VecDeque::new();
     loop {
-        let mut running = match launch(spec, Arc::clone(&on_note)) {
+        let mut running = match launch(spec, feed, Arc::clone(&on_note)) {
             Ok(running) => running,
             Err(error) => {
                 on_status(ProgramStatus::Stopped {
@@ -260,7 +422,10 @@ fn supervise(
 /// A program that runs, with what takes it down.
 struct Running {
     child: Child,
+    /// Its input, unless the writer of a feed holds it.
     input: Option<ChildStdin>,
+    /// The feed and the start that its writer serves.
+    feed: Option<(Arc<Feed>, u64)>,
     #[cfg(windows)]
     job: Option<job::Job>,
     readers: Vec<JoinHandle<()>>,
@@ -272,6 +437,11 @@ impl Running {
     /// the last line of the error output.
     fn end(&mut self, grace: Duration) -> Option<String> {
         drop(self.input.take());
+        // The writer of a feed leaves and drops the input, unless it waits
+        // for a program that does not read, which the end of the tree frees.
+        if let Some((feed, start)) = &self.feed {
+            feed.close(*start);
+        }
         let deadline = Instant::now() + grace;
         while Instant::now() < deadline && matches!(self.child.try_wait(), Ok(None)) {
             thread::sleep(Duration::from_millis(20));
@@ -297,7 +467,11 @@ impl Running {
     }
 }
 
-fn launch(spec: &Spec, on_note: Arc<dyn Fn(Notification) + Send + Sync>) -> io::Result<Running> {
+fn launch(
+    spec: &Spec,
+    feed: Option<&Arc<Feed>>,
+    on_note: Arc<dyn Fn(Notification) + Send + Sync>,
+) -> io::Result<Running> {
     let mut command = Command::new(&spec.program);
     command
         .args(&spec.arguments)
@@ -369,8 +543,24 @@ fn launch(spec: &Spec, on_note: Arc<dyn Fn(Notification) + Send + Sync>) -> io::
             });
         }));
     }
+    // With a feed, a writer holds the input, among the threads that the end
+    // of the program joins.
+    let mut input = child.stdin.take();
+    let feed = match (feed, input.take()) {
+        (Some(feed), Some(stdin)) => {
+            let start = feed.open();
+            let writer = Arc::clone(feed);
+            readers.push(thread::spawn(move || write_lines(stdin, &writer, start)));
+            Some((Arc::clone(feed), start))
+        }
+        (_, stdin) => {
+            input = stdin;
+            None
+        }
+    };
     Ok(Running {
-        input: child.stdin.take(),
+        input,
+        feed,
         child,
         #[cfg(windows)]
         job,
@@ -543,6 +733,24 @@ mod tests {
                 // Ends when its input closes.
                 let _ = io::stdin().read_to_end(&mut Vec::new());
             }
+            // Says the method of each line of its input as a state, until
+            // its input closes, or crashes after the first one.
+            "feed" | "feed-crash" => {
+                for line in io::stdin().lines() {
+                    let Ok(line) = line else { break };
+                    let method = serde_json::from_str::<Value>(&line)
+                        .ok()
+                        .and_then(|value| value["method"].as_str().map(str::to_owned))
+                        .unwrap_or_default();
+                    println!(
+                        r#"{{"jsonrpc":"2.0","method":"state","params":{{"state":"{method}"}}}}"#
+                    );
+                    io::stdout().flush().expect("flush");
+                    if mode == "feed-crash" {
+                        std::process::exit(3);
+                    }
+                }
+            }
             _ => thread::sleep(Duration::from_secs(60)),
         }
     }
@@ -582,12 +790,26 @@ mod tests {
         mpsc::Receiver<Notification>,
         mpsc::Receiver<ProgramStatus>,
     ) {
+        start_fed(spec, timing, None)
+    }
+
+    /// The same, for a program that gets the lines of `feed`.
+    fn start_fed(
+        spec: Spec,
+        timing: Timing,
+        feed: Option<Arc<Feed>>,
+    ) -> (
+        Program,
+        mpsc::Receiver<Notification>,
+        mpsc::Receiver<ProgramStatus>,
+    ) {
         let (notes, noted) = mpsc::channel();
         let (statuses, status) = mpsc::channel();
         let notes = Mutex::new(notes);
         let program = Program::start(
             spec,
             timing,
+            feed,
             move |note| {
                 let _ = notes.lock().map(|notes| notes.send(note));
             },
@@ -716,5 +938,84 @@ mod tests {
         let asked = Instant::now();
         program.stop();
         assert!(asked.elapsed() < Duration::from_secs(10), "it slept 60 s");
+    }
+
+    #[test]
+    fn a_feed_keeps_the_latest_state_and_the_last_presses() {
+        let feed = Feed::new(Some("state 1".into()));
+        // Nobody reads: the state changes, the presses go nowhere.
+        feed.state("state 2".into());
+        feed.press("lost");
+        let start = feed.open();
+        assert_eq!(feed.next(start).as_deref(), Some("state 2"));
+        // The program does not read: a new state replaces the one that
+        // waits, after the presses before it.
+        feed.state("state 3".into());
+        feed.press("press");
+        feed.state("state 4".into());
+        assert_eq!(feed.next(start).as_deref(), Some("press"));
+        assert_eq!(feed.next(start).as_deref(), Some("state 4"));
+        for press in 0..20 {
+            feed.press(&format!("press {press}"));
+        }
+        let kept: Vec<String> = (0..MAX_PRESSES).filter_map(|_| feed.next(start)).collect();
+        assert_eq!(kept.first().map(String::as_str), Some("press 4"));
+        assert_eq!(kept.last().map(String::as_str), Some("press 19"));
+        // The end of the start frees its writer, and the next start gets
+        // the latest state again.
+        feed.close(start);
+        assert_eq!(feed.next(start), None);
+        let again = feed.open();
+        assert_eq!(feed.next(again).as_deref(), Some("state 4"));
+        assert_eq!(feed.next(start), None);
+    }
+
+    /// The states that a program in mode `feed` says, which are the methods
+    /// of the lines it read, up to `count` of them.
+    fn read_back(noted: &mpsc::Receiver<Notification>, count: usize) -> Vec<String> {
+        let mut methods = Vec::new();
+        while methods.len() < count {
+            match noted.recv_timeout(Duration::from_secs(30)) {
+                Ok(Notification::State { state, .. }) if state != "work" => methods.push(state),
+                Ok(_) => {}
+                Err(_) => break,
+            }
+        }
+        methods
+    }
+
+    #[test]
+    fn a_program_reads_the_state_first_then_the_changes() {
+        let folder = tempfile::tempdir().expect("folder");
+        let feed = Feed::new(Some(r#"{"jsonrpc":"2.0","method":"lamp"}"#.into()));
+        let (program, noted, status) =
+            start_fed(spec(folder.path(), "feed"), fast(), Some(Arc::clone(&feed)));
+        assert_eq!(
+            status.recv_timeout(Duration::from_secs(30)),
+            Ok(ProgramStatus::Running)
+        );
+        assert_eq!(read_back(&noted, 1), ["lamp"]);
+        feed.press(r#"{"jsonrpc":"2.0","method":"touch"}"#);
+        feed.state(r#"{"jsonrpc":"2.0","method":"changed"}"#.into());
+        assert_eq!(read_back(&noted, 2), ["touch", "changed"]);
+        // The input still closes, and the program stops by itself.
+        let asked = Instant::now();
+        program.stop();
+        assert!(asked.elapsed() < Duration::from_secs(10));
+    }
+
+    #[test]
+    fn a_program_that_starts_again_reads_the_latest_state_again() {
+        let folder = tempfile::tempdir().expect("folder");
+        let feed = Feed::new(Some(r#"{"jsonrpc":"2.0","method":"first"}"#.into()));
+        let (program, noted, _status) = start_fed(
+            spec(folder.path(), "feed-crash"),
+            fast(),
+            Some(Arc::clone(&feed)),
+        );
+        assert_eq!(read_back(&noted, 1), ["first"]);
+        feed.state(r#"{"jsonrpc":"2.0","method":"latest"}"#.into());
+        assert_eq!(read_back(&noted, 1), ["latest"]);
+        program.stop();
     }
 }

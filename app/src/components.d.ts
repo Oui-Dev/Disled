@@ -24,6 +24,7 @@ declare module 'vue' {
     DiagnosticsSelfTest: typeof import('./components/diagnostics/DiagnosticsSelfTest.vue')['default']
     DiagnosticsTelemetry: typeof import('./components/diagnostics/DiagnosticsTelemetry.vue')['default']
     IntegrationsApproval: typeof import('./components/integrations/IntegrationsApproval.vue')['default']
+    IntegrationsCatalog: typeof import('./components/integrations/IntegrationsCatalog.vue')['default']
     IntegrationsColors: typeof import('./components/integrations/IntegrationsColors.vue')['default']
     IntegrationsConfirm: typeof import('./components/integrations/IntegrationsConfirm.vue')['default']
     IntegrationsDetail: typeof import('./components/integrations/IntegrationsDetail.vue')['default']
