@@ -188,6 +188,19 @@ newest first, then the last one of the major before, which takes a lamp
 back. So a firmware release stays installable from the app as long as it
 lives on the releases page.
 
+## The catalog of plugins
+
+The [Disled-plugins](https://github.com/Oui-Dev/Disled-plugins) repository
+publishes the catalog on its own, at every change of its `main`
+([sharing](plugins/sharing.md)). It signs its index with the catalog key,
+which is not the update key: a leak of the catalog key can sign no app and
+no firmware. The app holds the public half of that key, minisign key
+`474E5F10EC4C34E3`, in `CATALOG_KEY` of
+`app/src-tauri/src/plugins/catalog.rs`, and reads as not signed an index
+that another key signed. A new catalog key thus needs a release of the
+app, and the earlier apps lose the catalog: keep a backup of the private
+key and its password outside the computer.
+
 ## A major version
 
 Version 2 of the firmware and of the app came out together, since each

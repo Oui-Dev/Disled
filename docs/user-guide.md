@@ -222,8 +222,9 @@ original cycle.
 An integration lets a program choose the color of the lamp, such as a tool
 that shows whether it is working or waiting for you. Integrations come from
 plugins, which people write for their programs
-([how to write one](plugins.md)). The Disled repository has one for Claude
-Code ([examples/plugins/claude-code](../examples/plugins/claude-code/)).
+([how to write one](plugins/README.md)). The catalog of the Disled project
+holds those that it reviews, such as the one for Claude Code, and the
+integrations window installs them.
 
 **The mode.** The button at the top right of the popup opens **The lamp
 follows**: **Manual** ("You choose the color."), the **Calls** group, then
@@ -233,16 +234,25 @@ and **Manage integrations**. While the lamp follows an integration:
 - The row of colors gives way to **Off** and a card with the state the
   integration gives, such as what it does, and since when. A click on the
   card turns the lamp on with the color of that state.
-- A short touch on the lid does nothing, and holding for 2 s still turns
-  the lamp off or on.
+- A short touch on the lid changes nothing on the lamp, but a plugin that
+  reads the lamp hears of it, and may act on it. Holding for 2 s still
+  turns the lamp off or on.
 - Choose **Manual** to choose the color again.
 
-**Manage integrations** opens the **Disled integrations** window:
+**Manage integrations** opens the **Disled integrations** window, with two
+tabs: **Installed**, the plugins of this computer, and **Catalog**.
 
+- **Catalog** lists the plugins that the Disled project reviews at every
+  version, read from the Internet when the tab opens, and only then. Each
+  one says what it can do, and what it needs, such as Node.js. **Install**
+  adds it, **Update to …** brings its later version, and **Sources** shows
+  its files on GitHub. Either way, the question below follows.
 - **Open the plugins folder** shows where the plugins live, one folder
-  each. **Import a plugin** takes a plugin sent to you as a zip file.
+  each. **Import a plugin** takes a plugin sent to you as a zip file, which
+  no one reviewed.
 - A new plugin arrives disabled. Turning it on asks "Enable …?" with what
-  it will be able to do: choose the lamp color, show an alert, receive the
+  it will be able to do: choose the lamp color, show an alert, know the
+  color and brightness of the lamp and when you touch it, receive the
   events of its program, or run a program on this computer. Only enable
   plugins from people you trust. If the files of a plugin change, Disled
   asks again.
@@ -262,8 +272,9 @@ and **Manage integrations**. While the lamp follows an integration:
 
 **Alerts.** A plugin allowed to show alerts can ask for one: the lamp breathes
 three times, softly, then stops by itself. Nothing else shows in the popup.
-There is no alert while the lamp is off, and the touch does nothing while
-the lamp breathes.
+There is no alert while the lamp is off, and the touch changes nothing on
+the lamp while it breathes, though a plugin that reads the lamp still hears
+of a short touch.
 
 ## Calls
 
@@ -406,7 +417,7 @@ sees, and helps to report a problem.
 | A short touch does nothing | The lamp follows an integration: hold for 2 s to turn it off or on, or choose **Manual** with the mode button. |
 | The lamp stays in a call | An app keeps the microphone open, such as a browser tab or an assistant that waits for its wake word. Close it, or turn **Microphone in use** off. |
 | The **Calls** group is missing | macOS needs version 14.2 or later, and Linux the `libpulse0` package. |
-| An integration receives nothing | Check that its plugin is enabled and that its note was followed. A program that goes through a proxy must leave `127.0.0.1` out of it ([plugins.md](plugins.md#behind-a-proxy)). |
+| An integration receives nothing | Check that its plugin is enabled and that its note was followed. A program that goes through a proxy must leave `127.0.0.1` out of it ([plugins](plugins/events.md#behind-a-proxy)). |
 | Too bright or too dim in automatic mode | Move the slider toward **Brighter** or **Darker**, or turn **Auto** off for a fixed level. |
 | The lamp turns off when the computer sleeps | This is expected. It comes back when the computer wakes up. |
 | The lamp is dimmer on a phone charger | This is expected. Without a computer, it limits its power. |

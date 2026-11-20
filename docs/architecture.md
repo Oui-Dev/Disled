@@ -209,11 +209,16 @@ but passes no gesture, nor the release of a press that outlived the alert.
   of the alerts; and the lamp handed back to its own colors, cycle and
   sensitivity when the app quits.
 - **Plugins** (`plugins/`). The integrations come from plugins in the
-  configuration folder of the app ([plugins.md](plugins.md)): their
+  configuration folder of the app ([plugin API](plugins/README.md)): their
   manifests, their approval by the fingerprint of their files, the rules
   that turn their events into states, the local server on
   `127.0.0.1:47831` with one token per plugin, and the programs some of them
-  run.
+  run. The programs of the plugins with `lamp` read on their input the state
+  of the lamp and the presses on its lid, which the lamp reports from
+  protocol 2.1 (`plugins/lamp.rs`, the feed of `plugins/process.rs`). The
+  catalog of the [Disled-plugins](https://github.com/Oui-Dev/Disled-plugins)
+  repository comes from the network only when its tab opens, its index
+  signed with a key of its own (`plugins/catalog.rs`, `net.rs`).
 - **Calls** (`calls/`). While "Microphone in use" is on, in manual mode, a
   thread reads whether an app captures the microphone: the capture sessions
   of WASAPI on Windows, the process objects of CoreAudio on macOS 14.2 and
