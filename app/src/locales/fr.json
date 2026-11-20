@@ -109,6 +109,7 @@
       "process": "Lancer un programme sur cet ordinateur, avec vos droits : {command}",
       "color": "Choisir la couleur de la lampe, quand elle le suit",
       "alert": "Faire une alerte sur la lampe",
+      "lamp": "Connaître la couleur et la luminosité de la lampe, et quand vous la touchez",
       "events": "Recevoir les événements de {name}, en local",
       "nothingElse": "Rien d’autre : aucun programme, pas d’Internet"
     },
@@ -143,6 +144,39 @@
       "portTaken": "Le port {port} est pris par un autre programme."
     },
     "importFailed": "Import refusé",
+    "tabs": {
+      "installed": "Installées",
+      "catalog": "Catalogue"
+    },
+    "catalog": {
+      "label": "Plugins du catalogue",
+      "intro": "Des plugins que le projet Disled relit à chaque version. Une fois installé, chacun demande votre accord, comme tout plugin.",
+      "loading": "Lecture du catalogue…",
+      "empty": "Le catalogue n’a pas encore de plugin pour cette version de Disled.",
+      "retry": "Réessayer",
+      "meta": "{version} · par {author}",
+      "install": "Installer",
+      "update": "Mettre à jour en {version}",
+      "installed": "Installé",
+      "source": "Sources",
+      "sourceLabel": "Sources de {name}, sur GitHub",
+      "cap": {
+        "run": "Lance un programme",
+        "runs": "Lance {program}",
+        "color": "Couleur de la lampe",
+        "alert": "Alertes",
+        "lamp": "Lit la lampe",
+        "events": "Événements de {name}"
+      },
+      "error": {
+        "network": "Impossible de joindre le catalogue. Vérifiez la connexion à Internet.",
+        "signature": "Le catalogue n’est pas signé avec sa clé : Disled n’en montre rien.",
+        "index": "Cette version de Disled ne sait pas lire le catalogue : mettez l’app à jour.",
+        "missing": "Le catalogue ne propose plus ce plugin.",
+        "mismatch": "Le téléchargement ne correspond pas au catalogue : rien n’a été installé.",
+        "unreadable": "Impossible d’installer le plugin : {reason}"
+      }
+    },
     "reason": {
       "missing": "Fichier plugin.json absent.",
       "json": "JSON invalide, ligne {line}.",

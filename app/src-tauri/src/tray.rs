@@ -99,34 +99,42 @@ fn srgb_of(light: LinearRgb) -> [u8; 3] {
     })
 }
 
-/// The look of a lamp state. A built-in color shows its swatch and the name
-/// the user gave it, or its default one; a custom color its own code; any
-/// other slot the light the lamp reports. The preview slot of the editor
-/// changes eight times a second, so the icon keeps its look: `None`.
+/// A slot as the user sees it: its color on screen and its name. A built-in
+/// color shows its swatch and the name the user gave it, or its default one;
+/// a custom color its own code and name; any other slot `light`, the light
+/// the lamp reports, and no name.
+pub fn color_of(
+    slot: u8,
+    light: LinearRgb,
+    palette: &Palette,
+    locale: Locale,
+) -> ([u8; 3], Option<String>) {
+    if let Some((_, rgb)) = BUILT_IN_COLORS.get(usize::from(slot)) {
+        let name = palette.names[usize::from(slot)]
+            .clone()
+            .or_else(|| default_name(slot, locale));
+        return (*rgb, name);
+    }
+    if let Some(color) = palette.custom.iter().find(|color| color.slot == slot) {
+        return (rgb_of_hex(&color.hex), Some(color.name.clone()));
+    }
+    (srgb_of(light), None)
+}
+
+/// The look of a lamp state, in the color and under the name of
+/// `color_of`, "More" for a slot without a name. The preview slot of the
+/// editor changes eight times a second, so the icon keeps its look: `None`.
 pub fn look_of(state: &State, palette: &Palette, locale: Locale) -> Option<Look> {
     if !state.on {
         return Some(Look::Off);
     }
-    let slot = state.color;
-    if slot == PREVIEW_SLOT {
+    if state.color == PREVIEW_SLOT {
         return None;
     }
-    if let Some((_, rgb)) = BUILT_IN_COLORS.get(usize::from(slot)) {
-        let name = palette.names[usize::from(slot)]
-            .clone()
-            .or_else(|| default_name(slot, locale))
-            .unwrap_or_default();
-        return Some(Look::On { rgb: *rgb, name });
-    }
-    if let Some(color) = palette.custom.iter().find(|color| color.slot == slot) {
-        return Some(Look::On {
-            rgb: rgb_of_hex(&color.hex),
-            name: color.name.clone(),
-        });
-    }
+    let (rgb, name) = color_of(state.color, state.rgb, palette, locale);
     Some(Look::On {
-        rgb: srgb_of(state.rgb),
-        name: locale.t("lamp.colors.more"),
+        rgb,
+        name: name.unwrap_or_else(|| locale.t("lamp.colors.more")),
     })
 }
 

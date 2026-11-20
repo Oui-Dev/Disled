@@ -4,8 +4,9 @@
 
   What a plugin can do, from its manifest only, never from a text of the
   plugin: its program first, in the tone of a warning, then its color, its
-  alerts and its events, and "Nothing else" for a plugin that runs nothing.
-  The same list in the details and in the approval question.
+  alerts, what it reads of the lamp and its events, and "Nothing else" for a
+  plugin that runs nothing. The same list in the details and in the approval
+  question.
 -->
 <script setup lang="ts">
 import { computed } from 'vue';
@@ -34,6 +35,14 @@ const lines = computed(() => {
       icon: 'i-lucide-bell',
       tone: 'text-muted',
       text: t('integrations.perm.alert'),
+    });
+  }
+  if (capabilities.lamp) {
+    shown.push({
+      key: 'lamp',
+      icon: 'i-lucide-eye',
+      tone: 'text-muted',
+      text: t('integrations.perm.lamp'),
     });
   }
   if (capabilities.events) {

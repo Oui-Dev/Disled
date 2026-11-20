@@ -147,6 +147,8 @@ pub struct Capabilities {
     pub alert: bool,
     /// It gets events through the local server.
     pub events: bool,
+    /// Its program reads the state of the lamp and its presses on its input.
+    pub lamp: bool,
 }
 
 /// A state the plugin announces, and its color unless the user picks another.
@@ -374,8 +376,9 @@ fn string(object: &Map<String, Value>, field: &str) -> Result<String, Reason> {
         .ok_or_else(|| invalid(field))
 }
 
-/// The capabilities it declares, of which this API knows four; others are
-/// ignored, and never granted. A plugin runs a program or gets events.
+/// The capabilities it declares, of which this API knows five; others are
+/// ignored, and never granted. A plugin runs a program or gets events, and
+/// only a program reads the lamp, on its input.
 fn capabilities(object: &Map<String, Value>) -> Result<Capabilities, Reason> {
     let list = object
         .get("capabilities")
@@ -389,11 +392,12 @@ fn capabilities(object: &Map<String, Value>) -> Result<Capabilities, Reason> {
             Some("color") => capabilities.color = true,
             Some("alert") => capabilities.alert = true,
             Some("events") => capabilities.events = true,
+            Some("lamp") => capabilities.lamp = true,
             Some(_) => {}
             None => return Err(invalid("capabilities")),
         }
     }
-    if capabilities.run || capabilities.events {
+    if capabilities.run || (capabilities.events && !capabilities.lamp) {
         Ok(capabilities)
     } else {
         Err(invalid("capabilities"))
@@ -607,24 +611,6 @@ mod tests {
         );
     }
 
-    /// The example of the repository reads as a folder of the plugins folder
-    /// does, its name included.
-    #[test]
-    fn the_example_plugin_reads() {
-        let folder =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/plugins/claude-code");
-        let manifest = read(&folder).expect("examples/plugins/claude-code reads");
-        assert_eq!(manifest.id, "claude-code");
-        assert_eq!(manifest.states.len(), 3);
-        assert!(manifest.capabilities.events && manifest.capabilities.alert);
-        assert!(
-            manifest
-                .note
-                .as_ref()
-                .is_some_and(|note| matches!(note.block, Some(Block::Json(_))))
-        );
-    }
-
     #[test]
     fn a_text_comes_in_the_language_of_the_app_or_english_or_french() {
         let mut value = claude_code();
@@ -712,11 +698,217 @@ mod tests {
                 run: false,
                 color: true,
                 alert: true,
-                events: true
+                events: true,
+                lamp: false,
             }
         );
         // An icon outside the list falls back to the puzzle.
         assert_eq!(manifest.icon, "puzzle");
+    }
+
+    #[test]
+    fn only_a_program_reads_the_lamp() {
+        let mut value = pomodoro();
+        value["capabilities"] = json!(["run", "color", "lamp"]);
+        let manifest = Manifest::from_value(&value, Some("pomodoro")).expect("read");
+        assert!(manifest.capabilities.lamp && manifest.capabilities.run);
+        // A plugin with events has no program to read it.
+        assert_eq!(
+            reason(claude_code(), |v| v["capabilities"] =
+                json!(["color", "events", "lamp"])),
+            invalid("capabilities")
+        );
+    }
+
+    /// docs/plugins/plugin.schema.json and this reader agree, but on two
+    /// kinds of manifests: the schema refuses the fields and values that the
+    /// reader ignores, and it cannot see the links between fields that the
+    /// reader checks.
+    #[test]
+    fn the_schema_says_what_the_reader_says() {
+        let path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/plugins/plugin.schema.json");
+        let schema: Value =
+            serde_json::from_str(&std::fs::read_to_string(path).expect("schema")).expect("JSON");
+        let validator = jsonschema::validator_for(&schema).expect("a valid schema");
+        let with = |mut value: Value, change: fn(&mut Value)| {
+            change(&mut value);
+            value
+        };
+        // The manifest, whether the schema takes it, whether the reader does.
+        let cases: Vec<(&str, Value, bool, bool)> = vec![
+            ("claude code", claude_code(), true, true),
+            ("pomodoro", pomodoro(), true, true),
+            (
+                "a program that reads the lamp",
+                with(pomodoro(), |v| {
+                    v["capabilities"] = json!(["run", "color", "lamp"])
+                }),
+                true,
+                true,
+            ),
+            (
+                "the address of the schema",
+                with(pomodoro(), |v| v["$schema"] = json!("plugin.schema.json")),
+                true,
+                true,
+            ),
+            (
+                "a condition on a list",
+                with(claude_code(), |v| {
+                    v["events"]["rules"][0]["when"]["/tools"] = json!({ "nonEmpty": true });
+                }),
+                true,
+                true,
+            ),
+            (
+                "events that read the lamp",
+                with(claude_code(), |v| {
+                    v["capabilities"] = json!(["color", "events", "lamp"]);
+                }),
+                false,
+                false,
+            ),
+            (
+                "no name",
+                with(claude_code(), |v| {
+                    v.as_object_mut().map(|o| o.remove("name"));
+                }),
+                false,
+                false,
+            ),
+            (
+                "a later API",
+                with(claude_code(), |v| v["api"] = json!(2)),
+                false,
+                false,
+            ),
+            (
+                "a long name",
+                with(claude_code(), |v| v["name"] = json!("x".repeat(33))),
+                false,
+                false,
+            ),
+            (
+                "not SemVer",
+                with(claude_code(), |v| v["version"] = json!("1.0")),
+                false,
+                false,
+            ),
+            (
+                "neither a program nor events",
+                with(claude_code(), |v| v["capabilities"] = json!(["color"])),
+                false,
+                false,
+            ),
+            (
+                "a color without states",
+                with(claude_code(), |v| {
+                    v.as_object_mut().map(|o| o.remove("states"));
+                }),
+                false,
+                false,
+            ),
+            (
+                "a color that is not built in",
+                with(claude_code(), |v| v["states"][0]["color"] = json!("pink")),
+                false,
+                false,
+            ),
+            (
+                "an empty command",
+                with(pomodoro(), |v| v["run"] = json!({ "default": [] })),
+                false,
+                false,
+            ),
+            (
+                "events without the capability",
+                with(pomodoro(), |v| {
+                    v["events"] = json!({ "from": "x", "rules": [] });
+                }),
+                false,
+                false,
+            ),
+            (
+                "a rule without an action",
+                with(claude_code(), |v| {
+                    v["events"]["rules"] = json!([{ "when": {} }])
+                }),
+                false,
+                false,
+            ),
+            (
+                "a condition that is not a pointer",
+                with(claude_code(), |v| {
+                    v["events"]["rules"][0]["when"] = json!({ "event": "end" });
+                }),
+                false,
+                false,
+            ),
+            // The schema is stricter: these are typos most of the time.
+            (
+                "an unknown field",
+                with(claude_code(), |v| {
+                    v["homepage"] = json!("https://example.com")
+                }),
+                false,
+                true,
+            ),
+            (
+                "an unknown icon",
+                with(claude_code(), |v| v["icon"] = json!("skull")),
+                false,
+                true,
+            ),
+            (
+                "an unknown capability",
+                with(claude_code(), |v| {
+                    v["capabilities"] = json!(["color", "alert", "events", "camera"]);
+                }),
+                false,
+                true,
+            ),
+            (
+                "states without color",
+                with(pomodoro(), |v| v["capabilities"] = json!(["run", "alert"])),
+                false,
+                true,
+            ),
+            // The reader is stricter: links between fields.
+            (
+                "an idle state that does not exist",
+                with(claude_code(), |v| v["idle"] = json!("asleep")),
+                true,
+                false,
+            ),
+            (
+                "a rule toward a state that does not exist",
+                with(claude_code(), |v| {
+                    v["events"]["rules"][2]["state"] = json!("asleep")
+                }),
+                true,
+                false,
+            ),
+            (
+                "two states of the same id",
+                with(pomodoro(), |v| v["states"][1]["id"] = json!("work")),
+                true,
+                false,
+            ),
+        ];
+        for (name, manifest, schema_takes, reader_takes) in cases {
+            let id = manifest["id"].as_str().unwrap_or_default().to_owned();
+            assert_eq!(
+                validator.is_valid(&manifest),
+                schema_takes,
+                "the schema, for {name}"
+            );
+            assert_eq!(
+                Manifest::from_value(&manifest, Some(&id)).is_ok(),
+                reader_takes,
+                "the reader, for {name}"
+            );
+        }
     }
 
     #[test]

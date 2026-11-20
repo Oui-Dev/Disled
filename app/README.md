@@ -25,7 +25,7 @@ The app finds the lamp by itself, by its USB IDs `1209:0001` and
 login, which would register the debug executable. It shares the
 configuration folder of the installed app, since both have the same
 identifier: the same settings, colors and plugins
-([docs/plugins.md](../docs/plugins.md#where-plugins-live)).
+([docs/plugins](../docs/plugins/README.md#where-plugins-live)).
 
 On Linux, the calls read the sound server through `libpulse.so.0`, which the
 app loads when it starts, if the system has it (`libpulse0` on Debian and

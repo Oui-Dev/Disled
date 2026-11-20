@@ -31,6 +31,7 @@ use disled_protocol::{
 use crate::colors::{ColorsState, Palette, PreviewState};
 use crate::control::{self, ControlState, Input};
 use crate::i18n::LocaleState;
+use crate::plugins;
 use crate::settings::{Settings, SettingsState};
 use crate::tray::{self, Look};
 use crate::windows;
@@ -366,6 +367,7 @@ impl Worker {
                     let _ = control::input(&self.app, Input::Disconnected);
                     self.set_connection(Connection::default());
                     tray::show(&self.app, Look::NoLamp);
+                    plugins::lamp_changed(&self.app);
                 }
                 None => {
                     // Requests made while no lamp is connected are dropped,
@@ -490,8 +492,9 @@ impl Worker {
         shown(&frame.message, automatic, heartbeat, previous)
     }
 
-    /// Sends the state of the app after the first INFO of a connection, and
-    /// shows the lamp in the tray. False if the lamp is gone.
+    /// Sends the state of the app after the first INFO of a connection,
+    /// shows the lamp in the tray, and tells the plugins that read the lamp
+    /// of its state and of its presses. False if the lamp is gone.
     fn follow(&mut self, device: &HidDevice, message: &Message, first_info: bool) -> bool {
         match message {
             Message::Info(info) => {
@@ -529,7 +532,9 @@ impl Worker {
                 if let Some(look) = tray::look_of(state, &palette, locale) {
                     tray::show(&self.app, look);
                 }
+                plugins::lamp_changed(&self.app);
             }
+            Message::Touch { .. } => plugins::pressed(&self.app),
             _ => {}
         }
         true

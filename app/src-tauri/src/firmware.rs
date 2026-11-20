@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::device::DeviceHandle;
+use crate::net::{fetch, get};
 use crate::updates::now;
 
 const EVENT_STATUS: &str = "firmware-status";
@@ -282,37 +283,6 @@ fn flasher() -> Result<Wchisp, String> {
     } else {
         Err("wchisp is missing next to the app: reinstall Disled".into())
     }
-}
-
-/// Asks for a file; GitHub wants a user agent.
-async fn fetch(app: &AppHandle, url: &str) -> Result<reqwest::Response, String> {
-    // reqwest is built without a TLS provider, `rustls-no-provider`, so this
-    // installs ring, the one the updater uses, unless a provider is there.
-    if rustls::crypto::CryptoProvider::get_default().is_none() {
-        let _ = rustls::crypto::ring::default_provider().install_default();
-    }
-    let client = reqwest::Client::builder()
-        .user_agent(format!("Disled/{}", app.package_info().version))
-        .connect_timeout(Duration::from_secs(15))
-        .timeout(Duration::from_secs(60))
-        .build()
-        .map_err(|e| e.to_string())?;
-    client
-        .get(url)
-        .send()
-        .await
-        .and_then(|response| response.error_for_status())
-        .map_err(|e| e.to_string())
-}
-
-/// Downloads a file.
-async fn get(app: &AppHandle, url: &str) -> Result<Vec<u8>, String> {
-    let body = fetch(app, url)
-        .await?
-        .bytes()
-        .await
-        .map_err(|e| e.to_string())?;
-    Ok(body.to_vec())
 }
 
 /// The releases on GitHub, from every page: the API mixes the releases of

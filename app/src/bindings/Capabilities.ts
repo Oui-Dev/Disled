@@ -15,4 +15,8 @@ color: boolean, alert: boolean,
 /**
  * It gets events through the local server.
  */
-events: boolean, };
+events: boolean, 
+/**
+ * Its program reads the state of the lamp and its presses on its input.
+ */
+lamp: boolean, };
