@@ -5,8 +5,9 @@ to show whether you are available, in warm white, or in up to five colors of
 your own. A touch on the lid cycles the colors and the brightness follows the
 room light. In the desktop app you name the colors, choose the ones the touch
 cycles through and update the lamp. The app can also let other programs pick
-the color, through plugins, and show a color of your choice while the
-microphone is in use during a call ([user guide](docs/user-guide.md)).
+the color and read the lamp, through plugins, and show a color of your
+choice while the microphone is in use during a call
+([user guide](docs/user-guide.md)).
 
 > **Status.** Released: the board (PCB 1.0.0), the enclosure (1.1.1), the
 > firmware and the tray app 2.0, and the production tool. Still to come: the
@@ -30,8 +31,11 @@ microphone is in use during a call ([user guide](docs/user-guide.md)).
 | [`crates/`](crates/) | Rust code shared by the app and the tools: protocol codec, flashing |
 | [`protocol/`](protocol/) | USB HID protocol specification and shared test vectors |
 | [`hardware/`](hardware/) | PCB (EasyEDA Pro, STEP) and enclosure (3MF) design files |
-| [`docs/`](docs/) | User guide, plugins, assembly, architecture, behavior, flashing, bring-up, production and releases |
-| [`examples/`](examples/) | Example plugins: [Claude Code](examples/plugins/claude-code/) |
+| [`docs/`](docs/) | User guide, plugin API, assembly, architecture, behavior, flashing, bring-up, production and releases |
+
+The plugins live in their own repository, the catalog
+[Oui-Dev/Disled-plugins](https://github.com/Oui-Dev/Disled-plugins), which
+the app installs from.
 
 ## Hardware at a glance
 
@@ -46,8 +50,8 @@ microphone is in use during a call ([user guide](docs/user-guide.md)).
 | I want to… | Read |
 |---|---|
 | Use the lamp and install its app | [docs/user-guide.md](docs/user-guide.md) |
-| Write a plugin that drives the lamp | [docs/plugins.md](docs/plugins.md) |
-| Show on the lamp what Claude Code does | [examples/plugins/claude-code](examples/plugins/claude-code/) |
+| Write a plugin that drives or reads the lamp | [docs/plugins](docs/plugins/README.md) |
+| Show on the lamp what Claude Code does, or share a plugin | [the catalog](https://github.com/Oui-Dev/Disled-plugins) |
 | Build a lamp from the design files | [docs/assembly.md](docs/assembly.md) |
 | Contribute a change | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Build, test and flash the firmware | [firmware/README.md](firmware/README.md), [docs/flashing.md](docs/flashing.md) |
