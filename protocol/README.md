@@ -1,16 +1,18 @@
-# Disled USB protocol, version 2.0
+# Disled USB protocol, version 2.1
 
 The lamp is a USB HID device with one vendor-defined interface. The host
 sends **commands**; the lamp answers with **messages** and also sends
-messages on its own (state changes, telemetry, the end of an alert). The
+messages on its own (state changes, presses on the lid, telemetry, the end
+of an alert). The
 lamp owns the lamp state: the host reads it, changes it and follows its
 notifications.
 
-> **Status.** Version 2.0 is **frozen**: firmware 2.0.0 speaks it. Only the
-> compatible changes listed in [Compatibility](#compatibility) remain
-> allowed, and anything else needs version 3. Version 2 adds custom colors,
-> a touch cycle, a power-only touch mode, alerts and a touch sensitivity
-> setting. The lamp keeps none of them in flash: the host sends them again
+> **Status.** Version 2 is **frozen**: it only grows by the compatible
+> changes listed in [Compatibility](#compatibility), and anything else needs
+> version 3. Firmware 2.0.0 speaks version 2.0; firmware 2.1.0 speaks
+> version 2.1, which adds the `TOUCH` message ([Presses](#presses)).
+> Version 2 adds custom colors, a touch cycle, a power-only touch mode,
+> alerts and a touch sensitivity setting. The lamp keeps none of them in flash: the host sends them again
 > after each connection ([Connection](#connection)). A lamp with firmware
 > 1.0.0 speaks version 1.1 ([Version 1 lamps](#version-1-lamps)).
 
@@ -149,7 +151,8 @@ In normal mode, a short press goes to the next color of the touch cycle
 and a long press (2 s) turns the lamp on or off. In power-only mode, which
 suits a host that drives the color, a short press does nothing and a long
 press still turns the lamp on or off. Turned off, the lamp ignores short
-presses in both modes.
+presses in both modes. Whatever the lamp does with a short press, it tells
+the host with `TOUCH` ([Presses](#presses)).
 
 The lamp goes back to normal mode by itself, with an unsolicited `STATE`:
 
@@ -206,10 +209,26 @@ bright one, then ends by itself after its last breath. The lamp then sends
   nothing else.
 - A new `ALERT` replaces the running one, without an `ALERT_DONE` for it.
 - During an alert, the touch does nothing, in both touch modes: no color
-  change, no power change. A press still held when the alert ends does
-  nothing either, not even at its release.
+  change, no power change. The lamp still sends `TOUCH` for a short press
+  ([Presses](#presses)). A press still held when the alert ends does
+  nothing either, not even at its release, and sends no `TOUCH`.
 - A host that turns the lamp off ends the alert (reason 1), as do a USB
   suspend (reason 2) and a self-test (reason 4).
+
+### Presses
+
+From version 2.1, the lamp sends an unsolicited `TOUCH` at the release of
+each short press on the lid, whatever it does with it: in both touch
+modes, on or off, and during an alert. A host can thus use the lid as a
+button, even in power-only mode, where a short press changes nothing. In
+normal mode the `TOUCH` comes before the `STATE` of the new color. Long
+presses send none: the `STATE` they cause tells of them.
+
+The lamp sends no `TOUCH` during a self-test, which takes the touch, nor
+while the USB link is not configured. A `TOUCH` that cannot leave within
+500 ms, as when no host reads the lamp, is dropped: a press is news only
+while it is fresh. Bit 12 of the `INFO` capabilities announces the
+message.
 
 ### SELF_TEST sequence
 
@@ -236,6 +255,7 @@ cuts the test short: the result follows the resume, with bit 3 of
 | `0x86` | `COLOR` | reply to `GET_COLOR` |
 | `0x87` | `TOUCH_CYCLE` | reply to `GET_TOUCH_CYCLE` |
 | `0x88` | `ALERT_DONE` | at the end of an alert |
+| `0x89` | `TOUCH` | at the release of a short press (version 2.1) |
 | `0x8E` | `ACK` | reply to `SET_TELEMETRY`, `RESET`, `SET_AUTO_BIAS`, `SELF_TEST`, `SET_COLOR`, `SET_TOUCH_CYCLE`, `ALERT` and `SET_TOUCH_SENSITIVITY` |
 | `0x8F` | `ERROR` | reply to a rejected command |
 
@@ -274,11 +294,13 @@ Capabilities:
 | 9 | `ALERT` |
 | 10 | reserved |
 | 11 | `SET_TOUCH_SENSITIVITY` |
+| 12 | `TOUCH` messages (version 2.1) |
 
 Every version 2.0 lamp announces bits 0, 2 to 4, 6 to 9 and 11, and bit 1
 in debug builds: `0x0BDD` for a release build, `0x0BDF` for a debug one.
-`SET_AUTO_BIAS`, `GET_DIAGNOSTICS` and `SELF_TEST`, optional in version
-1.1, are always there. Later minor versions may add bits.
+A version 2.1 lamp adds bit 12: `0x1BDD` and `0x1BDF`. `SET_AUTO_BIAS`,
+`GET_DIAGNOSTICS` and `SELF_TEST`, optional in version 1.1, are always
+there. Later minor versions may add bits.
 
 ### STATE body (16 bytes)
 
@@ -385,6 +407,16 @@ The message carries the `seq` of the `ALERT` that started the alert, for
 reason 3 too. It waits for the end of a USB suspend (reason 2), and is
 dropped when the USB link becomes unconfigured, as `SELF_TEST_RESULT` is.
 
+### TOUCH body (1 byte)
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 1 | `press`: 0 short press |
+
+The message carries a `seq` of 0. Later minor versions may add values of
+`press`, which a version 2.1 host treats as unknown values of an
+enumeration ([Compatibility](#compatibility)).
+
 ### ACK and ERROR
 
 | Message | Body |
@@ -462,4 +494,5 @@ Fields of a vector:
   with: a body longer than this version defines, or a message of a version
   1 lamp. `"decode_error"` marks a message that a version 2 decoder
   refuses, with the reason: `body_too_short`, for the 9-byte `STATE` of a
-  version 1 lamp. The firmware tests leave these out.
+  version 1 lamp, or `bad_value`, for an unknown value of an enumeration.
+  The firmware tests leave these out.

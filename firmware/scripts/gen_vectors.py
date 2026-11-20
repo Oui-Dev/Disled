@@ -5,7 +5,8 @@
 
 Runs before the native build. The header lands in the build directory, so
 it never goes stale in the source tree. Vectors with a "decode_error" are
-messages of a version 1 lamp, which only hosts read: they are left out.
+messages that hosts refuse, such as those of a version 1 lamp: they are left
+out.
 """
 
 import json
@@ -22,7 +23,7 @@ STATUS = {
 KINDS = {"state": "MSG_STATE", "info": "MSG_INFO", "telemetry": "MSG_TELEMETRY",
          "diagnostics": "MSG_DIAGNOSTICS", "self_test_result": "MSG_SELF_TEST_RESULT",
          "ack": "MSG_ACK", "error": "MSG_ERROR", "color": "MSG_COLOR",
-         "touch_cycle": "MSG_TOUCH_CYCLE", "alert_done": "MSG_ALERT_DONE"}
+         "touch_cycle": "MSG_TOUCH_CYCLE", "alert_done": "MSG_ALERT_DONE", "touch": "MSG_TOUCH"}
 
 
 def c_bytes(hex_text):
@@ -144,6 +145,8 @@ def message_entry(vector):
         fields.append(".touch_cycle = %s" % c_cycle(vector["touch_cycle"]))
     elif kind == "alert_done":
         fields.append(".reason = %d" % vector["reason"])
+    elif kind == "touch":
+        fields.append(".press = %d" % vector["press"])
     fields.append(".canonical = %s" % c_bool(vector.get("canonical", True)))
     return "    { .name = \"%s\", .kind = %s, .seq = %d, .payload = %s,\n      %s },\n" % (
         vector["name"], KINDS[kind], vector["seq"], c_bytes(vector["bytes"]), ", ".join(fields))
@@ -169,13 +172,13 @@ def generate(source, target):
         "} command_vector_t;\n\n",
         "typedef enum {\n    MSG_STATE,\n    MSG_INFO,\n    MSG_TELEMETRY,\n    MSG_DIAGNOSTICS,\n"
         "    MSG_SELF_TEST_RESULT,\n    MSG_ACK,\n    MSG_ERROR,\n    MSG_COLOR,\n"
-        "    MSG_TOUCH_CYCLE,\n    MSG_ALERT_DONE\n} message_kind_t;\n\n",
+        "    MSG_TOUCH_CYCLE,\n    MSG_ALERT_DONE,\n    MSG_TOUCH\n} message_kind_t;\n\n",
         "typedef struct {\n    const char *name;\n    message_kind_t kind;\n    uint8_t seq;\n"
         "    uint8_t payload[PROTO_REPORT_SIZE];\n    proto_state_t state;\n    proto_info_t info;\n"
         "    proto_telemetry_t telemetry;\n    proto_diagnostics_t diagnostics;\n"
         "    proto_self_test_result_t self_test_result;\n    uint8_t command;\n"
         "    proto_status_t error;\n    uint8_t color_slot;\n    rgb16_t color;\n"
-        "    touch_cycle_t touch_cycle;\n    uint8_t reason;\n"
+        "    touch_cycle_t touch_cycle;\n    uint8_t reason;\n    uint8_t press;\n"
         "    bool canonical; /* false: decoder-only vector */\n"
         "} message_vector_t;\n\n",
         "static const command_vector_t command_vectors[] = {\n",

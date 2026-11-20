@@ -4,8 +4,9 @@ import type { Diagnostics } from "./Diagnostics";
 import type { Info } from "./Info";
 import type { LampState } from "./LampState";
 import type { LinearRgb } from "./LinearRgb";
+import type { Press } from "./Press";
 import type { ProtocolError } from "./ProtocolError";
 import type { SelfTestResult } from "./SelfTestResult";
 import type { Telemetry } from "./Telemetry";
 
-export type Message = { "kind": "info" } & Info | { "kind": "state" } & LampState | { "kind": "telemetry" } & Telemetry | { "kind": "diagnostics" } & Diagnostics | { "kind": "self_test_result" } & SelfTestResult | { "kind": "color", slot: number, rgb: LinearRgb, } | { "kind": "touch_cycle", slots: Array<number>, } | { "kind": "alert_done", reason: AlertDoneReason, } | { "kind": "ack", command: number, } | { "kind": "error", command: number, error: ProtocolError, };
+export type Message = { "kind": "info" } & Info | { "kind": "state" } & LampState | { "kind": "telemetry" } & Telemetry | { "kind": "diagnostics" } & Diagnostics | { "kind": "self_test_result" } & SelfTestResult | { "kind": "color", slot: number, rgb: LinearRgb, } | { "kind": "touch_cycle", slots: Array<number>, } | { "kind": "alert_done", reason: AlertDoneReason, } | { "kind": "touch", press: Press, } | { "kind": "ack", command: number, } | { "kind": "error", command: number, error: ProtocolError, };

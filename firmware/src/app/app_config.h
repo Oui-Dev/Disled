@@ -35,6 +35,10 @@
 /* Host notifications caused by automatic brightness: at most this often. */
 #define APP_AUTO_LEVEL_NOTIFY_MS 500u
 
+/* A TOUCH that cannot leave within this delay, as when no host reads the
+ * lamp, is dropped: a press is news only while it is fresh. */
+#define APP_TOUCH_FRESH_MS 500u
+
 /* Delay between the ACK of a RESET command and the reset itself. */
 #define APP_RESET_DELAY_MS 50u
 

@@ -352,3 +352,10 @@ void proto_encode_alert_done(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, ui
     put_u8(&w, reason);
     end_message(&w);
 }
+
+void proto_encode_touch(uint8_t payload[PROTO_REPORT_SIZE], uint8_t press)
+{
+    writer_t w = begin_message(payload, PROTO_MSG_TOUCH, 0u);
+    put_u8(&w, press);
+    end_message(&w);
+}

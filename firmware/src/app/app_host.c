@@ -142,7 +142,7 @@ static uint32_t capabilities(void)
      * from software. */
     return PROTO_CAP_TELEMETRY | PROTO_CAP_AUTO_BIAS | PROTO_CAP_DIAGNOSTICS | PROTO_CAP_SELF_TEST |
            PROTO_CAP_CUSTOM_COLORS | PROTO_CAP_TOUCH_CYCLE | PROTO_CAP_TOUCH_MODE |
-           PROTO_CAP_ALERT | PROTO_CAP_TOUCH_SENSITIVITY |
+           PROTO_CAP_ALERT | PROTO_CAP_TOUCH_SENSITIVITY | PROTO_CAP_PRESSES |
            (DISLED_DEBUG ? PROTO_CAP_DEBUG_CONSOLE : 0u);
 }
 
@@ -224,6 +224,30 @@ static void send_alert_done(void)
     proto_encode_alert_done(payload, app.alert_done_seq, app.alert_done_reason);
     if (usb_hid_send(payload)) {
         app.alert_report = false;
+    }
+}
+
+static void send_touch(void)
+{
+    uint8_t payload[PROTO_REPORT_SIZE];
+    proto_encode_touch(payload, PROTO_PRESS_SHORT);
+    if (usb_hid_send(payload)) {
+        app.touch_report = false;
+    }
+}
+
+/* A short press goes out before the STATE of the color it changed. It waits
+ * for the way to be clear, as STATE does, but only while it is fresh. */
+static void report_touch(uint32_t now_ms)
+{
+    if (!app.touch_report) {
+        return;
+    }
+    if (app.link != USB_LINK_CONFIGURED ||
+        time_elapsed_ms(now_ms, app.touch_report_ms) >= APP_TOUCH_FRESH_MS) {
+        app.touch_report = false;
+    } else if (usb_hid_idle()) {
+        send_touch();
     }
 }
 
@@ -400,6 +424,7 @@ void app_host_task(uint32_t now_ms)
 
     check_touch_mode(now_ms);
     observe_changes();
+    report_touch(now_ms);
     /* Until the way is clear, the changes add up in s_seen and go out as one STATE. */
     if (notification_pending() && usb_hid_idle()) {
         const bool level_only = only_level_pending();

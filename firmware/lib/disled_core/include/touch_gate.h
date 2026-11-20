@@ -5,7 +5,8 @@
  *
  * Touch gate: no gesture acts while it is blocked, as during an alert. It
  * feeds the touch detector itself, so that a press under way when the block
- * lifts fires nothing either, not even at its release.
+ * lifts fires nothing either, not even at its release. The gestures it blocks
+ * are still seen, for the host to hear of the short presses (TOUCH).
  */
 #ifndef DISLED_TOUCH_GATE_H
 #define DISLED_TOUCH_GATE_H
@@ -23,8 +24,9 @@ void touch_gate_init(touch_gate_t *gate);
 
 /* Feeds one raw sample taken at `sample_ms` to the detector. Returns the
  * gesture to apply: none while `blocked`, nor from a press under way when the
- * block lifts. */
+ * block lifts. `*seen`, unless NULL, gets the gesture of the detector, blocked
+ * or not: none from a press under way when the block lifts either. */
 touch_event_t touch_gate_feed(touch_gate_t *gate, touch_detector_t *detector, uint16_t raw,
-                              uint32_t sample_ms, bool blocked);
+                              uint32_t sample_ms, bool blocked, touch_event_t *seen);
 
 #endif /* DISLED_TOUCH_GATE_H */

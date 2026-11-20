@@ -61,6 +61,8 @@ typedef struct {
     uint8_t alert_done_seq; /* the ALERT_DONE waiting to be sent: seq and reason */
     uint8_t alert_done_reason;
     bool alert_report;
+    bool touch_report;        /* a short press waits for its TOUCH (version 2.1) */
+    uint32_t touch_report_ms; /* when task_touch() saw its release */
 } app_context_t;
 
 /* The single instance, owned by app.c. */

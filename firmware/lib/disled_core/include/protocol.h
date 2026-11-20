@@ -3,7 +3,7 @@
  * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
- * Codec of the USB HID protocol v2.0 (protocol/README.md), without I/O. A
+ * Codec of the USB HID protocol v2.1 (protocol/README.md), without I/O. A
  * payload is [0] type, [1] seq, [2] body length, then the body, zero padded,
  * with multi-byte fields in little-endian. INFO starts with the protocol
  * version, as in version 1, so that a host tells the two apart.
@@ -22,7 +22,7 @@
 #include "touch_cycle.h"
 
 #define PROTO_VERSION_MAJOR 2u
-#define PROTO_VERSION_MINOR 0u
+#define PROTO_VERSION_MINOR 1u
 
 /* HID report IDs: commands go from the host to the device, messages from
  * the device to the host. */
@@ -65,6 +65,8 @@
 #define PROTO_MSG_ALERT_DONE  0x88u
 #define PROTO_MSG_ACK         0x8Eu
 #define PROTO_MSG_ERROR       0x8Fu
+/* Version 2.1. */
+#define PROTO_MSG_TOUCH 0x89u
 
 /* Body sizes. Version 2 adds the touch mode to SET_STATE, and the touch mode
  * and the color of the lamp to STATE. */
@@ -84,6 +86,7 @@
 #define PROTO_TOUCH_CYCLE_SIZE           10u
 #define PROTO_ALERT_SIZE                 3u
 #define PROTO_ALERT_DONE_SIZE            1u
+#define PROTO_TOUCH_SIZE                 1u
 
 /* INFO capabilities. */
 #define PROTO_CAP_TELEMETRY     (1u << 0)
@@ -98,6 +101,8 @@
 #define PROTO_CAP_TOUCH_MODE        (1u << 8)
 #define PROTO_CAP_ALERT             (1u << 9)
 #define PROTO_CAP_TOUCH_SENSITIVITY (1u << 11)
+/* Version 2.1: TOUCH at every short press. */
+#define PROTO_CAP_PRESSES (1u << 12)
 
 /* ALERT_DONE reasons. */
 #define PROTO_ALERT_COMPLETED 0u /* every breath shown */
@@ -105,6 +110,9 @@
 #define PROTO_ALERT_SUSPENDED 2u /* USB suspend */
 #define PROTO_ALERT_CANCELLED 3u /* ALERT with a count of 0 */
 #define PROTO_ALERT_SELF_TEST 4u /* SELF_TEST took the LED */
+
+/* TOUCH presses (version 2.1). */
+#define PROTO_PRESS_SHORT 0u
 
 /* INFO flags. */
 #define PROTO_INFO_FLAG_DEBUG_BUILD (1u << 0)
@@ -252,5 +260,7 @@ void proto_encode_touch_cycle(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq,
                               const touch_cycle_t *cycle);
 /* `seq` is that of the ALERT command; `reason` one of PROTO_ALERT_*. */
 void proto_encode_alert_done(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, uint8_t reason);
+/* Unsolicited, with a seq of 0; `press` one of PROTO_PRESS_*. */
+void proto_encode_touch(uint8_t payload[PROTO_REPORT_SIZE], uint8_t press);
 
 #endif /* DISLED_PROTOCOL_H */

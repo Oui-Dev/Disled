@@ -16,4 +16,8 @@ protocol: [number, number], firmware: [number, number, number], firmware_version
 /**
  * Chip unique ID in hexadecimal, as in the USB serial number.
  */
-uid: string, telemetry: boolean, debug_console: boolean, auto_bias: boolean, diagnostics: boolean, self_test: boolean, custom_colors: boolean, touch_cycle: boolean, touch_mode: boolean, alert: boolean, touch_sensitivity: boolean, reset_cause: ResetCause, debug_build: boolean, fault: Fault | null, };
+uid: string, telemetry: boolean, debug_console: boolean, auto_bias: boolean, diagnostics: boolean, self_test: boolean, custom_colors: boolean, touch_cycle: boolean, touch_mode: boolean, alert: boolean, touch_sensitivity: boolean, 
+/**
+ * TOUCH at every short press, from version 2.1.
+ */
+presses: boolean, reset_cause: ResetCause, debug_build: boolean, fault: Fault | null, };

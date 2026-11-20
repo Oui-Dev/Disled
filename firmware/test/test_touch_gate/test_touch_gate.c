@@ -4,8 +4,10 @@
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
  * The touch during an alert: the gate between the touch detector and the lamp,
- * driven as task_touch() and task_output() drive it.
+ * driven as task_touch() and task_output() drive it, and the short presses
+ * that the host still hears of.
  */
+#include <stddef.h>
 #include <unity.h>
 
 #include "alert.h"
@@ -45,6 +47,7 @@ static lamp_state_t lamp;
 static touch_cycle_t cycle;
 static uint32_t now_ms;
 static unsigned gestures;   /* the gestures that reached the lamp */
+static unsigned heard;      /* the short presses seen, which task_touch() reports */
 static unsigned alert_ends; /* the ends that alert_update() reported */
 
 /* One touch sample per millisecond, and the alert updated every 10 ms, as by
@@ -59,7 +62,12 @@ static void hold(uint16_t raw, uint32_t duration_ms)
                 alert_ends++;
             }
         }
-        const touch_event_t event = touch_gate_feed(&gate, &td, raw, now_ms, alert_running(&alert));
+        touch_event_t seen = TOUCH_EVENT_NONE;
+        const touch_event_t event =
+            touch_gate_feed(&gate, &td, raw, now_ms, alert_running(&alert), &seen);
+        if (seen == TOUCH_EVENT_SHORT_PRESS) {
+            heard++;
+        }
         if (event == TOUCH_EVENT_SHORT_PRESS) {
             gestures++;
             (void)lamp_fsm_short_press(&lamp, &cycle);
@@ -86,6 +94,7 @@ void setUp(void)
 {
     now_ms = 0;
     gestures = 0;
+    heard = 0;
     alert_ends = 0;
     touch_detector_init(&td, &config);
     touch_gate_init(&gate);
@@ -103,20 +112,33 @@ static void test_without_an_alert_the_touch_acts(void)
 {
     press(200);
     TEST_ASSERT_EQUAL_UINT(1, gestures);
+    TEST_ASSERT_EQUAL_UINT(1, heard);
     TEST_ASSERT_EQUAL(LAMP_COLOR_ORANGE, lamp.color);
 
+    /* The STATE of a long press tells of it: no TOUCH. */
     press(2500);
     TEST_ASSERT_EQUAL_UINT(2, gestures);
+    TEST_ASSERT_EQUAL_UINT(1, heard);
     TEST_ASSERT_FALSE(lamp.on);
+}
+
+static void test_a_short_press_that_changes_nothing_is_heard(void)
+{
+    lamp.touch_mode = TOUCH_MODE_POWER_ONLY;
+    press(200);
+    TEST_ASSERT_EQUAL_UINT(1, gestures);
+    TEST_ASSERT_EQUAL_UINT(1, heard);
+    TEST_ASSERT_EQUAL(LAMP_COLOR_GREEN, lamp.color);
 }
 
 static void test_no_gesture_acts_during_an_alert(void)
 {
     start_alert();
-    press(200);  /* a short press */
+    press(200);  /* a short press, which the host still hears of */
     press(2500); /* a long press */
     TEST_ASSERT_TRUE(alert_running(&alert));
     TEST_ASSERT_EQUAL_UINT(0, gestures);
+    TEST_ASSERT_EQUAL_UINT(1, heard);
     TEST_ASSERT_TRUE(lamp.on);
     TEST_ASSERT_EQUAL(LAMP_COLOR_GREEN, lamp.color);
 }
@@ -150,11 +172,12 @@ static void test_the_alert_ends_by_itself_once(void)
 
 static void test_a_press_from_before_the_alert_fires_nothing(void)
 {
-    /* Released during the alert. */
+    /* Released during the alert: heard, as any press released then. */
     hold(TOUCHED, 100);
     start_alert();
     hold(BASELINE, 300);
     TEST_ASSERT_EQUAL_UINT(0, gestures);
+    TEST_ASSERT_EQUAL_UINT(1, heard);
 
     /* Long enough for a long press, which comes during the alert. */
     alert_stop(&alert);
@@ -177,8 +200,9 @@ static void test_a_press_held_past_the_end_fires_nothing(void)
     TEST_ASSERT_EQUAL(TOUCH_STATE_PRESSED, touch_detector_state(&td));
 
     hold(TOUCHED, 1500); /* held 2500 ms in all: no long press either */
-    hold(BASELINE, 300); /* nor anything at the release */
+    hold(BASELINE, 300); /* nor anything at the release, not even for the host */
     TEST_ASSERT_EQUAL_UINT(0, gestures);
+    TEST_ASSERT_EQUAL_UINT(0, heard);
     TEST_ASSERT_TRUE(lamp.on);
     TEST_ASSERT_EQUAL(LAMP_COLOR_GREEN, lamp.color);
 }
@@ -188,7 +212,8 @@ static void test_a_release_on_the_first_sample_after_the_block_fires_nothing(voi
     /* A short press, blocked from its start. */
     for (uint32_t i = 0; i < 100u; i++) {
         now_ms++;
-        TEST_ASSERT_EQUAL(TOUCH_EVENT_NONE, touch_gate_feed(&gate, &td, TOUCHED, now_ms, true));
+        TEST_ASSERT_EQUAL(TOUCH_EVENT_NONE,
+                          touch_gate_feed(&gate, &td, TOUCHED, now_ms, true, NULL));
     }
     TEST_ASSERT_EQUAL(TOUCH_STATE_PRESSED, touch_detector_state(&td));
 
@@ -206,10 +231,14 @@ static void test_a_release_on_the_first_sample_after_the_block_fires_nothing(voi
     /* Blocked up to the sample before it, which lifts the block. */
     while (now_ms + 1u < release_ms) {
         now_ms++;
-        TEST_ASSERT_EQUAL(TOUCH_EVENT_NONE, touch_gate_feed(&gate, &td, BASELINE, now_ms, true));
+        TEST_ASSERT_EQUAL(TOUCH_EVENT_NONE,
+                          touch_gate_feed(&gate, &td, BASELINE, now_ms, true, NULL));
     }
     now_ms++;
-    TEST_ASSERT_EQUAL(TOUCH_EVENT_NONE, touch_gate_feed(&gate, &td, BASELINE, now_ms, false));
+    touch_event_t seen = TOUCH_EVENT_SHORT_PRESS;
+    TEST_ASSERT_EQUAL(TOUCH_EVENT_NONE,
+                      touch_gate_feed(&gate, &td, BASELINE, now_ms, false, &seen));
+    TEST_ASSERT_EQUAL(TOUCH_EVENT_NONE, seen);
     TEST_ASSERT_EQUAL(TOUCH_STATE_IDLE, touch_detector_state(&td));
 }
 
@@ -230,6 +259,7 @@ int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_without_an_alert_the_touch_acts);
+    RUN_TEST(test_a_short_press_that_changes_nothing_is_heard);
     RUN_TEST(test_no_gesture_acts_during_an_alert);
     RUN_TEST(test_no_gesture_acts_during_an_alert_in_power_only_mode);
     RUN_TEST(test_the_alert_ends_by_itself_once);

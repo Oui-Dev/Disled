@@ -1,8 +1,8 @@
 {
-  "description": "Disled USB protocol v2 test vectors (version 2.0). 'bytes' is the start of the 63-byte payload (after the report ID); the rest is zero. A vector with \"canonical\": false is read but never sent as it is, and one with \"decode_error\" is a message of a version 1 lamp, which version 2 refuses. See protocol/README.md.",
+  "description": "Disled USB protocol v2 test vectors (version 2.1). 'bytes' is the start of the 63-byte payload (after the report ID); the rest is zero. A vector with \"canonical\": false is read but never sent as it is, and one with \"decode_error\" is a message that version 2.1 refuses: one of a version 1 lamp, or one with an unknown value. See protocol/README.md.",
   "protocol_version": [
     2,
-    0
+    1
   ],
   "payload_size": 63,
   "commands": [
@@ -510,6 +510,29 @@
       "info": {
         "protocol": [
           2,
+          1
+        ],
+        "fw_major": 2,
+        "fw_minor": 1,
+        "fw_patch": 0,
+        "board_revision": 4,
+        "uid": "0102030405060708090a0b0c",
+        "capabilities": 7133,
+        "reset_cause": 1,
+        "flags": 0,
+        "fault_mcause": 0,
+        "fault_mepc": 0,
+        "fw_version": "2.1.0"
+      },
+      "bytes": "81 01 38 02 01 02 01 00 04 01 02 03 04 05 06 07 08 09 0a 0b 0c dd 1b 00 00 01 00 00 00 00 00 00 00 00 00 32 2e 31 2e 30"
+    },
+    {
+      "name": "info_of_a_version_2_0_lamp",
+      "kind": "info",
+      "seq": 1,
+      "info": {
+        "protocol": [
+          2,
           0
         ],
         "fw_major": 2,
@@ -524,7 +547,8 @@
         "fault_mepc": 0,
         "fw_version": "2.0.0"
       },
-      "bytes": "81 01 38 02 00 02 00 00 04 01 02 03 04 05 06 07 08 09 0a 0b 0c dd 0b 00 00 01 00 00 00 00 00 00 00 00 00 32 2e 30 2e 30"
+      "bytes": "81 01 38 02 00 02 00 00 04 01 02 03 04 05 06 07 08 09 0a 0b 0c dd 0b 00 00 01 00 00 00 00 00 00 00 00 00 32 2e 30 2e 30",
+      "canonical": false
     },
     {
       "name": "telemetry",
@@ -701,6 +725,22 @@
       "seq": 41,
       "reason": 1,
       "bytes": "88 29 01 01"
+    },
+    {
+      "name": "touch",
+      "kind": "touch",
+      "seq": 0,
+      "press": 0,
+      "bytes": "89 00 01 00"
+    },
+    {
+      "name": "touch_with_an_unknown_press",
+      "kind": "touch",
+      "seq": 0,
+      "press": 7,
+      "bytes": "89 00 01 07",
+      "canonical": false,
+      "decode_error": "bad_value"
     },
     {
       "name": "ack_set_color",

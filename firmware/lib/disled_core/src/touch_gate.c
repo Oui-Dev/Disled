@@ -5,13 +5,15 @@
  */
 #include "touch_gate.h"
 
+#include <stddef.h>
+
 void touch_gate_init(touch_gate_t *gate)
 {
     gate->blocked = false;
 }
 
 touch_event_t touch_gate_feed(touch_gate_t *gate, touch_detector_t *detector, uint16_t raw,
-                              uint32_t sample_ms, bool blocked)
+                              uint32_t sample_ms, bool blocked, touch_event_t *seen)
 {
     if (gate->blocked && !blocked) {
         /* Before the sample: touch_detector_consume() acts only on a press
@@ -20,5 +22,8 @@ touch_event_t touch_gate_feed(touch_gate_t *gate, touch_detector_t *detector, ui
     }
     gate->blocked = blocked;
     const touch_event_t event = touch_detector_feed(detector, raw, sample_ms);
+    if (seen != NULL) {
+        *seen = event;
+    }
     return blocked ? TOUCH_EVENT_NONE : event;
 }
