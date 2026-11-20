@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.0](https://github.com/Oui-Dev/Disled/compare/fw-v2.0.0...fw-v2.1.0) (2026-11-20)
+
+
+### 🚀 Enhancements
+
+* **firmware:** the lamp tells the host of every short press, with the TOUCH message of protocol 2.1 ([9601b23](https://github.com/Oui-Dev/Disled/commit/9601b23e088d6d45d0036ebf7b29e4480255ed14))
+
+
+### 🩹 Fixes
+
+* **deps:** update the dependencies of the app, the firmware tools and the CI ([35996f2](https://github.com/Oui-Dev/Disled/commit/35996f2b11076d03b39fc7a6bda61b45548434ce))
+
 ## [2.0.0](https://github.com/Oui-Dev/Disled/compare/fw-v1.0.0...fw-v2.0.0) (2026-11-12)
 
 
