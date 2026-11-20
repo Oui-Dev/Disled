@@ -421,6 +421,9 @@ static void test_message_vectors(void)
             case MSG_ALERT_DONE:
                 proto_encode_alert_done(payload, v->seq, v->reason);
                 break;
+            case MSG_TOUCH:
+                proto_encode_touch(payload, v->press);
+                break;
             case MSG_ERROR:
             default:
                 proto_encode_error(payload, v->seq, v->command, v->error);

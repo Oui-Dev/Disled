@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Disled contributors
 
-//! Command encoder and message decoder of the Disled USB HID protocol 2.0,
+//! Command encoder and message decoder of the Disled USB HID protocol 2.1,
 //! which `protocol/README.md` specifies. The functions do no I/O; the desktop
 //! app and the production tool share them. INFO keeps the layout of version
 //! 1, so the decoder reads the INFO of a version 1 lamp too: its protocol
@@ -33,7 +33,7 @@ pub const PAYLOAD_SIZE: usize = 63;
 const HEADER_SIZE: usize = 3;
 const MAX_BODY_SIZE: usize = PAYLOAD_SIZE - HEADER_SIZE;
 pub const PROTOCOL_MAJOR: u8 = 2;
-pub const PROTOCOL_MINOR: u8 = 0;
+pub const PROTOCOL_MINOR: u8 = 1;
 
 /// Automatic brightness bias limits, percent.
 pub const AUTO_BIAS_MIN: i8 = -50;
@@ -82,6 +82,8 @@ const MSG_SELF_TEST_RESULT: u8 = 0x85;
 const MSG_COLOR: u8 = 0x86;
 const MSG_TOUCH_CYCLE: u8 = 0x87;
 const MSG_ALERT_DONE: u8 = 0x88;
+/// Version 2.1.
+const MSG_TOUCH: u8 = 0x89;
 const MSG_ACK: u8 = 0x8E;
 const MSG_ERROR: u8 = 0x8F;
 
@@ -102,6 +104,8 @@ const CAP_TOUCH_CYCLE: u32 = 1 << 7;
 const CAP_TOUCH_MODE: u32 = 1 << 8;
 const CAP_ALERT: u32 = 1 << 9;
 const CAP_TOUCH_SENSITIVITY: u32 = 1 << 11;
+/// Version 2.1.
+const CAP_PRESSES: u32 = 1 << 12;
 
 /// An enum whose discriminant is its byte on the wire.
 macro_rules! wire_enum {
@@ -152,6 +156,10 @@ wire_enum!(ResetCause {
     LowPower = 6,
 });
 wire_enum!(TouchState { Calibrating = 0, Idle = 1, Pressed = 2 });
+wire_enum!(
+    /// A press on the lid that a TOUCH message tells of (version 2.1).
+    Press { Short = 0 }
+);
 wire_enum!(ProtocolError {
     UnknownCommand = 1,
     BadLength = 2,
@@ -357,6 +365,8 @@ pub struct Info {
     pub touch_mode: bool,
     pub alert: bool,
     pub touch_sensitivity: bool,
+    /// TOUCH at every short press, from version 2.1.
+    pub presses: bool,
     pub reset_cause: ResetCause,
     pub debug_build: bool,
     pub fault: Option<Fault>,
@@ -471,6 +481,10 @@ pub enum Message {
     /// Carries the sequence number of the ALERT that started the alert.
     AlertDone {
         reason: AlertDoneReason,
+    },
+    /// A short press on the lid, whatever the lamp did with it (version 2.1).
+    Touch {
+        press: Press,
     },
     Ack {
         command: u8,
@@ -605,6 +619,7 @@ pub fn decode_message(payload: &[u8]) -> Result<Frame, DecodeError> {
                 touch_mode: has(CAP_TOUCH_MODE),
                 alert: has(CAP_ALERT),
                 touch_sensitivity: has(CAP_TOUCH_SENSITIVITY),
+                presses: has(CAP_PRESSES),
                 reset_cause,
                 debug_build: flags & 0x1 != 0,
                 fault: (flags & 0x2 != 0).then_some(Fault { mcause, mepc }),
@@ -715,6 +730,12 @@ pub fn decode_message(payload: &[u8]) -> Result<Frame, DecodeError> {
             expect_size(kind, body, 1)?;
             Message::AlertDone {
                 reason: AlertDoneReason::from_wire(r.u8())?,
+            }
+        }
+        MSG_TOUCH => {
+            expect_size(kind, body, 1)?;
+            Message::Touch {
+                press: Press::from_wire(r.u8())?,
             }
         }
         MSG_ACK => {
@@ -879,7 +900,8 @@ mod tests {
             // Messages of a version 1 lamp that this version refuses.
             if let Some(error) = v["decode_error"].as_str() {
                 match (error, &decoded) {
-                    ("body_too_short", Err(DecodeError::BodyTooShort(..))) => continue,
+                    ("body_too_short", Err(DecodeError::BodyTooShort(..)))
+                    | ("bad_value", Err(DecodeError::BadValue(..))) => continue,
                     _ => panic!("{name}: expected {error}, got {decoded:?}"),
                 }
             }
@@ -940,6 +962,7 @@ mod tests {
                         (info.touch_mode, CAP_TOUCH_MODE),
                         (info.alert, CAP_ALERT),
                         (info.touch_sensitivity, CAP_TOUCH_SENSITIVITY),
+                        (info.presses, CAP_PRESSES),
                     ];
                     for (flag, bit) in announced {
                         assert_eq!(flag, capabilities & bit != 0, "{name}: bit {bit:#x}");
@@ -1042,6 +1065,9 @@ mod tests {
                 }
                 (Some("alert_done"), Message::AlertDone { reason }) => {
                     assert_eq!(*reason as u64, u(v, "reason"), "{name}");
+                }
+                (Some("touch"), Message::Touch { press }) => {
+                    assert_eq!(*press as u64, u(v, "press"), "{name}");
                 }
                 (Some("ack"), Message::Ack { command }) => {
                     assert_eq!(u64::from(*command), u(v, "command"), "{name}");

@@ -190,18 +190,26 @@ static void task_usb(uint32_t now_ms)
 
 static void task_touch(uint32_t now_ms)
 {
-    (void)now_ms;
     uint16_t raw;
     uint32_t sample_ms;
     while (tkey_read(&raw, &sample_ms)) {
         /* No gesture acts during an alert, nor at the release of a press it
          * covered. The alert ends in task_output(), between two samples. */
-        const touch_event_t event =
-            touch_gate_feed(&app.touch_gate, &app.touch, raw, sample_ms, alert_running(&app.alert));
-        bool changed = false;
+        touch_event_t seen = TOUCH_EVENT_NONE;
+        const touch_event_t event = touch_gate_feed(&app.touch_gate, &app.touch, raw, sample_ms,
+                                                    alert_running(&app.alert), &seen);
         if (self_test_running(&app.self_test)) {
-            /* The self-test watches the touch signal itself. */
-        } else if (event == TOUCH_EVENT_SHORT_PRESS) {
+            continue; /* the self-test watches the touch signal itself */
+        }
+        /* The host hears of every short press, even one that changes nothing,
+         * as in power-only mode or during an alert. Dated by the clock of the
+         * tasks, which app_host_task() reads: a sample may come later. */
+        if (seen == TOUCH_EVENT_SHORT_PRESS && app.link == USB_LINK_CONFIGURED) {
+            app.touch_report = true;
+            app.touch_report_ms = now_ms;
+        }
+        bool changed = false;
+        if (event == TOUCH_EVENT_SHORT_PRESS) {
             changed = lamp_fsm_short_press(&app.lamp, &app.cycle);
         } else if (event == TOUCH_EVENT_LONG_PRESS) {
             lamp_fsm_long_press(&app.lamp);

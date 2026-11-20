@@ -31,16 +31,23 @@ until it restarts.
 
 Each contact triggers at most one action. Releasing the touch re-arms it.
 
+The lamp tells the host of every short press, whatever it does with it: in
+both modes, on or off, and during an alert. The desktop app hands these
+presses to the plugins that read the lamp ([plugins](plugins/lamp.md)), so
+that a plugin can use the lid as a button, even while the lamp follows it.
+A long press is told by the change it makes.
+
 The power-only mode suits a host that chooses the color, as the desktop app
-does while it follows an integration: a short press does nothing, and a long
-press still turns the lamp on or off. The lamp goes back to normal touch by
+does while it follows an integration: a short press changes nothing on the
+lamp, and a long press still turns it on or off. The lamp goes back to normal touch by
 itself when the USB link leaves the configured state, and after 10 s without
 any command, as when the app stopped without a word. The app keeps the mode
 with a command every 3 s.
 
 During an alert the touch does nothing, in both modes: no color change and
-no power change. A press still held when the alert ends does nothing
-either, not even at its release.
+no power change, though the host still hears of a short press. A press
+still held when the alert ends does nothing either, not even at its
+release, and the host does not hear of it.
 
 ## Host control (USB HID)
 
@@ -58,6 +65,10 @@ either, not even at its release.
 - Every change, whatever its source (touch, host, automatic brightness, USB
   or the silence of the host), produces a state notification with an
   increasing sequence number.
+- Every short press produces a press notification, before the state
+  notification of the color it changed, if any. A press notification that
+  cannot leave within 500 ms, as when no program reads the lamp, is
+  dropped.
 - In `AUTO` mode the notification carries the level currently applied, so
   the app can show it next to its Auto switch.
 - The host can shift the automatic curve ("brighter" or "darker", −50 to
@@ -176,3 +187,8 @@ lamp that no program holds open
 21. Quit the app from the popup while the lamp shows a custom color: the
     lamp fades to green, short presses step through green, orange and red
     again, and the touch has no sensitivity correction.
+22. Install [the first plugin](plugins/README.md#a-first-plugin) of the
+    plugin docs, which reads the presses on the lid, and follow it: each
+    short press switches it between Available and Busy, though the lamp
+    itself ignores short presses in this mode. During an alert, such as one
+    of Claude Code, a short press still switches it, and the breaths go on.
