@@ -8,7 +8,7 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
-clap = { version = "^4.6.7", features = ["derive"] }
+clap = { version = "^4.6.9", features = ["derive"] }
 disled-flash.workspace = true
 disled-protocol.workspace = true
 hidapi.workspace = true
