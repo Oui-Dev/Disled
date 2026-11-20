@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.0](https://github.com/Oui-Dev/Disled/compare/app-v2.0.1...app-v2.1.0) (2026-11-20)
+
+
+### 🚀 Enhancements
+
+* **app:** the programs of the plugins read the lamp and its presses, and the integrations window installs the plugins of the catalog ([faa3094](https://github.com/Oui-Dev/Disled/commit/faa3094fcc34b7402a55457dc3c316e3e6583887))
+* **firmware:** the lamp tells the host of every short press, with the TOUCH message of protocol 2.1 ([9601b23](https://github.com/Oui-Dev/Disled/commit/9601b23e088d6d45d0036ebf7b29e4480255ed14))
+
+
+### 🩹 Fixes
+
+* **deps:** update the dependencies of the app, the firmware tools and the CI ([35996f2](https://github.com/Oui-Dev/Disled/commit/35996f2b11076d03b39fc7a6bda61b45548434ce))
+
 ## [2.0.1](https://github.com/Oui-Dev/Disled/compare/app-v2.0.0...app-v2.0.1) (2026-11-19)
 
 
