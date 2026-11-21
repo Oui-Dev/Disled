@@ -14,12 +14,10 @@ import { onKeyStroke } from '@vueuse/core';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { Palette } from '@/bindings/Palette';
-import { useErrorText } from '@/composables/useErrorText';
 import { usePopupAutoSize } from '@/composables/usePopupAutoSize';
 import { useUpdateStatus } from '@/composables/useUpdateStatus';
 import { popupHide, quit } from '@/ipc/commands';
 import { useControlStore } from '@/stores/control';
-import { useErrorStore } from '@/stores/errors';
 import { useLampStore } from '@/stores/lamp';
 import { BUILT_IN_COLORS } from '@/utils/lamp';
 
@@ -28,8 +26,6 @@ type Page = 'lamp' | 'settings' | 'colors' | 'editor' | 'share' | 'import';
 const { t } = useI18n();
 const lamp = useLampStore();
 const control = useControlStore();
-const errors = useErrorStore();
-const errorText = useErrorText();
 const { offerLine } = useUpdateStatus();
 
 // The page, then the footer. The window fits both, and the footer stays at
@@ -222,17 +218,7 @@ const back = computed<Page | null>(() => {
           @done="show('colors')"
         />
 
-        <!-- UAlert has no role of its own, so this one gets alert for screen readers. -->
-        <UAlert
-          v-if="errors.last"
-          role="alert"
-          color="error"
-          variant="subtle"
-          icon="i-lucide-triangle-alert"
-          :description="errorText(errors.last)"
-          :close="{ size: 'sm' }"
-          @update:open="errors.clear()"
-        />
+        <ErrorAlert />
       </div>
     </UTheme>
 

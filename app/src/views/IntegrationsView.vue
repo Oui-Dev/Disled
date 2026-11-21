@@ -15,15 +15,11 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { PluginView } from '@/bindings/PluginView';
-import { useErrorText } from '@/composables/useErrorText';
 import { usePluginTexts } from '@/composables/usePluginTexts';
-import { useErrorStore } from '@/stores/errors';
 import { usePluginsStore } from '@/stores/plugins';
 
 const { t } = useI18n();
 const plugins = usePluginsStore();
-const errors = useErrorStore();
-const errorText = useErrorText();
 const { reason } = usePluginTexts();
 
 /** The tab shown: the plugins installed, or the catalog. */
@@ -149,18 +145,7 @@ onBeforeUnmount(() => stopFollowingFocus?.());
       :description="reason(plugins.importRefused)"
       class="mx-6 mt-4 w-auto"
     />
-    <!-- UAlert has no role of its own, so this one gets alert for screen readers. -->
-    <UAlert
-      v-if="errors.last"
-      role="alert"
-      color="error"
-      variant="subtle"
-      icon="i-lucide-triangle-alert"
-      :description="errorText(errors.last)"
-      :close="{ size: 'sm' }"
-      class="mx-6 mt-4 w-auto"
-      @update:open="errors.clear()"
-    />
+    <ErrorAlert class="mx-6 mt-4 w-auto" />
 
     <UTabs
       v-model="tab"
