@@ -52,10 +52,14 @@ pub struct Connection {
     pub connected: bool,
     pub debug_build: bool,
     pub serial: Option<String>,
+    /// Known from the first INFO of the lamp.
+    pub generation: Option<Generation>,
 }
 
 /// What the protocol of a lamp lets the app do, read in its INFO.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS), ts(export))]
+#[serde(rename_all = "snake_case")]
 pub enum Generation {
     /// Protocol 1, firmware 1.0.0 and before: the app only reads its INFO.
     V1,
@@ -425,6 +429,7 @@ impl Worker {
             connected: true,
             debug_build: info.product_id() == USB_PRODUCT_ID_DEBUG,
             serial: info.serial_number().map(str::to_owned),
+            generation: None,
         });
         Some(device)
     }
@@ -502,6 +507,11 @@ impl Worker {
                 // opens asks for one, and the settings sent again then would
                 // be refused during a self-test.
                 if first_info {
+                    let connection = Connection {
+                        generation: Some(Generation::of(info)),
+                        ..self.seen.lock().connection.clone()
+                    };
+                    self.set_connection(connection);
                     let settings = self.app.state::<SettingsState>().get();
                     let palette = self.app.state::<ColorsState>().get();
                     let imposed = self.app.state::<ControlState>().on_connect();
@@ -649,6 +659,8 @@ mod tests {
     fn a_version_1_lamp_gets_nothing_after_its_info() {
         let info = info_of("info_of_a_version_1_lamp");
         assert_eq!(Generation::of(&info), Generation::V1);
+        // The windows know it by this name.
+        assert_eq!(serde_json::to_value(Generation::V1).expect("JSON"), "v1");
         assert!(
             commands_after_info(&info, &Settings::default(), &Palette::default(), MANUAL)
                 .is_empty()
