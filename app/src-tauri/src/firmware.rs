@@ -345,21 +345,9 @@ impl From<String> for Stop {
     }
 }
 
-/// Updates the lamp with the newest firmware 2.x, for the guided window.
-pub fn install(app: &AppHandle) -> Result<(), String> {
-    let latest = app
-        .state::<FirmwareState>()
-        .status()
-        .versions
-        .into_iter()
-        .next()
-        .ok_or("no firmware to install: check for updates first")?;
-    install_manual(app, &latest)
-}
-
 /// Updates the lamp with a version of the list, on its own thread; the
 /// update windows follow the status.
-pub fn install_manual(app: &AppHandle, version: &str) -> Result<(), String> {
+pub fn install(app: &AppHandle, version: &str) -> Result<(), String> {
     let state = app.state::<FirmwareState>();
     let wanted =
         Version::parse(version).map_err(|_| format!("{version} is not a firmware version"))?;

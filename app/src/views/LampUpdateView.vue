@@ -47,6 +47,12 @@ const summary = computed(() => {
     : t('lampUpdate.already', { version });
 });
 
+function install(): void {
+  if (firmware.latest) {
+    void firmware.install(firmware.latest);
+  }
+}
+
 function close(): Promise<void> {
   return getCurrentWebviewWindow().close();
 }
@@ -84,7 +90,7 @@ function close(): Promise<void> {
         >
           {{ t('updates.check') }}
         </UButton>
-        <UButton v-else icon="i-lucide-download" @click="firmware.install">
+        <UButton v-else icon="i-lucide-download" @click="install">
           {{
             lamp.connection.connected && !firmware.newerForLamp
               ? t('lampUpdate.reinstall')
@@ -100,7 +106,7 @@ function close(): Promise<void> {
       >
         {{ t('common.cancel') }}
       </UButton>
-      <UButton v-if="failed" icon="i-lucide-rotate-ccw" @click="firmware.install">
+      <UButton v-if="failed" icon="i-lucide-rotate-ccw" @click="install">
         {{ t('lampUpdate.retry') }}
       </UButton>
       <UButton v-if="finished" color="neutral" variant="outline" @click="close">
