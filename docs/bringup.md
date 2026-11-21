@@ -54,19 +54,17 @@ Equipment:
 - [ ] `set color 0` to `3` show green, orange, red and warm white, without
       flicker and with smooth 300 ms fades. Judge the colors through the
       closed enclosure, because the PLA shifts them. The palette is
-      `app_color_config`, and the self-test repeats its warm white in
-      `app_self_test_config.white`.
-- [ ] Warm white keeps the same hue at 1, 3, 10, 30 and 100 %
-      (`set level`), and so does a custom white from 2 to 30 %. If a low
-      level drifts, yellow-green when red is missing, yellow when blue is or
-      pink when green is, raise the pulse loss of the missing channel in
-      `app_led_pulse_loss`, at the light of its pulses there; lower the
-      loss of a channel that is too strong.
-- [ ] A custom white, `#FFFFFF` from the app, looks neutral through the
-      closed enclosure at 30 % and keeps its hue from 2 to 100 %. If it
-      leans to a hue, pick the hex that looks neutral in the color editor:
-      the gains of `app_led_white_balance` times the linear light of that
-      hex make the new gains.
+      `app_color_config`; the self-test shows its warm white too.
+- [ ] Warm white and a custom white, `#FFFFFF` from the app, keep the same
+      hue at 1, 3, 10, 30 and 100 % (`set level`). If a low level drifts,
+      yellow-green when red is missing, yellow when blue is or pink when
+      green is, the light tables of `app_led_light_cal` do not fit this
+      board: measure them again ([LED calibration](#led-calibration)).
+- [ ] In a dim room, a custom white and a few custom colors look like the
+      same codes on a screen that shows sRGB faithfully (a phone in its
+      natural or sRGB screen mode), side by side. If they lean to a hue,
+      measure the color calibration again
+      ([LED calibration](#led-calibration)).
 - [ ] `set level 1` is still visible in a dark room, and `set level 100` is
       bright.
 - [ ] `state` shows sensible duties and the estimated current.
@@ -240,3 +238,85 @@ for instance, at room temperature.
       HID only, and the app works the same. `1209:0001` is the test PID of
       pid.codes, which the release builds keep until the lamp gets its own
       ([LICENSING.md](../LICENSING.md#usb-identifiers)).
+
+## LED calibration
+
+The firmware turns colors into duties with two measured sets of constants
+in `app_config.c`: the light tables of `app_led_light_cal`, one per channel,
+and the color matrix of `app_led_color_cal`. Both were measured on
+2026-11-20 on a closed lamp, pcb 1.0.0 with its 100 Ω gate resistors and
+the cube in white PLA. Measure them again for another board revision,
+another LED or another cube material. The scripts used are not in the
+repository; this section says what they did, so that they can be written
+again.
+
+**Equipment.** The debug firmware, whose console has two commands for this
+work: `raw <r> <g> <b>` sets the duties in sub-ticks, and `pat` cycles up
+to 32 PWM periods of whole ticks. A webcam (a Logitech C920 here) in front
+of the cube, with exposure, gain (0), white balance (6500 K) and focus all
+locked, in 640 x 480 YUY2: its 1080p mode delivers 5 frames per second
+only. A phone whose screen shows sRGB faithfully: a Galaxy S23 in its
+Natural mode, with the eye comfort filter off and a fixed brightness. A
+dark room.
+
+**The camera as a light meter.** A camera only compares lights of the same
+spectrum, inside the middle of its range:
+
+- A channel near saturation alters the others: the camera's highlight
+  handling pulls a clipped color toward white.
+- A dark saturated color loses chroma: the camera pulls it toward gray.
+  Keep every reading between codes 30 and 215.
+- The camera's color matrix clips negative values: blue light reads 0 in
+  its red channel. So lights of different spectra do not add up in the
+  camera, and a sum of channels cannot be read.
+- Its response curve comes from lights in exact ratios. One pulse of 2048
+  ticks every K periods, K from 1 to 32 (`pat`), read at every exposure that
+  keeps it in range, fits the curve of each camera channel together with
+  the exposure steps. Large K keeps the LED cold.
+
+**Light tables.** For each channel alone and each pulse length (every tick
+up to 32, then up to 3600), one pulse every K periods, with K and the
+exposure chosen so that the reading lands in range. A reference pattern
+read every six points corrects any drift. The lights of long pulses (128 to
+1024 ticks) fit a line, whose intercept is the offset: about −13 ticks on
+every channel, the light outlasting the duty. Below 128 ticks, the table
+keeps the measured lights, with the efficiency (light over the line)
+smoothed from 12 ticks on, and joins the line over its last 24 ticks.
+Below 8 ticks the light is too weak for the camera even at its longest
+exposure: those entries are approximate, and almost no light comes out
+below 5 ticks.
+
+**Colors.** No camera sees the narrow primaries of an LED as the eye does:
+through its color filters, the webcam put the green LED at xy (0.26,
+0.55), where an InGaN green of about 520 nm lies near (0.15, 0.70), and
+any camera does the same within a few hundredths, RAW files included. So
+the eye does it, against the phone, with A/B choices rather than knobs:
+
+1. The phone shows `#FFFFFF`; the lamp shows two candidate whites, either
+   side of the current one along one axis of u'v' (red to green, then
+   yellow to blue). The person keeps the one closer to the phone, and the
+   step halves: 0.012, 0.006, 0.003, then 0.0015 on each axis.
+2. The phone shows pure blue, then red, then green; the lamp shows that
+   color rendered with the dominant wavelength of that primary moved down
+   or up, 4 nm then halving. Each primary's spectrum comes from its
+   dominant wavelength, with the measured shape of an InGaN or AlInGaP LED
+   at the typical width (18 nm red, 33 nm green, 25 nm blue).
+3. A last round shows three candidates, the result in the middle, and
+   moves a value only if the person keeps a side one.
+
+The result, for this LED as one person sees it: dominant wavelengths of
+619, 521 and 458 nm, and a D65 white at drives 0.564, 1 and 0.214. The
+matrix follows: the inverse of the primaries' XYZ times the sRGB matrix,
+scaled so that the magnitudes of each row add up to 32767 at most. The
+built-in green, orange and red stay LED drives, since every sRGB version
+looked too pale beside them, and their app swatches are the nearest sRGB
+colors of the same hue.
+
+**What the calibration does not correct.** Pulses of two channels that
+overlap in a period lose 1.5 to 3 % of their light each, through the
+supply they share: almost the same on every channel, so the hue barely
+moves. At full brightness the red LED loses about 4 % of its light within
+minutes as it warms (time constant about 75 s), green and blue less than
+1 %: white leans slightly toward cyan, about 0.003 in u'v', and much less at
+ordinary levels. VBUS sets the LED currents through the series resistors,
+so the brightness follows it, by about 3 % per 0.1 V.

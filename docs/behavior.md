@@ -54,8 +54,9 @@ release, and the host does not hear of it.
 - The host reads the state and can set any subset of: power, color (a slot
   that holds a color), brightness mode, manual level (1 to 100 %) and touch
   mode.
-- It defines the custom colors of slots 4 to 15, in linear light as a screen
-  shows them, which the lamp balances for its LED, and empties them. An
+- It defines the custom colors of slots 4 to 15, in linear sRGB as a screen
+  shows them, which the lamp shows through its LED calibration, and empties
+  them. An
   emptied slot leaves the touch cycle, and a lamp that shows it takes the
   first color of the cycle.
 - It sets the touch cycle: 1 to 9 slots that hold a color, none twice.
@@ -89,6 +90,11 @@ switched on or off in about 1.5 s, ignores a hand or a shadow passing in
 front of the sensor, and follows small changes slowly, without ever
 hunting.
 
+Levels are perceived brightness, from 1 to 100 %, and the lamp spreads
+them over 3 to 100 %: level 1 % shows 3 %. Dimmer, the pulses of a
+channel would last only a few timer ticks, where the LED barely lights
+and its colors drift. Hosts see and send the levels unchanged.
+
 An alert breathes over the lamp color, up from a dim lamp and down from a
 bright one, for the number of breaths and the period the host asks, then
 ends by itself and tells the host. The desktop app always asks for three
@@ -116,8 +122,9 @@ not suspend, stays lit.
 The caps use the worst-case LED currents at 100 % duty: 86 mA for red,
 63 mA for green and 125 mA for blue. When a color would exceed the cap,
 the firmware scales the three channels down together, which keeps the hue.
-A pure color fits within 125 mA. Warm white would draw about 140 mA at
-100 %: it keeps about 90 % of its power with a host, and half without one.
+A pure color fits within 125 mA. Warm white would draw about 150 mA at
+100 %: it keeps about 80 % of its power with a host, and less than half
+without one.
 
 ## Self-test (production)
 
