@@ -21,6 +21,9 @@ tauri-plugin-store = "^2.5.1"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 hidapi.workspace = true
+# Locks that never poison: a release build aborts on a panic, so the
+# fallbacks of a poisoned std lock would never run.
+parking_lot = "^0.12.5"
 tauri-plugin-autostart = "^2.7.0"
 tauri-plugin-single-instance = "^2.5.5"
 tauri-plugin-updater = "^2.14.1"

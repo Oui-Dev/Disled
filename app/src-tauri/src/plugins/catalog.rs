@@ -11,9 +11,9 @@
 //! approval follows.
 
 use std::collections::HashMap;
-use std::sync::Mutex;
 
 use disled_flash::signature::verify_signed;
+use parking_lot::Mutex;
 use semver::Version;
 use serde::Serialize;
 use serde_json::Value;
@@ -233,9 +233,7 @@ pub async fn read(app: &AppHandle) -> Result<Vec<CatalogView>, CatalogError> {
         .iter()
         .map(|published| view(published, &installed, language))
         .collect();
-    if let Ok(mut last) = app.state::<CatalogState>().0.lock() {
-        *last = published;
-    }
+    *app.state::<CatalogState>().0.lock() = published;
     Ok(views)
 }
 
@@ -246,12 +244,9 @@ pub async fn install(app: &AppHandle, id: &str) -> Result<String, CatalogError> 
         .state::<CatalogState>()
         .0
         .lock()
-        .ok()
-        .and_then(|last| {
-            last.iter()
-                .find(|published| published.manifest.id == id)
-                .cloned()
-        })
+        .iter()
+        .find(|published| published.manifest.id == id)
+        .cloned()
         .ok_or(CatalogError::Missing)?;
     let max = usize::try_from(published.size)
         .unwrap_or(usize::MAX)

@@ -5,8 +5,9 @@
 //! reads the same files in `app/src/locales` for the texts the system draws: the tray
 //! menu and tooltip, and the window titles.
 
-use std::sync::{LazyLock, Mutex};
+use std::sync::LazyLock;
 
+use parking_lot::Mutex;
 use serde::Serialize;
 use serde_json::Value;
 
@@ -89,15 +90,12 @@ pub struct LocaleState(Mutex<Locale>);
 
 impl LocaleState {
     pub fn get(&self) -> Locale {
-        self.0.lock().map(|locale| *locale).unwrap_or_default()
+        *self.0.lock()
     }
 
     /// Sets the language; returns the one it replaces.
     pub fn replace(&self, locale: Locale) -> Locale {
-        self.0
-            .lock()
-            .map(|mut current| std::mem::replace(&mut *current, locale))
-            .unwrap_or_default()
+        std::mem::replace(&mut *self.0.lock(), locale)
     }
 }
 

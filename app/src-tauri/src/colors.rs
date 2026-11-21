@@ -5,13 +5,12 @@
 //! the built-in colors, the custom colors and the touch cycle. The lamp keeps
 //! none of them, so the app sends them again at every connection.
 
-use std::sync::Mutex;
-
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use disled_protocol::{
     Command, FIRST_CUSTOM_SLOT, LinearRgb, SLOT_COUNT, SLOT_RED, SetState, State, TOUCH_CYCLE_MAX,
 };
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -69,16 +68,11 @@ pub struct ColorsState(Mutex<Palette>);
 
 impl ColorsState {
     pub fn get(&self) -> Palette {
-        self.0
-            .lock()
-            .map(|palette| palette.clone())
-            .unwrap_or_default()
+        self.0.lock().clone()
     }
 
     pub fn set(&self, palette: Palette) {
-        if let Ok(mut shared) = self.0.lock() {
-            *shared = palette;
-        }
+        *self.0.lock() = palette;
     }
 }
 
@@ -494,9 +488,7 @@ impl PreviewState {
     /// Shows a color in the preview slot. The first one also lights the lamp
     /// on that slot, and keeps the state that `end` gives back.
     pub fn follow(&self, lamp: &State, rgb: LinearRgb) -> Vec<Command> {
-        let Ok(mut kept) = self.0.lock() else {
-            return Vec::new();
-        };
+        let mut kept = self.0.lock();
         let mut commands = vec![Command::SetColor {
             slot: PREVIEW_SLOT,
             rgb,
@@ -519,7 +511,7 @@ impl PreviewState {
     /// had, or stays lit on `stay`, a color just saved from the popover. Then
     /// the preview slot empties.
     pub fn end(&self, stay: Option<u8>) -> Vec<Command> {
-        let Some(kept) = self.0.lock().ok().and_then(|mut kept| kept.take()) else {
+        let Some(kept) = self.0.lock().take() else {
             return Vec::new();
         };
         let (on, slot) = stay.map_or((kept.on, kept.slot), |slot| (true, slot));
@@ -539,18 +531,14 @@ impl PreviewState {
     /// Drops the preview without a command, once the user touched the lamp,
     /// which then left the preview slot, or the lamp went away.
     pub fn forget(&self) {
-        if let Ok(mut kept) = self.0.lock() {
-            *kept = None;
-        }
+        *self.0.lock() = None;
     }
 
     /// While a preview runs, the state it took the lamp from, lit or not,
     /// and its slot.
     pub fn kept(&self) -> Option<(bool, u8)> {
-        self.0
-            .lock()
-            .ok()
-            .and_then(|kept| kept.map(|kept| (kept.on, kept.slot)))
+        let kept = *self.0.lock();
+        kept.map(|kept| (kept.on, kept.slot))
     }
 }
 

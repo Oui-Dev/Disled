@@ -9,7 +9,7 @@
 //! `Origin`, which browsers always send, and it has no CORS.
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::Duration;
 
 use axum::Router;
@@ -18,6 +18,7 @@ use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::post;
+use parking_lot::RwLock;
 use serde_json::Value;
 use subtle::ConstantTimeEq;
 use tokio::sync::mpsc;
@@ -85,11 +86,7 @@ async fn hook(
     if headers.contains_key(header::ORIGIN) {
         return reply(StatusCode::FORBIDDEN, "no browser requests");
     }
-    let hook = server
-        .hooks
-        .read()
-        .ok()
-        .and_then(|hooks| hooks.get(&id).cloned());
+    let hook = server.hooks.read().get(&id).cloned();
     let Some(hook) = hook else {
         return reply(StatusCode::NOT_FOUND, "no such plugin");
     };
@@ -143,7 +140,7 @@ mod tests {
 
     fn server(enabled: bool, queue: usize) -> (Router, mpsc::Receiver<Event>) {
         let hooks: Hooks = Arc::default();
-        hooks.write().expect("hooks").insert(
+        hooks.write().insert(
             "claude-code".into(),
             Hook {
                 token: TOKEN.into(),
