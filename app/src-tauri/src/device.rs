@@ -42,9 +42,9 @@ const READ_TIMEOUT_MS: i32 = 20;
 /// in power only: the lamp goes back to normal touch after 10 s of silence.
 const HEARTBEAT: Duration = Duration::from_secs(3);
 
-const EVENT_CONNECTION: &str = "device-connection";
-const EVENT_MESSAGE: &str = "device-message";
-const EVENT_PROTOCOL_ERROR: &str = "device-protocol-error";
+pub(crate) const EVENT_CONNECTION: &str = "device-connection";
+pub(crate) const EVENT_MESSAGE: &str = "device-message";
+pub(crate) const EVENT_PROTOCOL_ERROR: &str = "device-protocol-error";
 
 #[derive(Debug, Clone, Default, Serialize)]
 #[cfg_attr(test, derive(ts_rs::TS), ts(export))]

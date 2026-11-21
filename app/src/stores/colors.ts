@@ -18,11 +18,8 @@ import {
   colorsSetCycle,
 } from '@/ipc/commands';
 import { mirror } from '@/ipc/events';
-import { BUILT_IN_COLORS } from '@/utils/lamp';
+import { BUILT_IN_COLORS, CUSTOM_MAX } from '@/utils/lamp';
 import { useErrorStore } from './errors';
-
-/** Most custom colors, as CUSTOM_MAX of src-tauri/src/colors.rs. */
-export const CUSTOM_MAX = 5;
 
 /** A color as the windows show it: its slot, the name the user sees, its code on screen. */
 export interface ShownColor {

@@ -17,7 +17,7 @@ use crate::firmware::{self, FirmwareState};
 use crate::net::{CONNECT_TIMEOUT, READ_TIMEOUT};
 use crate::settings::SettingsState;
 
-const EVENT_STATUS: &str = "update-status";
+pub(crate) const EVENT_STATUS: &str = "update-status";
 
 /// The first automatic check waits for the network, which may still be
 /// coming up after a login.

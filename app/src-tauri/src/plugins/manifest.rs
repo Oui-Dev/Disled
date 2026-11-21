@@ -671,6 +671,7 @@ mod tests {
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/plugins/plugin.schema.json");
         let schema: Value =
             serde_json::from_str(&std::fs::read_to_string(path).expect("schema")).expect("JSON");
+        assert_eq!(schema["properties"]["icon"]["enum"], json!(ICONS));
         let validator = jsonschema::validator_for(&schema).expect("a valid schema");
         let with = |mut value: Value, change: fn(&mut Value)| {
             change(&mut value);
@@ -848,6 +849,19 @@ mod tests {
                 Manifest::from_value(&manifest, Some(&id)).map(|_| ()),
                 reader_says,
                 "the reader, for {name}"
+            );
+        }
+    }
+
+    /// The windows bundle the icons that their code names, written out in
+    /// full.
+    #[test]
+    fn the_windows_name_every_icon() {
+        let windows = include_str!("../../../src/utils/pluginIcons.ts");
+        for icon in ICONS {
+            assert!(
+                windows.contains(&format!("'i-lucide-{icon}'")),
+                "pluginIcons.ts lacks {icon}"
             );
         }
     }

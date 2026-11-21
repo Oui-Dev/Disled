@@ -10,10 +10,9 @@ import { computed, ref, watch } from 'vue';
 import type { Diagnostics } from '@/bindings/Diagnostics';
 import type { SelfTestResult } from '@/bindings/SelfTestResult';
 import { on } from '@/ipc/events';
+import { CMD_SELF_TEST } from '@/utils/lamp';
 import { useLampStore } from './lamp';
 
-/** The code of SELF_TEST, for the ERROR that rejects it. */
-const COMMAND_SELF_TEST = 0x08;
 /** How often the diagnostics are asked, ms. */
 const REFRESH_MS = 2000;
 
@@ -75,7 +74,7 @@ export const useDiagnosticsStore = defineStore('diagnostics', () => {
           selfTestResult.value = message;
           break;
         case 'error':
-          if (message.command === COMMAND_SELF_TEST) {
+          if (message.command === CMD_SELF_TEST) {
             selfTestRunning.value = false;
           }
           break;

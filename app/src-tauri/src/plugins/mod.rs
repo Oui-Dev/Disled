@@ -44,7 +44,7 @@ use manifest::Reason;
 use process::{Notification, Program, ProgramStatus, Timing};
 use view::{FilledBlock, PluginView};
 
-const EVENT_PLUGINS: &str = "plugins-changed";
+pub(crate) const EVENT_PLUGINS: &str = "plugins-changed";
 /// How often the states whose time runs out leave.
 const TICK: Duration = Duration::from_secs(1);
 
