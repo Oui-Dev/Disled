@@ -179,6 +179,7 @@
     },
     "reason": {
       "missing": "Fichier plugin.json absent.",
+      "io": "Impossible de lire ou d’écrire les fichiers du plugin.",
       "json": "JSON invalide, ligne {line}.",
       "field": "Champ manquant : {field}.",
       "invalid": "Champ invalide : {field}.",

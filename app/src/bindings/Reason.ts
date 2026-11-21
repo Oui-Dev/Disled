@@ -4,4 +4,4 @@
  * Why a plugin cannot be read: in its details, and under the header of
  * the integrations window after a refused import.
  */
-export type Reason = { "kind": "missing" } | { "kind": "json", line: number, } | { "kind": "field", field: string, } | { "kind": "invalid", field: string, } | { "kind": "api", api: number, } | { "kind": "id" } | { "kind": "link", path: string, } | { "kind": "size" } | { "kind": "path", path: string, };
+export type Reason = { "kind": "missing" } | { "kind": "io" } | { "kind": "json", line: number, } | { "kind": "field", field: string, } | { "kind": "invalid", field: string, } | { "kind": "api", api: number, } | { "kind": "id" } | { "kind": "link", path: string, } | { "kind": "size" } | { "kind": "path", path: string, };

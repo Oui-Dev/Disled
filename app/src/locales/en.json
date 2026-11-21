@@ -179,6 +179,7 @@
     },
     "reason": {
       "missing": "No plugin.json file.",
+      "io": "Cannot read or write the files of the plugin.",
       "json": "Invalid JSON, line {line}.",
       "field": "Missing field: {field}.",
       "invalid": "Invalid field: {field}.",

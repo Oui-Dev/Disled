@@ -7,6 +7,7 @@
 //! version 1 reads richer manifests. A manifest that breaks a rule leaves
 //! the plugin unreadable, for one reason.
 
+use std::io::ErrorKind;
 use std::path::Path;
 use std::time::Duration;
 
@@ -55,6 +56,8 @@ const MAX_TTL_S: u64 = 86_400;
 pub enum Reason {
     /// No `plugin.json`.
     Missing,
+    /// A file of the plugin, or of its zip file, cannot be read or written.
+    Io,
     /// Not JSON, from that line on.
     Json { line: usize },
     /// A field that the manifest must have.
@@ -269,18 +272,25 @@ fn built_in(name: &str) -> Option<u8> {
 
 /// Reads the manifest of the plugin in `folder`.
 pub fn read(folder: &Path) -> Result<Manifest, Reason> {
-    let text = match std::fs::read_to_string(folder.join(FILE)) {
-        Ok(text) => text,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Err(Reason::Missing),
-        Err(_) => return Err(Reason::Json { line: 1 }),
-    };
-    let value: Value =
-        serde_json::from_str(&text).map_err(|error| Reason::Json { line: error.line() })?;
     let name = folder
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or_default();
-    Manifest::from_value(&value, Some(name))
+    Manifest::from_value(&read_json(folder)?, Some(name))
+}
+
+/// The `plugin.json` of `folder` as JSON, before the check of its fields.
+pub fn read_json(folder: &Path) -> Result<Value, Reason> {
+    let text = match std::fs::read_to_string(folder.join(FILE)) {
+        Ok(text) => text,
+        Err(error) if error.kind() == ErrorKind::NotFound => return Err(Reason::Missing),
+        // Not UTF-8.
+        Err(error) if error.kind() == ErrorKind::InvalidData => {
+            return Err(Reason::Json { line: 1 });
+        }
+        Err(_) => return Err(Reason::Io),
+    };
+    serde_json::from_str(&text).map_err(|error| Reason::Json { line: error.line() })
 }
 
 impl Manifest {
@@ -929,6 +939,8 @@ mod tests {
         assert_eq!(read(&plugin), Err(Reason::Missing));
         std::fs::write(plugin.join(FILE), "{\n  \"api\": 1,\n  oops\n}").expect("write");
         assert_eq!(read(&plugin), Err(Reason::Json { line: 3 }));
+        std::fs::write(plugin.join(FILE), [0xff, 0xfe]).expect("write");
+        assert_eq!(read(&plugin), Err(Reason::Json { line: 1 }), "not UTF-8");
         std::fs::write(plugin.join(FILE), claude_code().to_string()).expect("write");
         assert_eq!(
             read(&plugin).map(|manifest| manifest.id),
