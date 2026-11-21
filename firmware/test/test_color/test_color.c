@@ -2,20 +2,12 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
+ *
+ * Brightness levels: the CIE L* table from perceived brightness to light.
  */
 #include <unity.h>
 
 #include "color.h"
-
-static const color_config_t config = {
-    .palette =
-        {
-            [LAMP_COLOR_GREEN] = {0, 65535, 0},
-            [LAMP_COLOR_ORANGE] = {65535, 16384, 0},
-            [LAMP_COLOR_RED] = {65535, 0, 0},
-            [LAMP_COLOR_WARM_WHITE] = {65535, 36000, 9000},
-        },
-};
 
 void setUp(void)
 {
@@ -23,6 +15,19 @@ void setUp(void)
 
 void tearDown(void)
 {
+}
+
+/* Y = ((L* + 16) / 116)^3 above L* = 8 and L* / 903.3 below, scaled to
+ * 65535 and rounded, in exact integers: L* is level / 10. */
+static uint32_t cie_linear(uint32_t level_permille)
+{
+    if (level_permille <= 80u) {
+        return (uint32_t)((65535u * (uint64_t)level_permille + 9033u / 2u) / 9033u);
+    }
+    const uint64_t cube =
+        (uint64_t)(level_permille + 160u) * (level_permille + 160u) * (level_permille + 160u);
+    const uint64_t full = 1160u * 1160u * (uint64_t)1160u;
+    return (uint32_t)((65535u * cube + full / 2u) / full);
 }
 
 static void test_perceived_scale_ends(void)
@@ -38,6 +43,20 @@ static void test_perceived_mid_grey_is_18_percent(void)
     TEST_ASSERT_UINT16_WITHIN(20, 12071, color_perceived_to_linear(500));
 }
 
+static void test_perceived_scale_follows_the_cie_curve(void)
+{
+    /* Exact every 2.5 L*, where the table has its points. In between, the
+     * straight line under the cubic stays within 23 of 65535 of it. */
+    for (uint16_t level = 0; level <= 1000; level++) {
+        const uint32_t exact = cie_linear(level);
+        if (level % 25u == 0u) {
+            TEST_ASSERT_EQUAL_UINT32(exact, color_perceived_to_linear(level));
+        } else {
+            TEST_ASSERT_UINT32_WITHIN(24, exact, color_perceived_to_linear(level));
+        }
+    }
+}
+
 static void test_perceived_scale_is_strictly_increasing(void)
 {
     uint16_t previous = color_perceived_to_linear(0);
@@ -50,96 +69,33 @@ static void test_perceived_scale_is_strictly_increasing(void)
 
 static void test_dimmest_manual_level_stays_visible(void)
 {
-    /* 1 % must still give a few PWM ticks out of 3600 (14 ns each), which
-     * the dithering then splits into sixteenths. */
+    /* 1 % must still ask for the light of a few PWM ticks out of 3600
+     * (14 ns each), which the dithering then splits into sixteenths. */
     const uint32_t ticks = (uint32_t)color_perceived_to_linear(10) * 3600u / 65535u;
     TEST_ASSERT_TRUE(ticks >= 3);
 }
 
-static void test_shade_applies_the_level(void)
+static void test_level_shown_spreads_1_to_100_percent_over_the_floor_to_100(void)
 {
-    const rgb16_t full = color_shade(config.palette[LAMP_COLOR_GREEN], 1000);
-    TEST_ASSERT_EQUAL_UINT16(0, full.r);
-    TEST_ASSERT_EQUAL_UINT16(65535, full.g);
-    TEST_ASSERT_EQUAL_UINT16(color_perceived_to_linear(500),
-                             color_shade(config.palette[LAMP_COLOR_GREEN], 500).g);
-    TEST_ASSERT_EQUAL_UINT16(0, full.b);
-
-    const rgb16_t dark = color_shade(config.palette[LAMP_COLOR_RED], 0);
-    TEST_ASSERT_EQUAL_UINT16(0, dark.r);
+    TEST_ASSERT_EQUAL_UINT16(30, color_level_shown(10, 30));
+    TEST_ASSERT_EQUAL_UINT16(1000, color_level_shown(1000, 30));
+    /* Half way between 1 % and 100 %, half way between 3 % and 100 %. */
+    TEST_ASSERT_EQUAL_UINT16(515, color_level_shown(505, 30));
+    /* Below 1 %, as an automatic curve may ask: the floor. */
+    TEST_ASSERT_EQUAL_UINT16(30, color_level_shown(5, 30));
+    uint16_t previous = color_level_shown(10, 30);
+    for (uint16_t level = 11; level <= 1000; level++) {
+        const uint16_t shown = color_level_shown(level, 30);
+        TEST_ASSERT_TRUE(shown >= previous && shown >= level);
+        previous = shown;
+    }
 }
 
-static void test_shade_keeps_the_hue_when_dimming(void)
+static void test_a_floor_of_1_percent_changes_nothing(void)
 {
-    const rgb16_t bright = color_shade(config.palette[LAMP_COLOR_WARM_WHITE], 1000);
-    const rgb16_t dim = color_shade(config.palette[LAMP_COLOR_WARM_WHITE], 500);
-    /* Same red/blue ratio within rounding. */
-    const uint32_t lhs = (uint32_t)bright.r * dim.b;
-    const uint32_t rhs = (uint32_t)dim.r * bright.b;
-    TEST_ASSERT_UINT32_WITHIN(lhs / 500u + 65535u, lhs, rhs);
-}
-
-static void test_mix_ends_and_middle(void)
-{
-    const rgb16_t a = { 0, 65535, 1000 };
-    const rgb16_t b = { 65535, 0, 3000 };
-    const rgb16_t start = color_mix(a, b, 0);
-    const rgb16_t end = color_mix(a, b, 65535);
-    const rgb16_t mid = color_mix(a, b, 32768);
-    TEST_ASSERT_EQUAL_MEMORY(&a, &start, sizeof a);
-    TEST_ASSERT_EQUAL_MEMORY(&b, &end, sizeof b);
-    TEST_ASSERT_UINT16_WITHIN(1, 32768, mid.r);
-    TEST_ASSERT_UINT16_WITHIN(1, 32767, mid.g);
-    TEST_ASSERT_UINT16_WITHIN(1, 2000, mid.b);
-}
-
-static void test_scale(void)
-{
-    TEST_ASSERT_EQUAL_UINT16(65535, color_scale(65535, 65535));
-    TEST_ASSERT_EQUAL_UINT16(0, color_scale(65535, 0));
-    TEST_ASSERT_UINT16_WITHIN(1, 16384, color_scale(32768, 32768));
-}
-
-/* The gains of an LED whose red gives a little too much light and whose blue
- * gives four times too much. */
-static const rgb16_t gains = { 53921, 65535, 17187 };
-
-static void assert_rgb(rgb16_t expected, rgb16_t actual)
-{
-    TEST_ASSERT_EQUAL_UINT16(expected.r, actual.r);
-    TEST_ASSERT_EQUAL_UINT16(expected.g, actual.g);
-    TEST_ASSERT_EQUAL_UINT16(expected.b, actual.b);
-}
-
-static void test_balance_turns_white_into_the_gains(void)
-{
-    assert_rgb(gains, color_balance((rgb16_t){ 65535, 65535, 65535 }, gains));
-}
-
-static void test_balance_keeps_a_primary_at_full_scale(void)
-{
-    assert_rgb((rgb16_t){ 65535, 0, 0 }, color_balance((rgb16_t){ 65535, 0, 0 }, gains));
-    assert_rgb((rgb16_t){ 0, 0, 65535 }, color_balance((rgb16_t){ 0, 0, 65535 }, gains));
-}
-
-static void test_balance_brings_the_largest_channel_back_to_full_scale(void)
-{
-    /* The red loses 18 %, so the green of an orange gains as much against it. */
-    const rgb16_t orange = color_balance((rgb16_t){ 65535, 29000, 0 }, gains);
-    TEST_ASSERT_EQUAL_UINT16(65535, orange.r);
-    TEST_ASSERT_UINT16_WITHIN(1, 35246, orange.g);
-    TEST_ASSERT_EQUAL_UINT16(0, orange.b);
-}
-
-static void test_balance_needs_only_the_ratios_of_the_gains(void)
-{
-    const rgb16_t white = { 65535, 65535, 65535 };
-    assert_rgb(white, color_balance(white, (rgb16_t){ 32768, 32768, 32768 }));
-}
-
-static void test_balance_keeps_black(void)
-{
-    assert_rgb((rgb16_t){ 0, 0, 0 }, color_balance((rgb16_t){ 0, 0, 0 }, gains));
+    for (uint16_t level = 10; level <= 1000; level++) {
+        TEST_ASSERT_EQUAL_UINT16(level, color_level_shown(level, 10));
+    }
 }
 
 int main(void)
@@ -147,16 +103,10 @@ int main(void)
     UNITY_BEGIN();
     RUN_TEST(test_perceived_scale_ends);
     RUN_TEST(test_perceived_mid_grey_is_18_percent);
+    RUN_TEST(test_perceived_scale_follows_the_cie_curve);
     RUN_TEST(test_perceived_scale_is_strictly_increasing);
     RUN_TEST(test_dimmest_manual_level_stays_visible);
-    RUN_TEST(test_shade_applies_the_level);
-    RUN_TEST(test_shade_keeps_the_hue_when_dimming);
-    RUN_TEST(test_mix_ends_and_middle);
-    RUN_TEST(test_scale);
-    RUN_TEST(test_balance_turns_white_into_the_gains);
-    RUN_TEST(test_balance_keeps_a_primary_at_full_scale);
-    RUN_TEST(test_balance_brings_the_largest_channel_back_to_full_scale);
-    RUN_TEST(test_balance_needs_only_the_ratios_of_the_gains);
-    RUN_TEST(test_balance_keeps_black);
+    RUN_TEST(test_level_shown_spreads_1_to_100_percent_over_the_floor_to_100);
+    RUN_TEST(test_a_floor_of_1_percent_changes_nothing);
     return UNITY_END();
 }

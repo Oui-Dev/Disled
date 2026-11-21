@@ -3,8 +3,8 @@
  * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
- * Colors in linear light, 0 to 65535, proportional to the PWM duty. Levels
- * are perceived brightness (CIE 1976 L*), so that equal steps look equal.
+ * Brightness levels are perceived brightness (CIE 1976 L*), so that equal
+ * steps look equal; the light follows from them.
  */
 #ifndef DISLED_COLOR_H
 #define DISLED_COLOR_H
@@ -16,29 +16,17 @@
 #define COLOR_LINEAR_MAX 65535u
 
 typedef struct {
-    /* Each lamp color at full brightness. */
+    /* Each built-in color as LED drive (led_cal.h), its largest channel at
+     * COLOR_LINEAR_MAX. */
     rgb16_t palette[LAMP_COLOR_COUNT];
 } color_config_t;
 
-/* Perceived brightness (per mille of L*) to linear light. */
+/* Perceived brightness (per mille of L*) to linear light, 0 to 65535. */
 uint16_t color_perceived_to_linear(uint16_t level_permille);
 
-/* A color at full brightness scaled to a perceived brightness level. */
-rgb16_t color_shade(rgb16_t base, uint16_t level_permille);
-
-/* Every channel times num / den (den not 0), saturated: the same hue,
- * brighter or dimmer. */
-rgb16_t color_gain(rgb16_t color, uint16_t num, uint16_t den);
-
-/* A color given in linear light, as a host shows it, on this LED: every
- * channel times its gain, a fraction of 65535, then scaled back so that the
- * largest channel is COLOR_LINEAR_MAX again. Black stays black. */
-rgb16_t color_balance(rgb16_t color, rgb16_t gains);
-
-/* Linear interpolation; `t` = 0 gives `from`, 65535 gives `to`. */
-rgb16_t color_mix(rgb16_t from, rgb16_t to, uint16_t t);
-
-/* Product of two fractions of 65535, rounded. */
-uint16_t color_scale(uint16_t value, uint16_t factor);
+/* The perceived brightness a lamp level shows: the levels from 1 % (10 per
+ * mille) to 100 % spread over `floor_permille` to 1000 per mille, so that
+ * level 1 % gives `floor_permille`. A floor of 10 changes nothing. */
+uint16_t color_level_shown(uint16_t level_permille, uint16_t floor_permille);
 
 #endif /* DISLED_COLOR_H */

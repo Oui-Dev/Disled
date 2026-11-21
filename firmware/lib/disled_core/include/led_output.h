@@ -4,8 +4,11 @@
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
  * The single path from the lamp settings to the PWM duties, through the fade
- * and the power limit. Nothing else may drive the LED, so the limit always
- * applies.
+ * and the power limit. Nothing else drives the LED, so the limit always
+ * applies; only the calibration commands of the debug console replace the
+ * duties, under the same cap. It works on the light of each channel
+ * (led_cal.h), so that a fade mixes light and the light tables turn it into
+ * duties.
  */
 #ifndef DISLED_LED_OUTPUT_H
 #define DISLED_LED_OUTPUT_H
@@ -13,57 +16,52 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "color.h"
 #include "disled_types.h"
+#include "led_cal.h"
 #include "power_limiter.h"
 #include "pwm_dither.h"
 
 /* Duties in sub-ticks, 1/16 of a tick: at low levels, whole ticks make visible steps. */
 #define LED_DUTY_SUBTICKS PWM_DITHER_SUBTICKS
 
-/* The light a pulse loses to the driver edges, added to the pulse of any lit
- * channel, or the few ticks of blue in a dim warm white give no light. A
- * short pulse loses more than a long one: points of the signal, the pulse
- * that the light needs, with the loss at that signal, both in sub-ticks.
- * Between two points the loss is interpolated; below the first and beyond
- * the last, it is the loss of that point. Equal signals end a curve early. */
-#define LED_LOSS_POINTS 8u
-#define LED_LOSS_MAX    4096u /* sub-ticks, so that the interpolation fits 32 bits */
-
-typedef struct {
-    uint16_t signal[LED_LOSS_POINTS]; /* never decreasing */
-    uint16_t loss[LED_LOSS_POINTS];   /* <= LED_LOSS_MAX */
-} led_loss_curve_t;
-
 typedef struct {
     const power_config_t *power;
+    /* One light table per channel, LED_CHANNEL_COUNT of them, or NULL for a
+     * duty proportional to the light: the tables hold only for the timer
+     * period they were measured at. */
+    const led_light_cal_t *light;
     uint16_t fade_ms;
-    uint16_t pwm_period; /* timer ticks for 100 % duty, <= PWM_DITHER_PERIOD_MAX */
-    led_loss_curve_t pulse_loss[LED_CHANNEL_COUNT];
+    /* Timer ticks for 100 % duty, so that 16 times it less LED_OFFSET_MIN
+     * fits 16 bits. */
+    uint16_t pwm_period;
     /* Perceived swing of an alert breath (alert.h), per mille. */
     uint16_t alert_depth_permille;
 } led_output_config_t;
 
 typedef struct {
     bool on;
-    rgb16_t color; /* the lamp color at full brightness, from the palette */
+    /* The lamp color at full brightness, as LED drive (led_cal_drive). */
+    rgb16_t drive;
     uint16_t level_permille;
     usb_link_t link;
     /* Debug override of the current cap, 0 for the cap of the link. */
     uint16_t cap_override_ma;
-    /* Self-test: this linear color instead of the lamp state, through the fade and the limit. */
+    /* Self-test: this drive, at the brightness it carries, instead of the
+     * lamp state, through the fade and the limit. */
     bool show_override;
-    rgb16_t override_rgb;
+    rgb16_t override_drive;
     /* Alert breath amplitude, 0 (none) to ALERT_AMPLITUDE_MAX, applied after the fade. */
     uint16_t breath;
 } led_output_inputs_t;
 
 typedef struct {
     const led_output_config_t *config;
-    rgb16_t from;
-    rgb16_t target;
-    rgb16_t shown;   /* before the power limit */
-    rgb16_t visible; /* shown with the alert breath, before the power limit */
+    /* Light per channel, 0 to LED_LIGHT_FULL. */
+    uint32_t from[LED_CHANNEL_COUNT];
+    uint32_t target[LED_CHANNEL_COUNT];
+    uint32_t shown[LED_CHANNEL_COUNT];   /* before the power limit */
+    uint32_t visible[LED_CHANNEL_COUNT]; /* shown with the alert breath, before the power limit */
+    uint16_t excess[LED_CHANNEL_COUNT];  /* led_cal_excess of each channel */
     uint32_t fade_start_ms;
     uint16_t cap_ma;
     uint32_t estimate_ma_x10;
@@ -81,10 +79,15 @@ void led_output_update(led_output_t *out, const led_output_inputs_t *in, uint32_
  * light it left, instead of jumping back to the lamp level. */
 void led_output_settle(led_output_t *out, uint32_t now_ms);
 
-/* Estimated LED current after the limit, in tenths of mA. */
+/* LED current of the last duties, in tenths of mA. */
 uint32_t led_output_estimate_ma_x10(const led_output_t *out);
 
 /* Cap applied by the last update, in mA. */
 uint16_t led_output_cap_ma(const led_output_t *out);
+
+/* Estimated LED current of duties in sub-ticks, in tenths of mA, for a 100 %
+ * duty of `full` sub-ticks. */
+uint32_t led_output_duty_ma_x10(const power_config_t *power, const uint16_t duty[LED_CHANNEL_COUNT],
+                                uint16_t full);
 
 #endif /* DISLED_LED_OUTPUT_H */

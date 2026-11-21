@@ -18,6 +18,8 @@
 
 static uint32_t s_watch_period_ms;
 static uint32_t s_watch_next_ms;
+static bool s_raw_on;
+static uint16_t s_raw_duty[LED_CHANNEL_COUNT]; /* sub-ticks */
 
 static const char *const color_names[] = { "green", "orange", "red", "warm-white" };
 static const char *const link_names[] = { "unconfigured", "configured", "suspended" };
@@ -190,12 +192,155 @@ static void cmd_cap(int argc, char **argv)
     cmd_state(0, NULL);
 }
 
+/* The raw duties scaled down alike so that their estimated current stays
+ * within `cap_ma`. */
+static void cap_raw(uint16_t duty[LED_CHANNEL_COUNT], uint16_t cap_ma)
+{
+    const uint16_t full = (uint16_t)(led_pwm_period() * LED_DUTY_SUBTICKS);
+    const uint32_t estimate_x10 = led_output_duty_ma_x10(&app_power_config, s_raw_duty, full);
+    const uint32_t cap_x10 = (uint32_t)cap_ma * 10u;
+    for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
+        /* duty <= 65535 and cap_x10 <= 3000: the product fits 32 bits. */
+        duty[i] = (estimate_x10 <= cap_x10)
+                      ? s_raw_duty[i]
+                      : (uint16_t)(((uint32_t)s_raw_duty[i] * cap_x10) / estimate_x10);
+    }
+}
+
+void app_console_raw_output(uint16_t duty[LED_CHANNEL_COUNT])
+{
+    if (!s_raw_on) {
+        return;
+    }
+    uint16_t cap = (app.cap_override_ma != 0u) ? app.cap_override_ma
+                                               : power_cap_ma(&app_power_config, app.link);
+    if (app.link == USB_LINK_SUSPENDED) {
+        cap = 0;
+    }
+    cap_raw(duty, cap);
+}
+
+static void cmd_raw(int argc, char **argv)
+{
+    const uint32_t full = (uint32_t)led_pwm_period() * LED_DUTY_SUBTICKS;
+    uint32_t value[LED_CHANNEL_COUNT] = { 0 };
+    if (argc == 2 && strcmp(argv[1], "off") == 0) {
+        s_raw_on = false;
+        console_printf("raw off\r\n");
+        return;
+    }
+    bool parsed = argc == 1 + (int)LED_CHANNEL_COUNT;
+    for (size_t i = 0; parsed && i < LED_CHANNEL_COUNT; i++) {
+        parsed = parse_u32(argv[1 + i], &value[i]) && value[i] <= full;
+    }
+    if (!parsed) {
+        console_printf("usage: raw <r> <g> <b> (sub-ticks, 0-%lu)|off\r\n", (unsigned long)full);
+        return;
+    }
+    for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
+        s_raw_duty[i] = (uint16_t)value[i];
+    }
+    s_raw_on = true;
+    console_printf("raw %lu %lu %lu\r\n", (unsigned long)value[0], (unsigned long)value[1],
+                   (unsigned long)value[2]);
+}
+
+/* Pattern entries as set, kept to check the current of the whole pattern,
+ * and the length running, 0 when off. */
+static uint16_t s_pattern_ticks[LED_PWM_PATTERN_MAX][LED_CHANNEL_COUNT];
+static uint32_t s_pattern_running;
+
+/* The mean current of the first `length` entries, in tenths of mA, rounded
+ * up, with `ticks` in place of entry `at`. */
+static uint32_t pattern_ma_x10(uint32_t length, size_t at, const uint16_t ticks[LED_CHANNEL_COUNT])
+{
+    const uint32_t period = led_pwm_period();
+    uint32_t sum = 0; /* 32 x 3 x 4095 x 1000 x 10 < 2^32 */
+    for (size_t n = 0; n < length; n++) {
+        const uint16_t *entry = (n == at) ? ticks : s_pattern_ticks[n];
+        for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
+            sum += (uint32_t)entry[i] * app_power_config.full_scale_ma[i] * 10u;
+        }
+    }
+    return (sum + length * period - 1u) / (length * period);
+}
+
+/* The cap a pattern must keep to: the cap of the link, as for raw. */
+static uint16_t pattern_cap_ma(void)
+{
+    if (app.link == USB_LINK_SUSPENDED) {
+        return 0;
+    }
+    return (app.cap_override_ma != 0u) ? app.cap_override_ma
+                                       : power_cap_ma(&app_power_config, app.link);
+}
+
+static bool pattern_fits(uint32_t length, size_t at, const uint16_t ticks[LED_CHANNEL_COUNT])
+{
+    const uint32_t estimate = pattern_ma_x10(length, at, ticks);
+    const uint16_t cap = pattern_cap_ma();
+    if (estimate > (uint32_t)cap * 10u) {
+        console_printf("refused: %lu.%lu mA over the %u mA cap\r\n",
+                       (unsigned long)(estimate / 10u), (unsigned long)(estimate % 10u),
+                       (unsigned)cap);
+        return false;
+    }
+    return true;
+}
+
+static void cmd_pat(int argc, char **argv)
+{
+    uint32_t value[1 + LED_CHANNEL_COUNT] = { 0 };
+    if (argc == 2 && strcmp(argv[1], "off") == 0) {
+        led_pwm_run_pattern(0);
+        s_pattern_running = 0;
+        console_printf("pattern off\r\n");
+        return;
+    }
+    if (argc == 3 && strcmp(argv[1], "on") == 0 && parse_u32(argv[2], &value[0]) &&
+        value[0] >= 1u && value[0] <= LED_PWM_PATTERN_MAX) {
+        if (!pattern_fits(value[0], LED_PWM_PATTERN_MAX, NULL)) {
+            return;
+        }
+        led_pwm_run_pattern((uint8_t)value[0]);
+        s_pattern_running = value[0];
+        console_printf("pattern on %lu\r\n", (unsigned long)value[0]);
+        return;
+    }
+    bool parsed = argc == 2 + (int)LED_CHANNEL_COUNT && parse_u32(argv[1], &value[0]) &&
+                  value[0] < LED_PWM_PATTERN_MAX;
+    for (size_t i = 0; parsed && i < LED_CHANNEL_COUNT; i++) {
+        parsed = parse_u32(argv[2 + i], &value[1 + i]) && value[1 + i] <= led_pwm_period();
+    }
+    if (!parsed) {
+        console_printf("usage: pat <0-%u> <r> <g> <b> (ticks)|on <length>|off\r\n",
+                       (unsigned)(LED_PWM_PATTERN_MAX - 1u));
+        return;
+    }
+    uint16_t ticks[LED_CHANNEL_COUNT];
+    for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
+        ticks[i] = (uint16_t)value[1 + i];
+    }
+    /* An entry of the running pattern changes at once: check it first. */
+    if (value[0] < s_pattern_running && !pattern_fits(s_pattern_running, value[0], ticks)) {
+        return;
+    }
+    for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
+        s_pattern_ticks[value[0]][i] = ticks[i];
+    }
+    led_pwm_set_pattern(value[0], ticks);
+    console_printf("pat %lu\r\n", (unsigned long)value[0]);
+}
+
 static const console_command_t commands[] = {
     { "state", "", "lamp, USB and LED output", cmd_state },
     { "set", "<what> [value]", "change the lamp like the host does", cmd_set },
     { "watch", "<ms>|off", "print touch, light and current periodically", cmd_watch },
     { "cap", "<mA>|off", "override the LED current cap (thermal test only)", cmd_cap },
     { "alert", "[breaths] [period ms] [depth]", "breathe like an alert from the host", cmd_alert },
+    { "raw", "<r> <g> <b>|off", "set the LED duties in sub-ticks (calibration)", cmd_raw },
+    { "pat", "<i> <r> <g> <b>|on <n>|off", "cycle n periods of whole ticks (calibration)",
+      cmd_pat },
 };
 
 void app_console_init(void)

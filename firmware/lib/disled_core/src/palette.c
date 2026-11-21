@@ -31,10 +31,10 @@ rgb16_t palette_color(const palette_t *palette, uint32_t slot)
     return palette->custom[slot - PALETTE_FIXED_SLOTS];
 }
 
-rgb16_t palette_light(const palette_t *palette, uint32_t slot, rgb16_t balance)
+rgb16_t palette_light(const palette_t *palette, uint32_t slot, const led_color_cal_t *cal)
 {
     const rgb16_t color = palette_color(palette, slot);
-    return (slot < PALETTE_FIXED_SLOTS) ? color : color_balance(color, balance);
+    return (slot < PALETTE_FIXED_SLOTS) ? color : led_cal_drive(cal, color);
 }
 
 bool palette_color_is_valid(rgb16_t color)

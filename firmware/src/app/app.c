@@ -19,6 +19,7 @@
 #include "bsp/bsp_power.h"
 #include "bsp/bsp_time.h"
 #include "bsp/bsp_watchdog.h"
+#include "disled_assert.h"
 #include "diag/log.h"
 #include "drivers/i2c_bus.h"
 #include "drivers/led_pwm.h"
@@ -310,15 +311,19 @@ static void task_output(uint32_t now_ms)
     const uint16_t breath = update_alert(now_ms, testing);
     const led_output_inputs_t inputs = {
         .on = app.lamp.on,
-        .color = palette_light(&app.palette, (uint32_t)app.lamp.color, app_led_white_balance),
-        .level_permille = brightness_level_permille(&app.brightness),
+        .drive = palette_light(&app.palette, (uint32_t)app.lamp.color, &app_led_color_cal),
+        .level_permille =
+            color_level_shown(brightness_level_permille(&app.brightness), APP_LED_FLOOR_PERMILLE),
         .link = app.link,
         .cap_override_ma = app.cap_override_ma,
         .show_override = testing,
-        .override_rgb = testing ? run_self_test(now_ms) : (rgb16_t){ 0, 0, 0 },
+        .override_drive = testing ? run_self_test(now_ms) : (rgb16_t){ 0, 0, 0 },
         .breath = breath,
     };
     led_output_update(&app.output, &inputs, now_ms, app.duty);
+#if DISLED_DEBUG
+    app_console_raw_output(app.duty);
+#endif
     led_pwm_set(app.duty);
 }
 
@@ -378,22 +383,20 @@ void app_set_alert_depth(uint16_t depth_permille)
     output_config.alert_depth_permille = depth_permille;
 }
 
-static uint16_t to_subticks(uint16_t ns)
-{
-    const uint32_t timer_mhz = bsp_apb1_timer_clock_hz() / 1000000u;
-    return (uint16_t)((ns * timer_mhz * LED_DUTY_SUBTICKS + 500u) / 1000u);
-}
+/* The self-test as configured, its white step being the warm white of the
+ * palette at the brightness of the other steps. */
+static self_test_config_t self_test_config;
 
-/* app_led_pulse_loss in sub-ticks of the timer clock. */
-static void set_pulse_loss(void)
+static void set_self_test_config(void)
 {
-    for (size_t c = 0; c < LED_CHANNEL_COUNT; c++) {
-        const app_loss_curve_t *curve = &app_led_pulse_loss[c];
-        for (size_t i = 0; i < LED_LOSS_POINTS; i++) {
-            output_config.pulse_loss[c].signal[i] = to_subticks(curve->signal_ns[i]);
-            output_config.pulse_loss[c].loss[i] = to_subticks(curve->loss_ns[i]);
-        }
-    }
+    self_test_config = app_self_test_config;
+    const rgb16_t white = app_color_config.palette[LAMP_COLOR_WARM_WHITE];
+    const uint32_t level = app_self_test_config.color_linear;
+    self_test_config.white = (rgb16_t){
+        .r = (uint16_t)(((uint32_t)white.r * level + 32767u) / 65535u),
+        .g = (uint16_t)(((uint32_t)white.g * level + 32767u) / 65535u),
+        .b = (uint16_t)(((uint32_t)white.b * level + 32767u) / 65535u),
+    };
 }
 
 void app_init(const fault_record_t *fault)
@@ -402,15 +405,19 @@ void app_init(const fault_record_t *fault)
     app.reset_cause = bsp_reset_cause();
     app.crystal_ok = bsp_crystal_ok();
 
-    /* LED first, dark: from here on only led_output drives it. */
+    /* LED first, dark: from here on only led_output drives it, apart from
+     * the calibration commands of the debug console. */
     led_pwm_init(APP_PWM_FREQUENCY_HZ);
+    /* The light tables hold only for the period they were measured at: on
+     * the slower clock of a failed crystal, the duty follows the light. */
+    DISLED_ASSERT(led_cal_color_valid(&app_led_color_cal));
     output_config = (led_output_config_t){
         .power = &app_power_config,
+        .light = (led_pwm_period() == APP_LED_CAL_PERIOD) ? app_led_light_cal : NULL,
         .fade_ms = APP_LED_FADE_MS,
         .pwm_period = led_pwm_period(),
         .alert_depth_permille = APP_ALERT_DEPTH_PERMILLE,
     };
-    set_pulse_loss();
     led_output_init(&app.output, &output_config);
 
     lamp_fsm_init(&app.lamp);
@@ -418,7 +425,8 @@ void app_init(const fault_record_t *fault)
     palette_init(&app.palette, app_color_config.palette);
     touch_cycle_init(&app.cycle);
     brightness_init(&app.brightness, &app_brightness_config);
-    self_test_init(&app.self_test, &app_self_test_config);
+    set_self_test_config();
+    self_test_init(&app.self_test, &self_test_config);
 
     i2c_bus_init(APP_I2C_SPEED_HZ);
     als_probe(&app.als, bsp_time_ms(), APP_ALS_FIRST_RETRY_MS);

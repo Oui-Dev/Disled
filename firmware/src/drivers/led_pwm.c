@@ -21,6 +21,13 @@ static volatile led_pwm_sample_callback_t s_sample_callback;
 static volatile uint16_t s_duty[LED_CHANNEL_COUNT];
 static uint8_t s_dither[LED_CHANNEL_COUNT]; /* interrupt only */
 
+#if DISLED_DEBUG
+/* Calibration: whole ticks per period, cycled, in place of the duties. */
+static uint16_t s_pattern[LED_PWM_PATTERN_MAX][LED_CHANNEL_COUNT];
+static volatile uint8_t s_pattern_length; /* 0: off */
+static uint8_t s_pattern_at;              /* interrupt only */
+#endif
+
 /* Output compare modes, compares preloaded: `led` for red, green and blue,
  * and the timing mode for channel 4, an internal event only. */
 static void set_modes(uint16_t led)
@@ -50,7 +57,7 @@ void led_pwm_init(uint32_t frequency_hz)
     /* Hand the pins to the timer only now, with every duty at 0 %. The gate
      * resistors (100 Ω) set how fast the MOSFETs switch; 10 MHz edges still
      * give the shortest blue pulses a tenth more light than 2 MHz ones, with
-     * the same touch noise. The pulse losses of app_config.c are measured
+     * the same touch noise. The light tables of app_config.c are measured
      * with them. */
     bsp_gpio_config(BOARD_LED_RED_PORT, BOARD_LED_RED_PIN, GPIO_Mode_AF_PP, GPIO_Speed_10MHz);
     bsp_gpio_config(BOARD_LED_GREEN_PORT, BOARD_LED_GREEN_PIN, GPIO_Mode_AF_PP, GPIO_Speed_10MHz);
@@ -64,6 +71,9 @@ void led_pwm_stop(void)
     for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
         s_duty[i] = 0;
     }
+#if DISLED_DEBUG
+    s_pattern_length = 0; /* a calibration pattern never outlives a suspend */
+#endif
     /* Force the outputs low now: stopping the counter in the middle of a
      * pulse would otherwise leave a channel on. */
     set_modes(TIM_ForcedAction_InActive);
@@ -102,12 +112,41 @@ void led_pwm_set(const uint16_t duty[LED_CHANNEL_COUNT])
  * written now apply to the next period. */
 static void dither_period(void)
 {
+#if DISLED_DEBUG
+    const uint8_t length = s_pattern_length;
+    if (length != 0u) {
+        if (s_pattern_at >= length) {
+            s_pattern_at = 0;
+        }
+        BOARD_LED_TIMER->CH1CVR = s_pattern[s_pattern_at][LED_CHANNEL_RED];
+        BOARD_LED_TIMER->CH2CVR = s_pattern[s_pattern_at][LED_CHANNEL_GREEN];
+        BOARD_LED_TIMER->CH3CVR = s_pattern[s_pattern_at][LED_CHANNEL_BLUE];
+        s_pattern_at++;
+        return;
+    }
+#endif
     BOARD_LED_TIMER->CH1CVR = pwm_dither_next(&s_dither[LED_CHANNEL_RED], s_duty[LED_CHANNEL_RED]);
     BOARD_LED_TIMER->CH2CVR =
         pwm_dither_next(&s_dither[LED_CHANNEL_GREEN], s_duty[LED_CHANNEL_GREEN]);
     BOARD_LED_TIMER->CH3CVR =
         pwm_dither_next(&s_dither[LED_CHANNEL_BLUE], s_duty[LED_CHANNEL_BLUE]);
 }
+
+#if DISLED_DEBUG
+void led_pwm_set_pattern(size_t index, const uint16_t ticks[LED_CHANNEL_COUNT])
+{
+    if (index < LED_PWM_PATTERN_MAX) {
+        for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
+            s_pattern[index][i] = (ticks[i] > s_period) ? s_period : ticks[i];
+        }
+    }
+}
+
+void led_pwm_run_pattern(uint8_t length)
+{
+    s_pattern_length = (length > LED_PWM_PATTERN_MAX) ? (uint8_t)LED_PWM_PATTERN_MAX : length;
+}
+#endif
 
 void led_pwm_set_sample_callback(led_pwm_sample_callback_t callback)
 {

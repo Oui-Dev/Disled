@@ -13,8 +13,14 @@
 
 #include <stdint.h>
 
+#include "disled_types.h"
+
 void app_console_init(void);
 void app_console_task(uint32_t now_ms);
+
+/* Calibration: while "raw" is on, its duties, in sub-ticks, replace
+ * `duty`, scaled down alike to the current cap of the link. */
+void app_console_raw_output(uint16_t duty[LED_CHANNEL_COUNT]);
 
 #endif
 
