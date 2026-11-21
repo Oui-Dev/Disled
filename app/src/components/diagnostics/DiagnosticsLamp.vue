@@ -2,8 +2,8 @@
   SPDX-License-Identifier: GPL-3.0-or-later
   SPDX-FileCopyrightText: 2026 The Disled contributors
 
-  Lamp tab of the Diagnostics window: off and the four colors, the
-  brightness, as in the popup, and the details of the last STATE.
+  Lamp tab of the Diagnostics window: the color tiles, the brightness, as
+  in the popup, and the details of the last STATE.
 -->
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';

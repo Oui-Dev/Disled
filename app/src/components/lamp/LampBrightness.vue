@@ -11,9 +11,9 @@ import { useThrottleFn } from '@vueuse/core';
 import { computed, nextTick, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { SettingsPatch } from '@/bindings/SettingsPatch';
+import { useSignedPercent } from '@/composables/useSignedPercent';
 import { useLampStore } from '@/stores/lamp';
 import { useSettingsStore } from '@/stores/settings';
-import { useSignedPercent } from '@/utils/format';
 import { AUTO_BIAS_MAX, AUTO_BIAS_MIN, MOVE_UPDATE_MS } from '@/utils/lamp';
 
 /** The correction moves by this much, percent. */

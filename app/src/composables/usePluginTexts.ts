@@ -113,5 +113,5 @@ export function usePluginTexts() {
     return plugin.program?.kind === 'running' ? t('integrations.status.running') : null;
   }
 
-  return { reason, ago, subtitle, status };
+  return { reason, subtitle, status };
 }

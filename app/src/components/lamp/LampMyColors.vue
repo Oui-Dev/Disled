@@ -20,10 +20,7 @@ import { useControlStore } from '@/stores/control';
 import { useLampStore } from '@/stores/lamp';
 import { BUILT_IN_COLORS } from '@/utils/lamp';
 
-withDefaults(defineProps<{ standalone?: boolean; narrow?: boolean }>(), {
-  standalone: false,
-  narrow: false,
-});
+defineProps<{ standalone?: boolean; narrow?: boolean }>();
 const emit = defineEmits<{ manage: []; create: [] }>();
 
 const { t } = useI18n();
@@ -66,15 +63,6 @@ async function choose(slot: number | null): Promise<void> {
     await control.setMode(null);
   }
   await lamp.choose({ on: true, slot });
-}
-
-function go(page: 'manage' | 'create'): void {
-  open.value = false;
-  if (page === 'manage') {
-    emit('manage');
-  } else {
-    emit('create');
-  }
 }
 </script>
 
@@ -131,7 +119,10 @@ function go(page: 'manage' | 'create'): void {
             variant="link"
             size="sm"
             class="px-0"
-            @click="go('manage')"
+            @click="
+              open = false;
+              emit('manage');
+            "
           >
             {{ t('colors.mine.manage') }}
           </UButton>
@@ -176,7 +167,10 @@ function go(page: 'manage' | 'create'): void {
             color="neutral"
             variant="ghost"
             class="group flex min-w-0 flex-col gap-1.5 rounded-lg p-0 py-1 font-normal hover:bg-transparent active:bg-transparent"
-            @click="go('create')"
+            @click="
+              open = false;
+              emit('create');
+            "
           >
             <span
               aria-hidden="true"

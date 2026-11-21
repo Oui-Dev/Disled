@@ -21,7 +21,7 @@ import { useControlStore } from '@/stores/control';
 import { useLampStore } from '@/stores/lamp';
 import { BUILT_IN_COLORS } from '@/utils/lamp';
 
-withDefaults(defineProps<{ standalone?: boolean }>(), { standalone: false });
+defineProps<{ standalone?: boolean }>();
 const emit = defineEmits<{ manage: []; create: [] }>();
 
 /** Off, a built-in color by slot, or another color, which checks no item. */

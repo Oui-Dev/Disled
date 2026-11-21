@@ -4,8 +4,6 @@
 // The hyphen package ships no types: what the app uses of it.
 
 interface HyphenOptions {
-  /** U+00AD, the soft hyphen, by default. */
-  hyphenChar?: string;
   minWordLength?: number;
 }
 
