@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Disled contributors
 
-/** The protocol version that this app drives, as PROTOCOL_MAJOR of the protocol crate. */
-export const PROTOCOL_MAJOR = 2;
-
 /**
  * The built-in colors, by palette slot (0 to 3): the key of their name
  * under `lamp.colors`, and their swatch, whatever the color mode, as the
