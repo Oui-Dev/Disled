@@ -13,9 +13,7 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use base64::Engine;
-use base64::engine::general_purpose::STANDARD as BASE64;
-use minisign_verify::{PublicKey, Signature};
+use disled_flash::signature::verify_signed;
 use semver::Version;
 use serde::Serialize;
 use serde_json::Value;
@@ -115,31 +113,8 @@ fn hex(bytes: &[u8]) -> String {
 /// Checks that `index` is the index of the catalog, signed with `key`:
 /// `signature` is the content of `index.json.sig`.
 fn verify(key: &str, index: &[u8], signature: &str) -> Result<(), CatalogError> {
-    let text = |base64: &str| {
-        BASE64
-            .decode(base64.trim())
-            .ok()
-            .and_then(|bytes| String::from_utf8(bytes).ok())
-    };
-    let key = text(key)
-        .and_then(|key| PublicKey::decode(&key).ok())
-        .ok_or(CatalogError::Signature)?;
-    let signature = text(signature)
-        .and_then(|signature| Signature::decode(&signature).ok())
-        .ok_or(CatalogError::Signature)?;
-    key.verify(index, &signature, false)
-        .map_err(|_| CatalogError::Signature)?;
-    // Another file signed with the same key cannot pass for the index.
-    let file = format!("file:{INDEX}");
-    if signature
-        .trusted_comment()
-        .split('\t')
-        .any(|part| part == file)
-    {
-        Ok(())
-    } else {
-        Err(CatalogError::Signature)
-    }
+    verify_signed(key, index, signature, &[&format!("file:{INDEX}")])
+        .map_err(|_| CatalogError::Signature)
 }
 
 /// The plugins of an index. A plugin that this app cannot read, such as one
@@ -308,6 +283,7 @@ pub async fn install(app: &AppHandle, id: &str) -> Result<String, CatalogError> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use disled_flash::signature::Refusal;
     use serde_json::json;
 
     // `tauri signer sign` of TEST_INDEX, saved as index.json then as
@@ -352,33 +328,12 @@ mod tests {
         assert_eq!(verify(TEST_KEY, TEST_INDEX, TEST_SIGNATURE), Ok(()));
         // The catalog key reads, and refuses what the throwaway key signed.
         assert_eq!(
-            verify(CATALOG_KEY, TEST_INDEX, TEST_SIGNATURE),
-            Err(CatalogError::Signature)
-        );
-        assert!(
-            BASE64
-                .decode(CATALOG_KEY)
-                .ok()
-                .and_then(|key| String::from_utf8(key).ok())
-                .and_then(|key| PublicKey::decode(&key).ok())
-                .is_some()
-        );
-        let changed = br#"{"schema":1,"plugins":[1]}"#;
-        assert_eq!(
-            verify(TEST_KEY, changed, TEST_SIGNATURE),
-            Err(CatalogError::Signature)
+            verify_signed(CATALOG_KEY, TEST_INDEX, TEST_SIGNATURE, &[]),
+            Err(Refusal::NotSigned)
         );
         // The same bytes, signed under another name.
         assert_eq!(
             verify(TEST_KEY, TEST_INDEX, OTHER_FILE_SIGNATURE),
-            Err(CatalogError::Signature)
-        );
-        assert_eq!(
-            verify("", TEST_INDEX, TEST_SIGNATURE),
-            Err(CatalogError::Signature)
-        );
-        assert_eq!(
-            verify(TEST_KEY, TEST_INDEX, "not a signature"),
             Err(CatalogError::Signature)
         );
     }

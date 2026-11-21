@@ -1,6 +1,6 @@
 [package]
 name = "disled-flash"
-description = "Flashing a Disled lamp: the signed firmware files and the wchisp flasher, run as a separate program"
+description = "Flashing a Disled lamp: the files signed with tauri signer and the wchisp flasher, run as a separate program"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -13,7 +13,7 @@ publish.workspace = true
 ts = ["dep:ts-rs"]
 
 [dependencies]
-base64 = "^0.23.1"
+base64.workspace = true
 minisign-verify = "^0.3.0"
 semver.workspace = true
 serde = { workspace = true, features = ["derive"] }
