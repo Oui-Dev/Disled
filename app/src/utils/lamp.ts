@@ -23,5 +23,12 @@ export const BUILT_IN_COLORS = [
 export const AUTO_BIAS_MIN = -50;
 export const AUTO_BIAS_MAX = 50;
 
+/**
+ * Limits of the touch sensitivity, in percent, as TOUCH_SENSITIVITY_MIN
+ * and TOUCH_SENSITIVITY_MAX of the protocol crate.
+ */
+export const TOUCH_SENSITIVITY_MIN = -50;
+export const TOUCH_SENSITIVITY_MAX = 50;
+
 /** How often a moving control updates the lamp, ms. */
 export const MOVE_UPDATE_MS = 120;

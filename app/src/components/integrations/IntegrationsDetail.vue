@@ -57,27 +57,16 @@ const dot = computed<'error' | 'warning' | 'success' | 'neutral'>(() => {
   return plugin.last_event ? 'success' : 'neutral';
 });
 
-const confirming = ref<'regenerate' | 'remove' | null>(null);
-const regenerating = computed({
-  get: () => confirming.value === 'regenerate',
-  set: (open) => {
-    confirming.value = open ? 'regenerate' : null;
-  },
-});
-const removing = computed({
-  get: () => confirming.value === 'remove',
-  set: (open) => {
-    confirming.value = open ? 'remove' : null;
-  },
-});
+const regenerating = ref(false);
+const removing = ref(false);
 
 async function regenerate(): Promise<void> {
-  confirming.value = null;
+  regenerating.value = false;
   await plugins.regenerateToken(props.plugin.id);
 }
 
 async function remove(): Promise<void> {
-  confirming.value = null;
+  removing.value = false;
   await plugins.remove(props.plugin.id);
 }
 </script>
@@ -166,14 +155,14 @@ async function remove(): Promise<void> {
       </UButton>
     </footer>
 
-    <IntegrationsConfirm
+    <ConfirmModal
       v-model:open="regenerating"
       :title="t('integrations.regenerateConfirm.title', { name: plugin.name })"
       :text="t('integrations.regenerateConfirm.text')"
       :action="t('integrations.regenerateConfirm.action')"
       @confirm="regenerate"
     />
-    <IntegrationsConfirm
+    <ConfirmModal
       v-model:open="removing"
       :title="t('integrations.removeConfirm.title', { name: plugin.name })"
       :text="t('integrations.removeConfirm.text')"

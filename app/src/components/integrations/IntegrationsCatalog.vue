@@ -14,6 +14,7 @@ import type { CatalogError } from '@/bindings/CatalogError';
 import type { CatalogView } from '@/bindings/CatalogView';
 import { usePluginTexts } from '@/composables/usePluginTexts';
 import { usePluginsStore } from '@/stores/plugins';
+import { CAPABILITIES } from '@/utils/capabilities';
 import { pluginIcon } from '@/utils/pluginIcons';
 
 const emit = defineEmits<{ installed: [id: string] }>();
@@ -22,47 +23,25 @@ const { t } = useI18n();
 const plugins = usePluginsStore();
 const { reason } = usePluginTexts();
 
+/** The network error with its detail; the other errors in their words. */
 function errorText(error: CatalogError): string {
-  switch (error.kind) {
-    case 'network':
-      return t('integrations.catalog.error.network', { detail: error.detail });
-    case 'signature':
-      return t('integrations.catalog.error.signature');
-    case 'index':
-      return t('integrations.catalog.error.index');
-    case 'missing':
-      return t('integrations.catalog.error.missing');
-    case 'mismatch':
-      return t('integrations.catalog.error.mismatch');
-    case 'unreadable':
-      return t('integrations.catalog.error.unreadable', { reason: reason(error.reason) });
-  }
+  return error.kind === 'unreadable'
+    ? t('integrations.catalog.error.unreadable', { reason: reason(error.reason) })
+    : t(`integrations.catalog.error.${error.kind}`, error);
 }
 
 /** What a plugin can do, in short, in the order of the approval. */
 function abilities(entry: CatalogView): string[] {
   const { capabilities } = entry;
-  const shown: string[] = [];
-  if (capabilities.run) {
-    shown.push(
-      entry.needs
-        ? t('integrations.catalog.cap.runs', { program: entry.needs })
-        : t('integrations.catalog.cap.run'),
-    );
-  }
-  if (capabilities.color) {
-    shown.push(t('integrations.catalog.cap.color'));
-  }
-  if (capabilities.alert) {
-    shown.push(t('integrations.catalog.cap.alert'));
-  }
-  if (capabilities.lamp) {
-    shown.push(t('integrations.catalog.cap.lamp'));
-  }
-  if (capabilities.events) {
-    shown.push(t('integrations.catalog.cap.events', { name: entry.from ?? '' }));
-  }
-  return shown;
+  const run = entry.needs
+    ? t('integrations.catalog.cap.runs', { program: entry.needs })
+    : t('integrations.catalog.cap.run');
+  return [
+    ...(capabilities.run ? [run] : []),
+    ...CAPABILITIES.filter(({ key }) => capabilities[key]).map(({ key }) =>
+      t(`integrations.catalog.cap.${key}`, { name: entry.from ?? '' }),
+    ),
+  ];
 }
 
 async function install(entry: CatalogView): Promise<void> {
