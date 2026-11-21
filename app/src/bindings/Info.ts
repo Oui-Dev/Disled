@@ -3,10 +3,8 @@ import type { Fault } from "./Fault";
 import type { ResetCause } from "./ResetCause";
 
 /**
- * INFO, whose layout is the same in versions 1 and 2. Capabilities that a
- * lamp does not announce read false: a version 1 lamp announces none of
- * version 2, and a version 2 lamp all of them but the debug console, which
- * only debug builds have.
+ * INFO, whose layout is the same in versions 1 and 2. It leaves out the
+ * capability bits: every version 2 lamp has all the commands of this codec.
  */
 export type Info = { 
 /**
@@ -16,8 +14,4 @@ protocol: [number, number], firmware: [number, number, number], firmware_version
 /**
  * Chip unique ID in hexadecimal, as in the USB serial number.
  */
-uid: string, telemetry: boolean, debug_console: boolean, auto_bias: boolean, diagnostics: boolean, self_test: boolean, custom_colors: boolean, touch_cycle: boolean, touch_mode: boolean, alert: boolean, touch_sensitivity: boolean, 
-/**
- * TOUCH at every short press, from version 2.1.
- */
-presses: boolean, reset_cause: ResetCause, debug_build: boolean, fault: Fault | null, };
+uid: string, reset_cause: ResetCause, debug_build: boolean, fault: Fault | null, };

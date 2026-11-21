@@ -93,20 +93,6 @@ const FIELD_BRIGHTNESS_MODE: u8 = 0x04;
 const FIELD_MANUAL_LEVEL: u8 = 0x08;
 const FIELD_TOUCH_MODE: u8 = 0x10;
 
-// INFO capability bits. Bits 5 and 10 are reserved.
-const CAP_TELEMETRY: u32 = 1 << 0;
-const CAP_DEBUG_CONSOLE: u32 = 1 << 1;
-const CAP_AUTO_BIAS: u32 = 1 << 2;
-const CAP_DIAGNOSTICS: u32 = 1 << 3;
-const CAP_SELF_TEST: u32 = 1 << 4;
-const CAP_CUSTOM_COLORS: u32 = 1 << 6;
-const CAP_TOUCH_CYCLE: u32 = 1 << 7;
-const CAP_TOUCH_MODE: u32 = 1 << 8;
-const CAP_ALERT: u32 = 1 << 9;
-const CAP_TOUCH_SENSITIVITY: u32 = 1 << 11;
-/// Version 2.1.
-const CAP_PRESSES: u32 = 1 << 12;
-
 /// An enum whose discriminant is its byte on the wire.
 macro_rules! wire_enum {
     (
@@ -341,10 +327,8 @@ pub struct Fault {
     pub mepc: u32,
 }
 
-/// INFO, whose layout is the same in versions 1 and 2. Capabilities that a
-/// lamp does not announce read false: a version 1 lamp announces none of
-/// version 2, and a version 2 lamp all of them but the debug console, which
-/// only debug builds have.
+/// INFO, whose layout is the same in versions 1 and 2. It leaves out the
+/// capability bits: every version 2 lamp has all the commands of this codec.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export))]
 pub struct Info {
@@ -355,18 +339,6 @@ pub struct Info {
     pub board_revision: u8,
     /// Chip unique ID in hexadecimal, as in the USB serial number.
     pub uid: String,
-    pub telemetry: bool,
-    pub debug_console: bool,
-    pub auto_bias: bool,
-    pub diagnostics: bool,
-    pub self_test: bool,
-    pub custom_colors: bool,
-    pub touch_cycle: bool,
-    pub touch_mode: bool,
-    pub alert: bool,
-    pub touch_sensitivity: bool,
-    /// TOUCH at every short press, from version 2.1.
-    pub presses: bool,
     pub reset_cause: ResetCause,
     pub debug_build: bool,
     pub fault: Option<Fault>,
@@ -596,30 +568,18 @@ pub fn decode_message(payload: &[u8]) -> Result<Frame, DecodeError> {
             let firmware = [r.u8(), r.u8(), r.u8()];
             let board_revision = r.u8();
             let uid = r.bytes(12).iter().map(|b| format!("{b:02X}")).collect();
-            let capabilities = r.u32();
+            let _capabilities = r.u32();
             let reset_cause = ResetCause::from_wire(r.u8())?;
             let flags = r.u8();
             let (mcause, mepc) = (r.u32(), r.u32());
             let text = r.bytes(24);
             let end = text.iter().position(|&b| b == 0).unwrap_or(text.len());
-            let has = |capability: u32| capabilities & capability != 0;
             Message::Info(Info {
                 protocol,
                 firmware,
                 firmware_version: String::from_utf8_lossy(&text[..end]).into_owned(),
                 board_revision,
                 uid,
-                telemetry: has(CAP_TELEMETRY),
-                debug_console: has(CAP_DEBUG_CONSOLE),
-                auto_bias: has(CAP_AUTO_BIAS),
-                diagnostics: has(CAP_DIAGNOSTICS),
-                self_test: has(CAP_SELF_TEST),
-                custom_colors: has(CAP_CUSTOM_COLORS),
-                touch_cycle: has(CAP_TOUCH_CYCLE),
-                touch_mode: has(CAP_TOUCH_MODE),
-                alert: has(CAP_ALERT),
-                touch_sensitivity: has(CAP_TOUCH_SENSITIVITY),
-                presses: has(CAP_PRESSES),
                 reset_cause,
                 debug_build: flags & 0x1 != 0,
                 fault: (flags & 0x2 != 0).then_some(Fault { mcause, mepc }),
@@ -950,23 +910,6 @@ mod tests {
                         e["fw_version"].as_str().unwrap_or("")
                     );
                     assert_eq!(info.reset_cause as u64, u(e, "reset_cause"));
-                    let capabilities = u(e, "capabilities") as u32;
-                    let announced = [
-                        (info.telemetry, CAP_TELEMETRY),
-                        (info.debug_console, CAP_DEBUG_CONSOLE),
-                        (info.auto_bias, CAP_AUTO_BIAS),
-                        (info.diagnostics, CAP_DIAGNOSTICS),
-                        (info.self_test, CAP_SELF_TEST),
-                        (info.custom_colors, CAP_CUSTOM_COLORS),
-                        (info.touch_cycle, CAP_TOUCH_CYCLE),
-                        (info.touch_mode, CAP_TOUCH_MODE),
-                        (info.alert, CAP_ALERT),
-                        (info.touch_sensitivity, CAP_TOUCH_SENSITIVITY),
-                        (info.presses, CAP_PRESSES),
-                    ];
-                    for (flag, bit) in announced {
-                        assert_eq!(flag, capabilities & bit != 0, "{name}: bit {bit:#x}");
-                    }
                     let flags = u(e, "flags");
                     assert_eq!(info.debug_build, flags & 1 != 0);
                     assert_eq!(

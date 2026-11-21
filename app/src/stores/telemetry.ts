@@ -36,7 +36,7 @@ export const useTelemetryStore = defineStore('telemetry', () => {
   let rows: string[] = [];
 
   /** The connected lamp streams telemetry. */
-  const supported = computed(() => lamp.connection.connected && (lamp.info?.telemetry ?? false));
+  const supported = computed(() => lamp.connection.connected && lamp.generation === 'v2');
   /** Set by start(), so that only the Diagnostics window streams. */
   const following = ref(false);
 
