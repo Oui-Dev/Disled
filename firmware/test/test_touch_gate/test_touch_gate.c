@@ -11,33 +11,14 @@
 
 #include "alert.h"
 #include "lamp_fsm.h"
+#include "test_support.h"
 #include "touch_cycle.h"
 #include "touch_detector.h"
 #include "touch_gate.h"
 
-#define BASELINE 2000u
-/* A touch lowers the reading by 5 % (50 per mille). */
-#define TOUCHED 1900u
-
 /* Three breaths, the alert the app sends. */
 #define BREATHS   3u
 #define PERIOD_MS 1300u
-
-static const touch_config_t config = {
-    .window_samples = 20,
-    .calibration_windows = 8,
-    .baseline_shift = 6,
-    .press_permille = 40,
-    .release_permille = 25,
-    .press_rise_permille = 18,
-    .proximity_permille = 10,
-    .debounce_ms = 60,
-    .rearm_ms = 100,
-    .long_press_ms = 2000,
-    .object_ms = 10000,
-    .inverted_permille = 30,
-    .inverted_ms = 1000,
-};
 
 static touch_detector_t td;
 static touch_gate_t gate;
@@ -95,7 +76,7 @@ void setUp(void)
     gestures = 0;
     heard = 0;
     alert_ends = 0;
-    touch_detector_init(&td, &config);
+    touch_detector_init(&td, &touch_config);
     touch_gate_init(&gate);
     alert_stop(&alert);
     lamp_fsm_init(&lamp);

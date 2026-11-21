@@ -12,9 +12,7 @@
 #include <unity.h>
 
 #include "led_cal.h"
-
-void setUp(void);
-void tearDown(void);
+#include "test_support.h"
 
 #define N    LED_LIGHT_TICKS
 #define FULL 57600u /* 100 % duty at 3600 ticks, in sub-ticks */
@@ -98,15 +96,6 @@ static reference_t reference_drive(const led_color_cal_t *c, rgb16_t srgb)
         ref.drive[i] = (uint16_t)((e[i] * 65535u + top / 2u) / top);
     }
     return ref;
-}
-
-static uint32_t next_random(uint32_t *state)
-{
-    /* xorshift32: the same sequence on every run. */
-    *state ^= *state << 13;
-    *state ^= *state >> 17;
-    *state ^= *state << 5;
-    return *state;
 }
 
 static void channels(rgb16_t color, uint16_t out[LED_CHANNEL_COUNT])
@@ -254,23 +243,6 @@ static void test_srgb_primaries_change_nothing(void)
 }
 
 /* --- Light to duty ---------------------------------------------------- */
-
-/* A light table: no light up to `dark` ticks, then a straight rise to the
- * line of the long pulses, (16 n - offset) * 16, met at `meet` ticks, and
- * that line beyond. A rise above the 256 per tick of the line is a steep
- * start, as the slow gate edges give. */
-static led_light_cal_t make_table(uint32_t dark, uint32_t meet, int16_t offset)
-{
-    led_light_cal_t t = { .offset = offset };
-    const int32_t met = (16 * (int32_t)meet - offset) * 16;
-    const int32_t rise_ticks = (int32_t)(meet - dark);
-    for (uint32_t n = dark + 1u; n <= N; n++) {
-        const int32_t line = (16 * (int32_t)n - offset) * 16;
-        const int32_t rising = (met * (int32_t)(n - dark) + rise_ticks / 2) / rise_ticks;
-        t.light[n] = (uint16_t)((n >= meet) ? line : rising);
-    }
-    return t;
-}
 
 #define TABLE_COUNT 5u
 

@@ -10,9 +10,6 @@
 
 #include "touch_cycle.h"
 
-void setUp(void);
-void tearDown(void);
-
 /* Built-in colors and custom slots 4, 9 and 12. */
 #define DEFINED (0x000Fu | (1u << 4) | (1u << 9) | (1u << 12))
 
