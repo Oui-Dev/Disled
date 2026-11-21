@@ -26,8 +26,8 @@ pub fn is_lamp_interface(vendor_id: u16, product_id: u16, usage_page: u16) -> bo
         && (usage_page == HID_USAGE_PAGE || usage_page == 0)
 }
 
-pub const REPORT_ID_COMMAND: u8 = 1;
-pub const REPORT_ID_MESSAGE: u8 = 2;
+const REPORT_ID_COMMAND: u8 = 1;
+const REPORT_ID_MESSAGE: u8 = 2;
 /// Payload bytes of one report, after the report ID.
 pub const PAYLOAD_SIZE: usize = 63;
 const HEADER_SIZE: usize = 3;
@@ -230,10 +230,25 @@ pub enum Command {
     },
 }
 
+/// The sequence number of the command after one sent with `seq`. 0 marks
+/// the unsolicited messages, so a command never takes it.
+pub fn next_seq(seq: u8) -> u8 {
+    if seq == u8::MAX { 1 } else { seq + 1 }
+}
+
 impl Command {
     /// The code of the command, which ACK and ERROR name.
     pub fn code(&self) -> u8 {
         self.encode(0)[0]
+    }
+
+    /// The HID report that carries the command: its report ID, then its
+    /// payload.
+    pub fn report(&self, seq: u8) -> [u8; PAYLOAD_SIZE + 1] {
+        let mut report = [0u8; PAYLOAD_SIZE + 1];
+        report[0] = REPORT_ID_COMMAND;
+        report[1..].copy_from_slice(&self.encode(seq));
+        report
     }
 
     /// Encodes the command payload, which follows the report ID.
@@ -530,6 +545,13 @@ fn expect_size(kind: u8, body: &[u8], expected: usize) -> Result<(), DecodeError
     } else {
         Err(DecodeError::BodyTooShort(kind, body.len(), expected))
     }
+}
+
+/// Decodes a HID report that the lamp sent, report ID first. None for an
+/// empty report or one of another ID, which carries no message.
+pub fn decode_report(report: &[u8]) -> Option<Result<Frame, DecodeError>> {
+    let (&id, payload) = report.split_first()?;
+    (id == REPORT_ID_MESSAGE).then(|| decode_message(payload))
 }
 
 /// Decodes a message payload, the bytes after the report ID.
@@ -1054,6 +1076,27 @@ mod tests {
             payload[HEADER_SIZE], 100,
             "the true count, which the lamp refuses"
         );
+    }
+
+    #[test]
+    fn commands_leave_in_report_1_and_messages_come_in_report_2() {
+        // After 255, the sequence numbers start again at 1.
+        assert_eq!(next_seq(0), 1);
+        assert_eq!(next_seq(u8::MAX), 1);
+        assert_eq!(Command::GetInfo.report(1)[..4], [1, 0x01, 1, 0]);
+
+        let mut report = [0u8; PAYLOAD_SIZE + 1];
+        report[..5].copy_from_slice(&[2, 0x8E, 7, 1, 0x05]);
+        assert_eq!(
+            decode_report(&report),
+            Some(Ok(Frame {
+                seq: 7,
+                message: Message::Ack { command: 0x05 }
+            }))
+        );
+        report[0] = 1;
+        assert_eq!(decode_report(&report), None);
+        assert_eq!(decode_report(&[]), None);
     }
 
     #[test]
