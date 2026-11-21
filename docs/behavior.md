@@ -77,8 +77,6 @@ release, and the host does not hear of it.
 - The host can correct the touch sensitivity, from −50 % to +50 %: a positive
   value asks for a lighter touch. A change during a press waits for its
   release.
-- The lamp forgets the custom colors, the cycle and both corrections when it
-  restarts, so the app sends them again after each connection.
 - The host can read diagnostics (resets, faults, stack margin, error
   counters, both corrections) and run the self-test below.
 
@@ -140,7 +138,6 @@ when the host wakes up.
 
 ## Out of scope
 
-Any memory across restarts: the lamp stores no color, cycle or correction.
 Integrations and calls run in the desktop app, which chooses the lamp color
 through the same commands as any host.
 

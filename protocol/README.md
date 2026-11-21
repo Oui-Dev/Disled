@@ -10,11 +10,9 @@ notifications.
 > **Status.** Version 2 is **frozen**: it only grows by the compatible
 > changes listed in [Compatibility](#compatibility), and anything else needs
 > version 3. Firmware 2.0.0 speaks version 2.0; firmware 2.1.0 speaks
-> version 2.1, which adds the `TOUCH` message ([Presses](#presses)).
-> Version 2 adds custom colors, a touch cycle, a power-only touch mode,
-> alerts and a touch sensitivity setting. The lamp keeps none of them in flash: the host sends them again
-> after each connection ([Connection](#connection)). A lamp with firmware
-> 1.0.0 speaks version 1.1 ([Version 1 lamps](#version-1-lamps)).
+> version 2.1, which adds the `TOUCH` message ([Presses](#presses)). A
+> lamp with firmware 1.0.0 speaks version 1.1
+> ([Version 1 lamps](#version-1-lamps)).
 
 ## Transport
 
@@ -75,11 +73,6 @@ self-test), 5 lamp off.
 Every command, even a refused one, tells the lamp that the host is there
 ([Touch modes](#touch-modes)).
 
-`0x09` was `ENTER_BOOTLOADER` in version 1.1, which no lamp announced: the
-CH32V203 starts its ROM bootloader only from a reset with BOOT held, so
-the lamp has nothing to do for an update. `0x09` and `0x0F` stay reserved,
-and a lamp answers them `ERROR` (unknown command).
-
 ### SET_STATE body (6 bytes)
 
 | Offset | Field | Values |
@@ -93,8 +86,7 @@ and a lamp answers them `ERROR` (unknown command).
 
 Only the selected fields are applied, and they are applied together or not
 at all. Unselected bytes are ignored, whatever their value. A slot without
-a color gets `ERROR` (bad value). The 5-byte body of version 1 gets `ERROR`
-(bad length).
+a color gets `ERROR` (bad value).
 
 ### Palette
 
@@ -147,7 +139,7 @@ A body shorter than `1 + count` gets `ERROR` (bad length). A short press
 goes to the next slot of the cycle, from the last back to the first, and
 from a color outside the cycle to the first. Setting the cycle does not
 change the color shown. At power-up, the cycle is 0, 1, 2 (green, orange,
-red), as in version 1, where warm white also led to green.
+red).
 
 ### Touch modes
 
@@ -177,9 +169,9 @@ fallback. When nothing changes, the `STATE` reply keeps its `state_seq`.
 
 Shifts the automatic brightness curve: the level the curve gives for the
 current light is multiplied by `(100 + bias) / 100`, then kept within the
-lamp's range. 0 restores the factory curve. The lamp forgets the bias when
-it restarts: the host sends it again after each connection. Manual mode is
-not affected. The current value is reported in `DIAGNOSTICS`.
+lamp's range. 0 restores the factory curve. The lamp keeps the bias until
+it restarts ([Connection](#connection)). Manual mode is not affected. The
+current value is reported in `DIAGNOSTICS`.
 
 ### SET_TOUCH_SENSITIVITY body
 
@@ -191,10 +183,10 @@ The press, release and rise thresholds of the touch detector are
 multiplied by `(100 − percent) / 100`: +50 asks for half the drop of a
 finger, −50 for one and a half times it, and 0 keeps the factory
 thresholds. A change during a press waits for its release. The lamp keeps
-the value across a USB wake-up and forgets it when it restarts: the host
-sends it again after each connection. `SET_TOUCH_SENSITIVITY` is never
-busy, so the self-test judges the touch as the user set it. The current
-value is reported in `DIAGNOSTICS`.
+the value across a USB wake-up, until it restarts
+([Connection](#connection)). `SET_TOUCH_SENSITIVITY` is never busy, so the
+self-test judges the touch as the user set it. The current value is
+reported in `DIAGNOSTICS`.
 
 ### ALERT body (3 bytes)
 
@@ -203,9 +195,9 @@ value is reported in `DIAGNOSTICS`.
 | 0 | `count` | 1 to 10 breaths; 0 stops the running alert |
 | 1 | `u16 period_ms` | 500 to 5000, one full breath; ignored when `count` is 0 |
 
-An alert breathes over the lamp color, up from a dim lamp and down from a
-bright one, then ends by itself after its last breath. The lamp then sends
-`ALERT_DONE`, with the `seq` of the `ALERT` that started the alert.
+An alert breathes over the lamp color, then ends by itself after its last
+breath. The lamp then sends `ALERT_DONE`, with the `seq` of the `ALERT`
+that started the alert.
 
 - The lamp must be on, otherwise `ERROR` (lamp off), and no alert waits for
   it. An `ALERT` with a `count` of 0 is always accepted: it stops the
@@ -236,16 +228,15 @@ message.
 
 ### SELF_TEST sequence
 
-The lamp shows red, green, blue and warm white for 1.5 s each at 50 %,
-checks the light sensor, then waits up to 10 s for a touch on the lid
-while it glows blue at 20 %. It then restores its state and sends
-`SELF_TEST_RESULT`, with the `seq` of the `SELF_TEST` command. During the
-test the lamp ignores the touch, and answers `SET_STATE`, `SET_AUTO_BIAS`,
-`SET_COLOR`, `ALERT` and a second `SELF_TEST` with `ERROR` (busy). A
-running alert stops when the test starts. Only a person can check the
-colors: the result covers the light sensor and the touch. A USB suspend
-cuts the test short: the result follows the resume, with bit 3 of
-`results` clear.
+The lamp shows red, green, blue and warm white for 1.5 s each, checks the
+light sensor, then waits up to 10 s for a touch on the lid while it glows
+blue. It then restores its state and sends `SELF_TEST_RESULT`, with the
+`seq` of the `SELF_TEST` command. During the test the lamp ignores the
+touch, and answers `SET_STATE`, `SET_AUTO_BIAS`, `SET_COLOR`, `ALERT` and a
+second `SELF_TEST` with `ERROR` (busy). A running alert stops when the test
+starts. Only a person can check the colors: the result covers the light
+sensor and the touch. A USB suspend cuts the test short: the result follows
+the resume, with bit 3 of `results` clear.
 
 ## Messages (lamp to host)
 
@@ -291,7 +282,7 @@ Capabilities:
 | 2 | `SET_AUTO_BIAS` |
 | 3 | `GET_DIAGNOSTICS` |
 | 4 | `SELF_TEST` |
-| 5 | reserved: `ENTER_BOOTLOADER` in version 1.1, never announced |
+| 5 | reserved |
 | 6 | custom colors: `SET_COLOR`, `GET_COLOR` |
 | 7 | touch cycle: `SET_TOUCH_CYCLE`, `GET_TOUCH_CYCLE` |
 | 8 | touch modes |
@@ -302,13 +293,9 @@ Capabilities:
 
 Every version 2.0 lamp announces bits 0, 2 to 4, 6 to 9 and 11, and bit 1
 in debug builds: `0x0BDD` for a release build, `0x0BDF` for a debug one.
-A version 2.1 lamp adds bit 12: `0x1BDD` and `0x1BDF`. `SET_AUTO_BIAS`,
-`GET_DIAGNOSTICS` and `SELF_TEST`, optional in version 1.1, are always
-there. Later minor versions may add bits.
+A version 2.1 lamp adds bit 12: `0x1BDD` and `0x1BDF`.
 
 ### STATE body (16 bytes)
-
-The first 9 bytes keep their place of version 1.
 
 | Offset | Size | Field |
 |---|---|---|
@@ -321,7 +308,7 @@ The first 9 bytes keep their place of version 1.
 | 7 | 1 | USB link: 0 unconfigured, 1 configured, 2 suspended |
 | 8 | 1 | `source` of the latest change: 0 boot, 1 touch, 2 host, 3 automatic brightness, 4 USB, 5 host silence |
 | 9 | 1 | `touch_mode` in force: 0 normal, 1 power only |
-| 10 | 6 | `u16 r, g, b`: the color of the slot at full brightness, linear |
+| 10 | 6 | `u16 r, g, b`: the color of the slot at full brightness, as the host set it, or the LED drive of a built-in color |
 
 The color is there so that a host can show the lamp's color without
 keeping its own copy of the palette. Unsolicited `STATE` messages caused
