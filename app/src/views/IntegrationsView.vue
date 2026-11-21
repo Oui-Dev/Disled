@@ -10,9 +10,7 @@
   does. The folder is read again whenever the window gets the focus.
 -->
 <script setup lang="ts">
-import type { UnlistenFn } from '@tauri-apps/api/event';
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { PluginView } from '@/bindings/PluginView';
 import { usePluginTexts } from '@/composables/usePluginTexts';
@@ -28,7 +26,6 @@ const tabs = computed(() => [
   { label: t('integrations.tabs.installed'), value: 'installed', icon: 'i-lucide-puzzle' },
   { label: t('integrations.tabs.catalog'), value: 'catalog', icon: 'i-lucide-store' },
 ]);
-// The catalog comes from the network each time its tab opens.
 watch(tab, (shown) => {
   if (shown === 'catalog') {
     void plugins.loadCatalog();
@@ -50,18 +47,29 @@ watch(
   { immediate: true },
 );
 
-/** The plugin whose question is open. */
+/**
+ * The plugin whose question is open, once it is listed: the answer of an
+ * import or an install may come before the list that holds the plugin, or
+ * after it.
+ */
 const approving = ref<string | null>(null);
 const asked = computed(
   () => plugins.plugins.find((plugin) => plugin.id === approving.value) ?? null,
 );
 const asking = computed({
-  get: () => approving.value !== null,
+  get: () => asked.value !== null,
   set: (open) => {
     if (!open) {
       approving.value = null;
     }
   },
+});
+// A plugin that leaves the list takes its question along, or importing it
+// again would reopen that question.
+watch(asked, (now, before) => {
+  if (before && !now) {
+    approving.value = null;
+  }
 });
 
 /** On wants the question unless the user approved these files already. */
@@ -78,32 +86,19 @@ async function approve(id: string, fingerprint: string): Promise<void> {
   await plugins.approve(id, fingerprint);
 }
 
-async function importPlugin(): Promise<void> {
-  const id = await plugins.importPlugin();
-  if (id) {
-    tab.value = 'installed';
-    selected.value = id;
-    approving.value = id;
-  }
-}
-
-/** A plugin of the catalog arrived: its question follows, as after an import. */
-function installed(id: string): void {
+/** A plugin that arrived, from an import or the catalog: its question follows. */
+function review(id: string): void {
   tab.value = 'installed';
   selected.value = id;
   approving.value = id;
 }
 
-let stopFollowingFocus: UnlistenFn | undefined;
-onMounted(async () => {
-  stopFollowingFocus = await getCurrentWebviewWindow().onFocusChanged(({ payload: focused }) => {
-    if (focused) {
-      void plugins.refresh();
-    }
-  });
-  await plugins.refresh();
-});
-onBeforeUnmount(() => stopFollowingFocus?.());
+async function importPlugin(): Promise<void> {
+  const id = await plugins.importPlugin();
+  if (id) {
+    review(id);
+  }
+}
 </script>
 
 <template>
@@ -167,7 +162,7 @@ onBeforeUnmount(() => stopFollowingFocus?.());
         <IntegrationsDetail v-if="current" :key="current.id" :plugin="current" @toggle="toggle" />
       </div>
     </div>
-    <IntegrationsCatalog v-else class="min-h-0 flex-1 overflow-y-auto" @installed="installed" />
+    <IntegrationsCatalog v-else class="min-h-0 flex-1 overflow-y-auto" @installed="review" />
 
     <IntegrationsApproval v-model:open="asking" :plugin="asked" @approve="approve" />
   </main>
