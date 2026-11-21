@@ -79,9 +79,10 @@ Firmware, from `firmware/`:
 ```sh
 uv sync --locked
 uv run clang-format --dry-run --Werror $(git ls-files 'lib/disled_core/*.[ch]' 'src/*.[ch]' 'test/*.c' 'tools/*.c')
+gcc -std=c11 -Wall -Werror -I lib/disled_core/include -I src tools/touch_replay/touch_replay.c src/app/app_config.c lib/disled_core/src/touch_detector.c -o /tmp/touch_replay
 uv run pio test -e native            # unit tests on the build machine
 uv run pio run -e debug -e release
-uv run pio check -e debug            # static analysis
+uv run pio check -e debug -e release --fail-on-defect low --fail-on-defect medium --fail-on-defect high
 ```
 
 Desktop app, from `app/`, then the Rust workspace from the root:

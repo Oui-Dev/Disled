@@ -192,7 +192,8 @@ but passes no gesture, nor the release of a press that outlived the alert.
   codec.
 - The protocol tests check the codec byte for byte against
   `protocol/vectors/v2.json`, the same file the app tests use.
-- `pio check` runs cppcheck on `src/` and the core at every severity.
+- `pio check` runs cppcheck on `src/` and the core, in both builds, at every
+  severity.
 - [bringup.md](bringup.md) lists the checks on a real board.
 
 ## Desktop app
