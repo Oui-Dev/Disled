@@ -33,7 +33,6 @@ pub const SOURCE_URL: &str = "https://github.com/Oui-Dev/Disled-plugins/tree/mai
 const CATALOG_KEY: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ3NEU1RjEwRUM0QzM0RTMKUldUak5FenNFRjlPUndDbisrRFdldDRRdktHVTVxak4rcC9mV0hETEJlL2w3eGFMNGRnMWlmRngK";
 const INDEX: &str = "index.json";
 const MAX_INDEX: usize = 1024 * 1024;
-const MAX_SIGNATURE: usize = 4096;
 /// A plugin of the catalog holds sources only.
 const MAX_ZIP: usize = 10 * 1024 * 1024;
 /// The version of the index that this app reads.
@@ -222,7 +221,7 @@ pub async fn read(app: &AppHandle) -> Result<Vec<CatalogView>, CatalogError> {
     let index = net::get_at_most(app, &format!("{BASE_URL}/{INDEX}"), MAX_INDEX)
         .await
         .map_err(network)?;
-    let signature = net::get_at_most(app, &format!("{BASE_URL}/{INDEX}.sig"), MAX_SIGNATURE)
+    let signature = net::get_at_most(app, &format!("{BASE_URL}/{INDEX}.sig"), net::MAX_SIGNATURE)
         .await
         .map_err(network)?;
     verify(CATALOG_KEY, &index, &String::from_utf8_lossy(&signature))?;

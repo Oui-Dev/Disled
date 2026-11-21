@@ -14,6 +14,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 use crate::firmware::{self, FirmwareState};
+use crate::net::{CONNECT_TIMEOUT, READ_TIMEOUT};
 use crate::settings::SettingsState;
 
 const EVENT_STATUS: &str = "update-status";
@@ -25,11 +26,6 @@ const FIRST_CHECK_DELAY: Duration = Duration::from_secs(30);
 /// 24 h sleep would not count the hours the computer spends asleep.
 const TICK: Duration = Duration::from_secs(3600);
 const CHECK_INTERVAL: Duration = Duration::from_secs(24 * 3600);
-/// Without them, a connection that stalls, as across a sleep, would hold
-/// the check, and the automatic checks after it, for good. A read timeout
-/// rather than a total one, so that a slow download still ends.
-const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
-const READ_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// What the popup shows about updates.
 #[derive(Debug, Clone, Default, Serialize)]

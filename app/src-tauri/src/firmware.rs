@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::device::DeviceHandle;
-use crate::net::{fetch, get};
+use crate::net::{MAX_SIGNATURE, fetch, get_at_most};
 use crate::updates::now;
 
 const EVENT_STATUS: &str = "firmware-status";
@@ -40,6 +40,8 @@ const RELEASE_PAGE: &str = "https://github.com/Oui-Dev/Disled/releases/tag/fw-v"
 const LINE: u64 = 2;
 
 const LAMP_TIMEOUT: Duration = Duration::from_secs(60);
+/// Far more than a release build of the firmware, in Intel HEX.
+const MAX_HEX: usize = 1024 * 1024;
 
 /// A firmware the app can install.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -316,8 +318,8 @@ async fn download(app: &AppHandle, release: &Release) -> Result<PathBuf, String>
         Source::Local(path) => return Ok(path.clone()),
         Source::GitHub { hex, signature } => (hex, signature),
     };
-    let data = get(app, hex).await?;
-    let signature = String::from_utf8(get(app, signature).await?)
+    let data = get_at_most(app, hex, MAX_HEX).await?;
+    let signature = String::from_utf8(get_at_most(app, signature, MAX_SIGNATURE).await?)
         .map_err(|_| "the firmware signature is unreadable")?;
     files::verify(&data, &signature, &release.version)?;
     let folder = app
