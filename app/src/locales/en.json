@@ -379,7 +379,6 @@
     "notesTitle": "Opens in the browser",
     "recommended": "Recommended",
     "current": "Current",
-    "others": "Other versions",
     "install": "Install {version}",
     "reinstall": "Reinstall {version}"
   },

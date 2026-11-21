@@ -371,11 +371,11 @@ the app updates and **Reinstall the firmware** stay available.
 ### Reinstall the firmware
 
 **Reinstall the firmware**, in the **⋮** menu of the settings page, opens a
-window where you pick the version: the recommended one is checked, the one
-the lamp runs is marked as current, and **Other versions** lists the older
-ones. A link opens the release notes of the checked version. The window
-then guides the install as above. It works with or without a lamp connected, so a lamp
-that no longer starts gets its firmware back through its update mode.
+window that lists every version, newest first: the recommended one is
+checked, and the one the lamp runs is marked as current. A link opens the
+release notes of the checked version. The window then guides the install
+as above. It works with or without a lamp connected, so a lamp that no
+longer starts gets its firmware back through its update mode.
 
 **Back to Disled v1.** The window lists firmware 2.x only. To go back to
 Disled v1, flash firmware 1.0.0 by hand ([flashing guide](flashing.md#flash)),

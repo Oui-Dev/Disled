@@ -2,15 +2,12 @@
   SPDX-License-Identifier: GPL-3.0-or-later
   SPDX-FileCopyrightText: 2026 The Disled contributors
 
-  The versions of the reinstall window, with the link to the notes of the
-  checked one. Up to four versions, all of them show. Beyond, only the
-  recommended one, the lamp's and the one picked last show, never more than
-  four lines with "Other versions", whose menu lists the others, newest
-  first. A version picked there joins the list, checked.
+  The versions of the reinstall window, newest first, each on its row,
+  with the link to the notes of the checked one. Past the height of its
+  box, the list scrolls.
 -->
 <script setup lang="ts">
-import type { ListboxItem } from '@nuxt/ui';
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { openLink } from '@/ipc/commands';
 
@@ -25,70 +22,9 @@ const props = defineProps<{
 
 const chosen = defineModel<string | null>({ required: true });
 
-/** More versions than this, and the others go to the menu. */
-const MAX_ROWS = 4;
-
 const { t, locale } = useI18n();
 
-const crowded = computed(() => props.versions.length > MAX_ROWS);
-/** The version last picked in the menu, which stays in the list. */
-const picked = ref<string | null>(null);
-watch(
-  () => props.versions,
-  (versions) => {
-    if (picked.value && !versions.includes(picked.value)) {
-      picked.value = null;
-    }
-  },
-);
-
-const rows = computed(() => {
-  const shown = crowded.value
-    ? props.versions.filter((version) =>
-        [props.latest, props.current, picked.value, chosen.value].includes(version),
-      )
-    : props.versions;
-  return shown.map((version) => ({ label: version, value: version }));
-});
-
-/** The versions of the menu. */
-const others = computed<ListboxItem[]>(() =>
-  props.versions
-    .filter((version) => version !== props.latest && version !== props.current)
-    .map((version) => ({ label: version, value: version })),
-);
-
-/** The menu checks the chosen version when it lists it. */
-const inMenu = computed(() =>
-  others.value.some((item) => item.value === chosen.value) ? chosen.value : undefined,
-);
-
-const open = ref(false);
-const list = useTemplateRef<HTMLElement>('list');
-let focusChosen = false;
-
-function pick(value: unknown): void {
-  open.value = false;
-  // A click on the version already checked unchecks it in the menu, and
-  // changes nothing here.
-  if (typeof value !== 'string') {
-    return;
-  }
-  picked.value = value;
-  chosen.value = value;
-  focusChosen = true;
-}
-
-/** The focus goes to the version picked, in the list, rather than back to the menu button. */
-async function closeAutoFocus(event: Event): Promise<void> {
-  if (!focusChosen) {
-    return;
-  }
-  focusChosen = false;
-  event.preventDefault();
-  await nextTick();
-  list.value?.querySelector<HTMLElement>('[role="radio"][data-state="checked"]')?.focus();
-}
+const rows = computed(() => props.versions.map((version) => ({ label: version, value: version })));
 </script>
 
 <template>
@@ -109,7 +45,7 @@ async function closeAutoFocus(event: Event): Promise<void> {
       </UButton>
     </div>
 
-    <div ref="list" class="flex flex-col">
+    <div class="max-h-72 overflow-y-auto">
       <!-- Reka names each radio once, from its label and its badges: the
            group mounts again when they change. -->
       <URadioGroup
@@ -119,7 +55,7 @@ async function closeAutoFocus(event: Event): Promise<void> {
         variant="table"
         aria-labelledby="version-label"
         :ui="{
-          item: ['py-2.5', crowded && 'last-of-type:rounded-b-none'],
+          item: 'py-2.5',
           container: 'h-6',
           wrapper: 'flex min-h-6 items-center',
           label: 'flex items-center gap-2 tabular-nums',
@@ -142,36 +78,6 @@ async function closeAutoFocus(event: Event): Promise<void> {
           />
         </template>
       </URadioGroup>
-
-      <UPopover
-        v-if="crowded"
-        v-model:open="open"
-        :content="{ align: 'start', onCloseAutoFocus: closeAutoFocus }"
-      >
-        <!-- The last row of the list above, joined to it. -->
-        <UButton
-          color="neutral"
-          variant="ghost"
-          :label="t('lampInstall.others')"
-          trailing-icon="i-lucide-chevron-down"
-          class="-mt-px flex w-full gap-2 rounded-none rounded-b-lg border border-default px-3.5 py-3 text-sm text-muted hover:bg-elevated/50 active:bg-elevated/50 aria-expanded:bg-elevated/50"
-          :ui="{
-            trailingIcon: `size-4 text-dimmed transition-transform ${open ? 'rotate-180' : ''}`,
-          }"
-        />
-
-        <template #content>
-          <UListbox
-            :items="others"
-            value-key="value"
-            :model-value="inMenu"
-            :aria-label="t('lampInstall.others')"
-            class="w-50"
-            :ui="{ root: 'rounded-md ring-0', label: 'text-xs' }"
-            @update:model-value="pick"
-          />
-        </template>
-      </UPopover>
     </div>
   </div>
 </template>
