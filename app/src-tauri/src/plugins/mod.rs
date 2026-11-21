@@ -45,8 +45,6 @@ use rules::Action;
 use states::Keys;
 
 const EVENT_PLUGINS: &str = "plugins-changed";
-const SCHEMA: u64 = 1;
-const MANUAL: &str = "manual";
 /// How often the states whose time runs out leave.
 const TICK: Duration = Duration::from_secs(1);
 
@@ -81,7 +79,7 @@ impl Stored {
         let mode = value
             .get("mode")
             .and_then(Value::as_str)
-            .filter(|mode| *mode != MANUAL && manifest::valid_id(mode))
+            .filter(|mode| manifest::valid_id(mode))
             .map(str::to_owned);
         let plugins = value
             .get("plugins")
@@ -99,10 +97,11 @@ impl Stored {
         Self { mode, plugins }
     }
 
+    /// The key to save. Manual mode saves as null, which leaves every id to
+    /// the plugins.
     fn to_value(&self) -> Value {
         serde_json::json!({
-            "schema": SCHEMA,
-            "mode": self.mode.as_deref().unwrap_or(MANUAL),
+            "mode": self.mode,
             "plugins": self.plugins,
         })
     }
@@ -1234,13 +1233,18 @@ mod tests {
         let entry = &stored.plugins["claude-code"];
         assert_eq!(entry.approved.as_deref(), Some("9f2c"));
         assert_eq!(entry.colors.get("working"), Some(&2));
-        // Written back, it reads the same.
+        // Written back, it reads the same, even for a plugin named "manual".
         assert_eq!(Stored::from_value(&stored.to_value()), stored);
+        let manual = Stored {
+            mode: Some("manual".into()),
+            plugins: BTreeMap::new(),
+        };
+        assert_eq!(Stored::from_value(&manual.to_value()), manual);
         // As after app 1.1.2: manual mode, no plugin.
         let fresh = Stored::from_value(&Value::Null);
         assert_eq!(fresh.mode, None);
         assert!(fresh.plugins.is_empty());
-        assert_eq!(fresh.to_value()["mode"], "manual");
+        assert_eq!(fresh.to_value()["mode"], Value::Null);
     }
 
     #[test]
