@@ -94,7 +94,6 @@ static void test_set_redefine_and_empty_a_custom_slot(void)
 /* An LED whose blue gives twice the light of its red and green. */
 static const led_color_cal_t cal = {
     .matrix = { { 32767, 0, 0 }, { 0, 32767, 0 }, { 0, 0, 16384 } },
-    .white = { 65535, 65535, 32768 },
 };
 
 static void test_light_calibrates_the_custom_colors_only(void)

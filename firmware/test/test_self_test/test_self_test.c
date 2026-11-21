@@ -7,12 +7,15 @@
 
 #include "self_test.h"
 
+/* A warm white at full drive, as the palette holds it. */
+static const rgb16_t white = { 65535, 50000, 10000 };
+
 static const self_test_config_t config = {
     .color_ms = 1500,
     .touch_wait_ms = 10000,
-    .color_linear = 12000,
-    .white = { 11000, 10000, 300 },
-    .wait_linear = 1000,
+    .color_permille = 500, /* 12071 of light (color.c) */
+    .white = &white,
+    .wait_permille = 200, /* 1959 of light */
     .touch_idle_min = 1000,
     .touch_idle_max = 3800,
 };
@@ -59,17 +62,18 @@ static void test_shows_red_green_blue_white_then_waits_in_blue(void)
     self_test_start(&t, 1000);
     TEST_ASSERT_TRUE(self_test_running(&t));
     rgb16_t c = self_test_color(&t, 1000);
-    TEST_ASSERT_TRUE(c.r == 12000 && c.g == 0 && c.b == 0);
+    TEST_ASSERT_TRUE(c.r == 12071 && c.g == 0 && c.b == 0);
     c = self_test_color(&t, 2600);
-    TEST_ASSERT_TRUE(c.r == 0 && c.g == 12000 && c.b == 0);
+    TEST_ASSERT_TRUE(c.r == 0 && c.g == 12071 && c.b == 0);
     c = self_test_color(&t, 4100);
-    TEST_ASSERT_TRUE(c.r == 0 && c.g == 0 && c.b == 12000);
+    TEST_ASSERT_TRUE(c.r == 0 && c.g == 0 && c.b == 12071);
     c = self_test_color(&t, 5600);
-    TEST_ASSERT_TRUE(c.r == 11000 && c.g == 10000 && c.b == 300);
+    /* The white at the light of the other steps. */
+    TEST_ASSERT_TRUE(c.r == 12071 && c.g == 9210 && c.b == 1842);
 
     TEST_ASSERT_EQUAL_UINT32(0, run(1000, 7000)); /* colors done at 7000 */
     c = self_test_color(&t, 7010);
-    TEST_ASSERT_TRUE(c.r == 0 && c.g == 0 && c.b == 1000);
+    TEST_ASSERT_TRUE(c.r == 0 && c.g == 0 && c.b == 1959);
 }
 
 static void test_a_touch_passes_the_test(void)

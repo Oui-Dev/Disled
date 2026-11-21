@@ -24,11 +24,14 @@
 #define SELF_TEST_COLOR_STEPS 4u /* red, green, blue, white */
 
 typedef struct {
-    uint16_t color_ms;       /* each color step */
-    uint16_t touch_wait_ms;  /* time allowed for the touch */
-    uint16_t color_linear;   /* light of the red, green and blue steps, linear */
-    rgb16_t white;           /* last step: the lamp's warm white (linear) */
-    uint16_t wait_linear;    /* light of the blue glow while waiting */
+    uint16_t color_ms;      /* each color step */
+    uint16_t touch_wait_ms; /* time allowed for the touch */
+    /* Perceived brightness of the color steps, per mille. */
+    uint16_t color_permille;
+    /* Last step: the lamp's warm white, as LED drive at full brightness,
+     * shown at `color_permille` like the other steps. */
+    const rgb16_t *white;
+    uint16_t wait_permille;  /* perceived brightness of the blue glow while waiting */
     uint16_t touch_idle_min; /* plausible idle TouchKey baseline, counts */
     uint16_t touch_idle_max;
 } self_test_config_t;
@@ -72,7 +75,7 @@ bool self_test_update(self_test_t *t, uint32_t now_ms, const self_test_inputs_t 
 /* Ends the test early, on USB suspend: no SELF_TEST_COMPLETED in the results. */
 void self_test_abort(self_test_t *t);
 
-/* Linear color to show while the test runs. */
+/* The LED drive to show while the test runs. */
 rgb16_t self_test_color(const self_test_t *t, uint32_t now_ms);
 
 #endif /* DISLED_SELF_TEST_H */
