@@ -5,10 +5,10 @@
 //! and then daily with the lamp firmware. The popup offers the update, installed only
 //! when the user asks.
 
-use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, UNIX_EPOCH};
 
+use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_updater::{Update, UpdaterExt};
@@ -56,7 +56,7 @@ pub struct UpdateState {
 
 impl UpdateState {
     pub fn status(&self) -> UpdateStatus {
-        self.status.lock().map(|s| s.clone()).unwrap_or_default()
+        self.status.lock().clone()
     }
 }
 
@@ -72,12 +72,11 @@ fn due(checked_at: Option<u64>) -> bool {
 
 /// Changes the status and tells every window.
 fn change(app: &AppHandle, edit: impl FnOnce(&mut UpdateStatus)) {
-    let status = match app.state::<UpdateState>().status.lock() {
-        Ok(mut status) => {
-            edit(&mut status);
-            status.clone()
-        }
-        Err(_) => return,
+    let state = app.state::<UpdateState>();
+    let status = {
+        let mut status = state.status.lock();
+        edit(&mut status);
+        status.clone()
     };
     let _ = app.emit(EVENT_STATUS, status);
 }
@@ -109,9 +108,7 @@ pub async fn check(app: &AppHandle) {
     match result {
         Ok(update) => {
             let version = update.as_ref().map(|u| u.version.clone());
-            if let Ok(mut pending) = state.pending.lock() {
-                *pending = update;
-            }
+            *state.pending.lock() = update;
             change(app, |s| {
                 s.checking = false;
                 s.available = version;
@@ -134,8 +131,7 @@ pub async fn install(app: &AppHandle) -> Result<(), String> {
         .state::<UpdateState>()
         .pending
         .lock()
-        .ok()
-        .and_then(|pending| pending.clone())
+        .clone()
         .ok_or("no update to install")?;
     change(app, |s| {
         s.progress = Some(0);

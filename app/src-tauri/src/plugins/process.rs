@@ -17,10 +17,11 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::{Arc, Condvar, Mutex, mpsc};
+use std::sync::{Arc, mpsc};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
+use parking_lot::{Condvar, Mutex};
 use serde::Serialize;
 use serde_json::Value;
 
@@ -190,7 +191,8 @@ impl Feed {
 
     /// A new state of the lamp.
     pub fn state(&self, line: String) {
-        if let Ok(mut lines) = self.lines.lock() {
+        {
+            let mut lines = self.lines.lock();
             if lines.reader.is_some() {
                 lines.waiting.retain(|line| matches!(line, Line::Press(_)));
                 lines.waiting.push_back(Line::State(line.clone()));
@@ -202,7 +204,8 @@ impl Feed {
 
     /// A press, for the program that runs only.
     pub fn press(&self, line: &str) {
-        if let Ok(mut lines) = self.lines.lock() {
+        {
+            let mut lines = self.lines.lock();
             if lines.reader.is_none() {
                 return;
             }
@@ -226,9 +229,7 @@ impl Feed {
 
     /// A start of the program, which gets the latest state first.
     fn open(&self) -> u64 {
-        let Ok(mut lines) = self.lines.lock() else {
-            return 0;
-        };
+        let mut lines = self.lines.lock();
         lines.starts += 1;
         let start = lines.starts;
         lines.reader = Some(start);
@@ -238,24 +239,22 @@ impl Feed {
 
     /// The end of a start: its writer leaves, which closes the input.
     fn close(&self, start: u64) {
-        if let Ok(mut lines) = self.lines.lock()
-            && lines.reader == Some(start)
         {
-            lines.reader = None;
-            lines.waiting.clear();
+            let mut lines = self.lines.lock();
+            if lines.reader == Some(start) {
+                lines.reader = None;
+                lines.waiting.clear();
+            }
         }
         self.ready.notify_all();
     }
 
     /// The next line for a start, once there is one; none once it ended.
     fn next(&self, start: u64) -> Option<String> {
-        let lines = self.lines.lock().ok()?;
-        let mut lines = self
-            .ready
-            .wait_while(lines, |lines| {
-                lines.reader == Some(start) && lines.waiting.is_empty()
-            })
-            .ok()?;
+        let mut lines = self.lines.lock();
+        self.ready.wait_while(&mut lines, |lines| {
+            lines.reader == Some(start) && lines.waiting.is_empty()
+        });
         if lines.reader != Some(start) {
             return None;
         }
@@ -463,7 +462,7 @@ impl Running {
         for reader in self.readers.drain(..) {
             let _ = reader.join();
         }
-        self.last_error.lock().ok().and_then(|last| last.clone())
+        self.last_error.lock().clone()
     }
 }
 
@@ -520,10 +519,7 @@ fn launch(
         readers.push(thread::spawn(move || {
             lines(output, |line| match line.and_then(parse) {
                 Some(note) => on_note(note),
-                None => log
-                    .lock()
-                    .map(|mut log| log.write("refused line"))
-                    .unwrap_or(()),
+                None => log.lock().write("refused line"),
             });
         }));
     }
@@ -532,13 +528,9 @@ fn launch(
         readers.push(thread::spawn(move || {
             lines(errors, |line| {
                 let line = line.unwrap_or("(a line too long)");
-                if let Ok(mut log) = log.lock() {
-                    log.write(line);
-                }
-                if !line.trim().is_empty()
-                    && let Ok(mut last) = last.lock()
-                {
-                    *last = Some(line.trim().to_owned());
+                log.lock().write(line);
+                if !line.trim().is_empty() {
+                    *last.lock() = Some(line.trim().to_owned());
                 }
             });
         }));
@@ -811,7 +803,7 @@ mod tests {
             timing,
             feed,
             move |note| {
-                let _ = notes.lock().map(|notes| notes.send(note));
+                let _ = notes.lock().send(note);
             },
             move |next| {
                 let _ = statuses.send(next);

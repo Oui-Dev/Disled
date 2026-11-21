@@ -5,9 +5,8 @@
 //! Windows: a square in the color of the lamp, a short menu, and the click
 //! that opens the popup.
 
-use std::sync::Mutex;
-
 use disled_protocol::{LinearRgb, State};
+use parking_lot::Mutex;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -266,9 +265,7 @@ pub fn icon_frame(
 pub fn show(app: &AppHandle, look: Look) {
     let was_locked = {
         let state = app.state::<TrayState>();
-        let Ok(mut shown) = state.0.lock() else {
-            return;
-        };
+        let mut shown = state.0.lock();
         if *shown == look {
             return;
         }
@@ -303,12 +300,7 @@ pub fn refresh(app: &AppHandle) {
 
 /// Words the menu and the tooltip in another language.
 pub fn relabel(app: &AppHandle, locale: Locale) {
-    let look = app
-        .state::<TrayState>()
-        .0
-        .lock()
-        .map(|look| look.clone())
-        .unwrap_or_default();
+    let look = app.state::<TrayState>().0.lock().clone();
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         if let Ok(menu) = menu(app, locale, &look) {
             let _ = tray.set_menu(Some(menu));

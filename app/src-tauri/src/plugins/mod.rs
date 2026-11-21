@@ -22,10 +22,11 @@ pub mod tokens;
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
@@ -482,9 +483,7 @@ impl Host {
             })
             .collect();
         let wanted = !hooks.is_empty();
-        if let Ok(mut shared) = self.hooks.write() {
-            *shared = hooks;
-        }
+        *self.hooks.write() = hooks;
         match (&self.server, wanted) {
             (None, true) => {
                 let router = http::router(Arc::clone(&self.hooks), self.events.clone());
@@ -708,7 +707,7 @@ fn with<T>(app: &AppHandle, change: impl FnOnce(&mut Host, &mut Outbox) -> T) ->
     let mut outbox = Outbox::default();
     let result = {
         let state = app.state::<PluginsState>();
-        let mut host = state.host.lock().ok()?;
+        let mut host = state.host.lock();
         let host = host.as_mut()?;
         let result = change(host, &mut outbox);
         host.sync(app, &palette, language, &mut outbox);
@@ -758,9 +757,7 @@ pub fn start(app: &AppHandle) {
         lamp,
     };
     let mode = host.stored.mode.clone();
-    if let Ok(mut state) = app.state::<PluginsState>().host.lock() {
-        *state = Some(host);
-    }
+    *app.state::<PluginsState>().host.lock() = Some(host);
     with(app, |host, outbox| host.rescan(app, outbox));
     // The lamp follows again the integration it followed, if still on offer.
     if mode.is_some() {
@@ -789,15 +786,12 @@ fn tick(app: &AppHandle) {
         .state::<PluginsState>()
         .host
         .lock()
-        .ok()
-        .and_then(|host| {
-            host.as_ref().map(|host| {
-                host.plugins
-                    .values()
-                    .any(|plugin| plugin.keys.next_expiry().is_some_and(|until| until <= now))
-            })
-        })
-        .unwrap_or(false);
+        .as_ref()
+        .is_some_and(|host| {
+            host.plugins
+                .values()
+                .any(|plugin| plugin.keys.next_expiry().is_some_and(|until| until <= now))
+        });
     if due {
         with(app, |host, _| {
             let ids: Vec<String> = host.plugins.keys().cloned().collect();
@@ -1182,13 +1176,9 @@ pub fn lamp_changed(app: &AppHandle) {
         return;
     };
     // A state read before another never reaches the programs after it.
-    let Ok(_turn) = state.lamp.lock() else {
-        return;
-    };
+    let _turn = state.lamp.lock();
     let line = lamp::line(&lamp_now(app));
-    let Ok(mut host) = state.host.lock() else {
-        return;
-    };
+    let mut host = state.host.lock();
     let Some(host) = host.as_mut().filter(|host| host.lamp != line) else {
         return;
     };
@@ -1203,9 +1193,7 @@ pub fn pressed(app: &AppHandle) {
     let Some(state) = app.try_state::<PluginsState>() else {
         return;
     };
-    let Ok(host) = state.host.lock() else {
-        return;
-    };
+    let host = state.host.lock();
     for feed in host
         .iter()
         .flat_map(|host| host.programs.values())
@@ -1221,14 +1209,12 @@ pub fn shutdown(app: &AppHandle) {
         .state::<PluginsState>()
         .host
         .lock()
-        .ok()
-        .and_then(|mut host| {
-            host.as_mut().map(|host| {
-                if let Some(server) = host.server.take() {
-                    server.abort();
-                }
-                host.programs.drain().map(|(_, program)| program).collect()
-            })
+        .as_mut()
+        .map(|host| {
+            if let Some(server) = host.server.take() {
+                server.abort();
+            }
+            host.programs.drain().map(|(_, program)| program).collect()
         })
         .unwrap_or_default();
     let stoppers: Vec<_> = programs

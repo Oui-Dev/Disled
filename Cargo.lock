@@ -1077,6 +1077,7 @@ dependencies = [
  "objc2-app-kit",
  "objc2-core-audio",
  "objc2-foundation",
+ "parking_lot",
  "reqwest",
  "rustls",
  "semver",
