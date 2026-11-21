@@ -2,11 +2,9 @@
   SPDX-License-Identifier: GPL-3.0-or-later
   SPDX-FileCopyrightText: 2026 The Disled contributors
 
-  The reinstall window, opened from the settings menu only: a firmware
-  version of the user's choice, 2.x or the last 1.x to go back to Disled v1,
-  then the four steps of the guided update. A version 1 lamp gets the same
-  window, without the warning that the popup already shows. Without a list
-  of versions, it looks for one as it opens.
+  The reinstall window, opened from the settings menu only: a firmware 2.x
+  of the user's choice, then the four steps of the guided update. Without a
+  list of versions, it looks for one as it opens.
 -->
 <script setup lang="ts">
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
@@ -33,7 +31,7 @@ watch(
   versions,
   (next) => {
     if (!chosen.value || !next.includes(chosen.value)) {
-      chosen.value = firmware.status.latest ?? next[0] ?? null;
+      chosen.value = next[0] ?? null;
     }
   },
   { immediate: true },
@@ -50,11 +48,6 @@ const version = computed(() =>
 /** The version of the connected lamp, among those of the list. */
 const current = computed(
   () => versions.value.find((candidate) => firmware.onLamp(candidate)) ?? null,
-);
-
-/** Back to Disled v1, from a lamp that is not there already. */
-const rollback = computed(
-  () => idle.value && chosen.value?.split('.')[0] === '1' && lamp.generation !== 'v1',
 );
 
 const summary = computed(() => {
@@ -124,16 +117,8 @@ function close(): Promise<void> {
         <UpdateVersionPicker
           v-model="chosen"
           :versions="versions"
-          :latest="firmware.status.latest"
+          :latest="firmware.latest"
           :current="current"
-        />
-        <UAlert
-          v-if="rollback"
-          color="warning"
-          variant="subtle"
-          icon="i-lucide-triangle-alert"
-          :title="t('lampInstall.rollback.title')"
-          :description="t('lampInstall.rollback.text')"
         />
         <p class="text-sm">{{ t('lampInstall.intro') }}</p>
       </template>

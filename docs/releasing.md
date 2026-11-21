@@ -184,9 +184,8 @@ target. Install it with `cargo install wchisp@0.3.0 --locked`, copy it to
 run `npm run tauri build -- --config src-tauri/tauri.wchisp.conf.json`.
 
 The app lists every signed release of the firmware major that it drives,
-newest first, then the last one of the major before, which takes a lamp
-back. So a firmware release stays installable from the app as long as it
-lives on the releases page.
+newest first. So a firmware release stays installable from the app as long
+as it lives on the releases page.
 
 ## The catalog of plugins
 

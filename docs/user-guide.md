@@ -377,13 +377,11 @@ ones. A link opens the release notes of the checked version. The window
 then guides the install as above. It works with or without a lamp connected, so a lamp
 that no longer starts gets its firmware back through its update mode.
 
-**Back to firmware v1.** Version 1.0.0 is in the list too. Installed, it
-makes the lamp work only with Disled v1. To go back to Disled v1 entirely,
-do it in this order: first the lamp, with 1.0.0 from this window, then the
-app, by installing Disled 1.1.2 by hand from its
-[release](https://github.com/Oui-Dev/Disled/releases/tag/app-v1.1.2). In
-the other order, Disled 1.1.2 would only offer the newest firmware. It will
-then offer Disled v2 again: turn off **Check for updates every day** to
+**Back to Disled v1.** The window lists firmware 2.x only. To go back to
+Disled v1, flash firmware 1.0.0 by hand ([flashing guide](flashing.md#flash)),
+then install Disled 1.1.2 from its
+[release](https://github.com/Oui-Dev/Disled/releases/tag/app-v1.1.2). It
+will offer Disled v2 again: turn off **Check for updates every day** to
 silence it.
 
 ## Diagnostics

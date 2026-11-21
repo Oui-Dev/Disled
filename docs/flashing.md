@@ -16,10 +16,11 @@ the Windows driver included ([user guide](user-guide.md#updates)). A
 version 1 lamp gets the same button under "Update required". A lamp that
 no longer starts, or one that should run another version, gets its
 firmware from **Reinstall the firmware**, in the **⋮** menu of the settings
-page of the popup, where you pick the version: 1.0.0 takes the lamp back to
-Disled v1. The app empties the whole flash before it writes the firmware.
+page of the popup, where you pick the version. The app empties the whole
+flash before it writes the firmware.
 
-The rest of this page is for development and for flashing by hand.
+The rest of this page is for development and for flashing by hand, as for
+firmware 1.0.0, which takes a lamp back to Disled v1.
 
 ## Enter the bootloader
 

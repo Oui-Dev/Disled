@@ -323,11 +323,6 @@ mod tests {
                  et tout sera guidé étape par étape. Comptez environ une minute, lampe \
                  branchée à cet ordinateur.",
             ),
-            ("lampInstall.rollback.title", "Retour au firmware v1"),
-            (
-                "lampInstall.rollback.text",
-                "La lampe ne marchera plus qu’avec Disled v1.",
-            ),
             (
                 "lampUpdate.retryOrGuide",
                 "Réessayez, ou suivez le {guide}.",

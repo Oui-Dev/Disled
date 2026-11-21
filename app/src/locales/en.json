@@ -379,13 +379,8 @@
     "recommended": "Recommended",
     "current": "Current",
     "others": "Other versions",
-    "group": "Firmware v{major}",
     "install": "Install {version}",
-    "reinstall": "Reinstall {version}",
-    "rollback": {
-      "title": "Back to firmware v1",
-      "text": "The lamp will only work with Disled v1."
-    }
+    "reinstall": "Reinstall {version}"
   },
   "errors": {
     "backend": "Error: {detail}",

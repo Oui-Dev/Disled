@@ -36,7 +36,6 @@ export const useFirmwareStore = defineStore('firmware', () => {
 
   const status = ref<FirmwareStatus>({
     checking: false,
-    latest: null,
     versions: [],
     error: null,
     checked_at: null,
@@ -45,6 +44,9 @@ export const useFirmwareStore = defineStore('firmware', () => {
   });
   /** The status of the backend is in, once `start` has read it. */
   const loaded = ref(false);
+
+  /** The newest firmware 2.x, which the update buttons install. */
+  const latest = computed(() => status.value.versions[0] ?? null);
 
   /** Whether the connected lamp runs this "X.Y.Z" version. */
   function onLamp(version: string): boolean {
@@ -58,9 +60,9 @@ export const useFirmwareStore = defineStore('firmware', () => {
    * lamp included.
    */
   const newerForLamp = computed(() => {
-    const { latest } = status.value;
+    const newest = latest.value;
     const info = lamp.info;
-    return latest && info && compare(latest, info.firmware) > 0 ? latest : null;
+    return newest && info && compare(newest, info.firmware) > 0 ? newest : null;
   });
 
   /**
@@ -109,6 +111,7 @@ export const useFirmwareStore = defineStore('firmware', () => {
   return {
     status,
     loaded,
+    latest,
     onLamp,
     newerForLamp,
     updateForLamp,

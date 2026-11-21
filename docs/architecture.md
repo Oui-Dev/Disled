@@ -261,15 +261,14 @@ but passes no gesture, nor the release of a press that outlived the alert.
   it. The first launch of a new version, as after an update, checks at once
   and opens the popup, so that a lamp update shows right after the app's.
 - **Lamp updates.** The same thread lists the signed firmware releases
-  (`firmware.rs`): every 2.x, newest first, then the last 1.x, which returns
-  a lamp to Disled v1. The lamp update window installs the newest version;
-  the reinstall window installs the one the user picks. An install runs on
-  its own thread: download, signature check against the update key,
-  `wchisp probe` every second until the ROM bootloader shows up, `wchisp
-  erase`, which empties the whole flash, `wchisp flash`, then the `INFO` of
-  the restarted lamp. wchisp is a separate program next to the app, driven
-  through its log lines (`crates/disled-flash`, shared with the production
-  tool). Both windows follow `firmware-status`.
+  (`firmware.rs`): every 2.x, newest first. The lamp update window installs
+  the newest version; the reinstall window installs the one the user picks.
+  An install runs on its own thread: download, signature check against the
+  update key, `wchisp probe` every second until the ROM bootloader shows
+  up, `wchisp erase`, which empties the whole flash, `wchisp flash`, then
+  the `INFO` of the restarted lamp. wchisp is a separate program next to
+  the app, driven through its log lines (`crates/disled-flash`, shared with
+  the production tool). Both windows follow `firmware-status`.
 - **Vue front end** (`app/src`, Nuxt UI). Each window runs its own Pinia
   stores (lamp, settings, colors, control, plugins, telemetry, diagnostics,
   updates, firmware, errors), fed by the backend events through a typed layer

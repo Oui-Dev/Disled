@@ -5,8 +5,8 @@
   The versions of the reinstall window, with the link to the notes of the
   checked one. Up to four versions, all of them show. Beyond, only the
   recommended one, the lamp's and the one picked last show, never more than
-  four lines with "Other versions", whose menu lists the others by firmware
-  line, newest first. A version picked there joins the list, checked.
+  four lines with "Other versions", whose menu lists the others, newest
+  first. A version picked there joins the list, checked.
 -->
 <script setup lang="ts">
 import type { ListboxItem } from '@nuxt/ui';
@@ -51,27 +51,16 @@ const rows = computed(() => {
   return shown.map((version) => ({ label: version, value: version }));
 });
 
-/** The versions of the menu, under "Firmware v2" then "Firmware v1". */
-const others = computed(() => {
-  const groups = new Map<string, ListboxItem[]>();
-  for (const version of props.versions) {
-    if (version === props.latest || version === props.current) {
-      continue;
-    }
-    const major = version.split('.')[0];
-    let group = groups.get(major);
-    if (!group) {
-      group = [{ type: 'label', label: t('lampInstall.group', { major }) }];
-      groups.set(major, group);
-    }
-    group.push({ label: version, value: version });
-  }
-  return [...groups.values()];
-});
+/** The versions of the menu. */
+const others = computed<ListboxItem[]>(() =>
+  props.versions
+    .filter((version) => version !== props.latest && version !== props.current)
+    .map((version) => ({ label: version, value: version })),
+);
 
 /** The menu checks the chosen version when it lists it. */
 const inMenu = computed(() =>
-  others.value.flat().some((item) => item.value === chosen.value) ? chosen.value : undefined,
+  others.value.some((item) => item.value === chosen.value) ? chosen.value : undefined,
 );
 
 const open = ref(false);
