@@ -121,13 +121,10 @@ restores the full clock before TinyUSB handles the resume.
 
 32 KB flash, 10 KB RAM. The firmware starts at 0x0 and may use the whole
 flash: the ROM bootloader of WCH, which writes it, lives outside it.
-`scripts/size_budget.py` prints the usage after each build, warns above
-90 % and fails above 100 %. Link-time optimization is on.
-
-| Build | Flash | RAM (2 KB stack included) |
-|---|---|---|
-| debug (HID + CDC console) | 29.4 KB | 5.4 KB |
-| release (HID) | 22.1 KB | 4.2 KB |
+PlatformIO prints the flash and RAM use after each build, the 2 KB stack
+included, and fails when the flash overflows; the linker refuses a RAM
+overflow. Link-time optimization is on. The debug build, with its console,
+leaves under 3 KB of flash.
 
 ### Configuration
 
