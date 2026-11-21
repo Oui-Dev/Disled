@@ -11,6 +11,7 @@
 //! approval follows.
 
 use std::collections::HashMap;
+use std::io::Cursor;
 
 use disled_flash::signature::verify_signed;
 use parking_lot::Mutex;
@@ -21,12 +22,13 @@ use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Manager};
 
 use super::manifest::{Capabilities, Manifest, Reason};
+use super::{process, scan};
 use crate::net;
 
 /// Where the catalog publishes its index and its zip files.
 const BASE_URL: &str = "https://oui-dev.github.io/Disled-plugins";
 /// The page of a plugin in the catalog repository, before its id.
-pub const SOURCE_URL: &str = "https://github.com/Oui-Dev/Disled-plugins/tree/main/plugins/";
+const SOURCE_URL: &str = "https://github.com/Oui-Dev/Disled-plugins/tree/main/plugins/";
 /// The public half of the catalog key, which `tauri signer generate` wrote
 /// in its `.pub` file (docs/releasing.md), minisign key 474E5F10EC4C34E3.
 /// The private half signs the index in the publish workflow of the catalog.
@@ -87,13 +89,8 @@ pub struct CatalogView {
     pub needs: Option<String>,
     /// Who sends its events, such as "Claude Code".
     pub from: Option<String>,
-    /// Bytes of its zip file.
-    pub size: u64,
-    /// Its page in the catalog repository.
-    pub source: String,
-    /// The version installed, empty while the plugin installed cannot be
-    /// read, none when the plugin is not installed.
-    pub installed: Option<String>,
+    /// A plugin of this id is installed, readable or not.
+    pub installed: bool,
     /// The plugin installed holds the files of this version.
     pub current: bool,
     /// The catalog has a later version than the one installed, or the one
@@ -104,10 +101,6 @@ pub struct CatalogView {
 /// The plugins of the last reading, which an install takes its plugin from.
 #[derive(Default)]
 pub struct CatalogState(Mutex<Vec<Published>>);
-
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
-}
 
 /// Checks that `index` is the index of the catalog, signed with `key`:
 /// `signature` is the content of `index.json.sig`.
@@ -170,24 +163,27 @@ fn zip_url(manifest: &Manifest) -> String {
     format!("{BASE_URL}/zips/{}-{}.zip", manifest.id, manifest.version)
 }
 
-/// What the app has of a plugin: its version, while it reads, and its
-/// fingerprint.
-pub type Installed = HashMap<String, (Option<Version>, Option<String>)>;
+/// The page of a plugin in the catalog repository, with its sources.
+pub fn source_url(id: &str) -> String {
+    format!("{SOURCE_URL}{id}")
+}
+
+/// The plugins installed, by id: their version and their fingerprint, none
+/// while the plugin cannot be read.
+pub type Installed = HashMap<String, Option<(Version, String)>>;
 
 fn view(published: &Published, installed: &Installed, language: &str) -> CatalogView {
     let manifest = &published.manifest;
     let here = installed.get(&manifest.id);
-    let installed_version = here.and_then(|(version, _)| version.as_ref());
-    let current = here
-        .and_then(|(_, fingerprint)| fingerprint.as_deref())
-        .is_some_and(|fingerprint| fingerprint == published.fingerprint);
+    let readable = here.and_then(Option::as_ref);
+    let current = readable.is_some_and(|(_, fingerprint)| *fingerprint == published.fingerprint);
     // A program named rather than given by path, which the user installs.
     let needs = manifest
         .run
         .as_ref()
         .and_then(super::manifest::Run::command)
         .and_then(|command| command.first())
-        .filter(|program| !program.contains('/') && !program.contains('\\'))
+        .filter(|program| !process::is_path(program))
         .cloned();
     CatalogView {
         id: manifest.id.clone(),
@@ -202,17 +198,11 @@ fn view(published: &Published, installed: &Installed, language: &str) -> Catalog
             .events
             .as_ref()
             .map(|events| events.from.get(language).clone()),
-        size: published.size,
-        source: format!("{SOURCE_URL}{}", manifest.id),
-        installed: here.map(|(version, _)| {
-            version
-                .as_ref()
-                .map_or_else(String::new, ToString::to_string)
-        }),
+        installed: here.is_some(),
         current,
         update: !current
             && here.is_some()
-            && installed_version.is_none_or(|version| *version < manifest.version),
+            && readable.is_none_or(|(version, _)| *version < manifest.version),
     }
 }
 
@@ -254,24 +244,11 @@ pub async fn install(app: &AppHandle, id: &str) -> Result<String, CatalogError> 
         .await
         .map_err(network)?;
     if u64::try_from(zip.len()).ok() != Some(published.size)
-        || hex(&Sha256::digest(&zip)) != published.sha256
+        || scan::hex(&Sha256::digest(&zip)) != published.sha256
     {
         return Err(CatalogError::Mismatch);
     }
-    let folder = app
-        .path()
-        .app_cache_dir()
-        .map_err(|e| network(e.to_string()))?
-        .join("catalog");
-    let file = folder.join(format!("{id}-{}.zip", published.manifest.version));
-    std::fs::create_dir_all(&folder)
-        .and_then(|()| std::fs::write(&file, &zip))
-        .map_err(|_| CatalogError::Unreadable {
-            reason: Reason::Missing,
-        })?;
-    let result = super::import_reviewed(app, &file, id, &published.fingerprint);
-    let _ = std::fs::remove_file(&file);
-    result
+    super::import_reviewed(app, Cursor::new(zip), id, &published.fingerprint)
 }
 
 #[cfg(test)]
@@ -364,41 +341,43 @@ mod tests {
         let shown = |installed: Installed| view(published, &installed, "fr");
 
         let absent = shown(Installed::new());
-        assert_eq!(absent.installed, None);
-        assert!(!absent.current && !absent.update);
+        assert!(!absent.installed && !absent.current && !absent.update);
         assert_eq!(absent.description, "Un minuteur.");
         assert_eq!(absent.needs.as_deref(), Some("node"));
-        assert_eq!(
-            absent.source,
-            "https://github.com/Oui-Dev/Disled-plugins/tree/main/plugins/pomodoro"
-        );
 
         let at = |version: &str, fingerprint: char| {
             Installed::from([(
                 "pomodoro".to_owned(),
-                (
-                    Version::parse(version).ok(),
-                    Some(fingerprint.to_string().repeat(64)),
-                ),
+                Some((
+                    Version::parse(version).expect("version"),
+                    fingerprint.to_string().repeat(64),
+                )),
             )])
         };
         let current = shown(at("1.2.0", 'f'));
-        assert!(current.current && !current.update);
+        assert!(current.installed && current.current && !current.update);
         let older = shown(at("1.1.0", 'a'));
-        assert_eq!(older.installed.as_deref(), Some("1.1.0"));
-        assert!(!older.current && older.update);
+        assert!(older.installed && !older.current && older.update);
         // Changed by hand, or newer: nothing to offer.
         let changed = shown(at("1.2.0", 'a'));
         assert!(!changed.current && !changed.update);
         let newer = shown(at("2.0.0", 'a'));
         assert!(!newer.update);
         // A plugin of that id that does not read: the catalog replaces it.
-        let unreadable = shown(Installed::from([("pomodoro".to_owned(), (None, None))]));
-        assert_eq!(unreadable.installed.as_deref(), Some(""));
-        assert!(unreadable.update);
+        let unreadable = shown(Installed::from([("pomodoro".to_owned(), None)]));
+        assert!(unreadable.installed && unreadable.update);
+    }
+
+    #[test]
+    fn a_plugin_has_its_zip_and_its_sources_in_the_catalog() {
+        let published = parse(&index(vec![entry(pomodoro("1.2.0", 1), 'f')])).expect("index");
         assert_eq!(
-            zip_url(&published.manifest),
+            zip_url(&published[0].manifest),
             "https://oui-dev.github.io/Disled-plugins/zips/pomodoro-1.2.0.zip"
+        );
+        assert_eq!(
+            source_url("pomodoro"),
+            "https://github.com/Oui-Dev/Disled-plugins/tree/main/plugins/pomodoro"
         );
     }
 
