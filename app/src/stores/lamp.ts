@@ -74,20 +74,6 @@ export const useLampStore = defineStore('lamp', () => {
     return send({ kind: 'reset' });
   }
 
-  function receiveState(next: LampState): void {
-    const previous = state.value;
-    state.value = next;
-    // Each message with a change increments state_seq by one; a larger
-    // jump means a lost message, so ask for the full state again.
-    if (
-      previous
-      && next.state_seq !== previous.state_seq
-      && next.state_seq !== ((previous.state_seq + 1) & 0xffff)
-    ) {
-      void send({ kind: 'get_state' }, { automatic: true });
-    }
-  }
-
   /** Follows the backend events. Call once per window. */
   async function start(): Promise<void> {
     // Telemetry, diagnostics and self-test results go to their own stores.
@@ -97,7 +83,7 @@ export const useLampStore = defineStore('lamp', () => {
           info.value = message;
           break;
         case 'state':
-          receiveState(message);
+          state.value = message;
           break;
         case 'error':
           errors.report({ kind: 'rejected', command: message.command, error: message.error });
