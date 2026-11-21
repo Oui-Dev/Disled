@@ -63,8 +63,7 @@ static void cmd_state(int argc, char **argv)
     console_printf("lamp %s, %s, %s, manual %u%%, applied %u per mille\r\n",
                    app.lamp.on ? "on" : "off", color_name(app.lamp.color),
                    app.lamp.brightness_mode == BRIGHTNESS_MODE_AUTO ? "auto" : "manual",
-                   (unsigned)app.lamp.manual_level,
-                   (unsigned)brightness_level_permille(&app.brightness));
+                   (unsigned)app.lamp.manual_level, (unsigned)app_level_permille());
     const rgb16_t rgb = app_lamp_rgb();
     console_printf("color slot %u = %u %u %u", (unsigned)app.lamp.color, (unsigned)rgb.r,
                    (unsigned)rgb.g, (unsigned)rgb.b);
@@ -354,7 +353,7 @@ void app_console_task(uint32_t now_ms)
         (unsigned)touch_detector_value(&app.touch), (unsigned)touch_detector_baseline(&app.touch),
         (int)touch_detector_delta_permille(&app.touch), (unsigned)touch_detector_state(&app.touch),
         (unsigned long)(lux / 1000u), (unsigned long)(lux % 1000u), (unsigned)app.als.count,
-        (unsigned)brightness_level_permille(&app.brightness), (unsigned long)(estimate / 10u),
+        (unsigned)app_level_permille(), (unsigned long)(estimate / 10u),
         (unsigned long)(estimate % 10u));
 }
 

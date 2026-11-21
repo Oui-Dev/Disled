@@ -43,6 +43,12 @@ rgb16_t app_lamp_rgb(void)
     return palette_color(&app.palette, (uint32_t)app.lamp.color);
 }
 
+uint16_t app_level_permille(void)
+{
+    return brightness_level_permille(&app.brightness, app.lamp.brightness_mode,
+                                     app.lamp.manual_level);
+}
+
 /* --- Colors and touch cycle (version 2) ------------------------------ */
 
 static uint32_t defined_slots(void)
@@ -306,14 +312,12 @@ void app_start_self_test(uint8_t seq)
 
 static void task_output(uint32_t now_ms)
 {
-    brightness_set_mode(&app.brightness, app.lamp.brightness_mode, app.lamp.manual_level);
     const bool testing = self_test_running(&app.self_test);
     const uint16_t breath = update_alert(now_ms, testing);
     const led_output_inputs_t inputs = {
         .on = app.lamp.on,
         .drive = palette_light(&app.palette, (uint32_t)app.lamp.color, &app_led_color_cal),
-        .level_permille =
-            color_level_shown(brightness_level_permille(&app.brightness), APP_LED_FLOOR_PERMILLE),
+        .level_permille = color_level_shown(app_level_permille(), APP_LED_FLOOR_PERMILLE),
         .link = app.link,
         .cap_override_ma = app.cap_override_ma,
         .show_override = testing,
