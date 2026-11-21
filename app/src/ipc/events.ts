@@ -20,7 +20,7 @@ interface Events {
   'device-connection': Connection;
   /** A message from the lamp. */
   'device-message': Frame;
-  /** A report the backend could not decode, or a lamp on another major protocol version. */
+  /** A report from a version 2 lamp that the backend could not decode. */
   'device-protocol-error': string;
   /** Any window changed the settings. */
   'settings-changed': Settings;
