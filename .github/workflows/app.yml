@@ -56,6 +56,10 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
 
+      # The newest npm that engines in app/package.json allows, rather than
+      # the one that comes with Node.
+      - run: npm install --global "npm@$(node -p "require(process.env.GITHUB_WORKSPACE + '/app/package.json').engines.npm")"
+
       # The version of rust-toolchain.toml, with clippy and rustfmt.
       - run: rustup toolchain install
 
@@ -113,6 +117,10 @@ jobs:
           node-version-file: app/package.json
           cache: npm
           cache-dependency-path: app/package-lock.json
+
+      # The newest npm that engines in app/package.json allows, rather than
+      # the one that comes with Node.
+      - run: npm install --global "npm@$(node -p "require(process.env.GITHUB_WORKSPACE + '/app/package.json').engines.npm")"
 
       # The version of rust-toolchain.toml, with clippy.
       - run: rustup toolchain install
