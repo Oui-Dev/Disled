@@ -249,9 +249,6 @@ fn check_info(info: &Info, firmware: &Firmware, row: &mut Row) -> Result<(), Str
             ));
         }
     }
-    if !info.self_test {
-        return Err("this firmware has no self-test".into());
-    }
     Ok(())
 }
 

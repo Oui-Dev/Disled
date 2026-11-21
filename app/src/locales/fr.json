@@ -405,9 +405,7 @@
       "power_on": "mise sous tension",
       "pin": "broche reset",
       "software": "logiciel",
-      "watchdog": "watchdog",
-      "window_watchdog": "watchdog fenêtré",
-      "low_power": "basse consommation"
+      "watchdog": "watchdog"
     },
     "changeSource": {
       "boot": "démarrage",
