@@ -279,8 +279,9 @@ impl Host {
         }
     }
 
-    /// Starts the programs of the active plugins that run one, and stops
-    /// the others. `start` runs a program with the callbacks of the app.
+    /// Starts the programs of the active plugins that run one and are not
+    /// running yet; the callers stop the others. `start` runs a program
+    /// with the callbacks of the app.
     pub(super) fn run_programs(
         &mut self,
         home: Option<PathBuf>,
