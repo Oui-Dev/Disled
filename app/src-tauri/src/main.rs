@@ -92,8 +92,8 @@ fn control_set_mode(app: AppHandle, mode: Option<String>) -> Result<(), String> 
 }
 
 /// The plugins, read again from their folder, for the integrations window.
-/// Async, as are the other commands of the plugins, since stopping a
-/// program can take two seconds.
+/// Async, as are the commands of the plugins that may stop a program, which
+/// can take two seconds.
 #[tauri::command]
 async fn plugins_list(app: AppHandle) -> Vec<plugins::PluginView> {
     plugins::list(&app)
@@ -562,7 +562,7 @@ fn open_link(app: AppHandle, link: Link) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-/// "Quit" of the popup, as of the tray menu. On the way out, the lamp gets
+/// "Quit" of the popup, as in the tray menu. On the way out, the lamp gets
 /// its own behavior back (`leave`).
 #[tauri::command]
 fn quit(app: AppHandle) {
@@ -608,10 +608,12 @@ fn main() {
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
-        // From Rust only, for "Copy the code": no window has its permission.
+        // From Rust only, for the Copy buttons of the share code and of the
+        // plugin notes: no window has its permission.
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        // Only open_link uses it, from Rust, so no window has its permission.
+        // From Rust only, for the links, the sources of a catalog plugin and
+        // the plugins folder: no window has its permission.
         .plugin(tauri_plugin_opener::init())
         .manage(SettingsState::default())
         .manage(ColorsState::default())
