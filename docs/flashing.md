@@ -3,10 +3,10 @@
 You flash Disled over USB, through the bootloader in the ROM of the
 CH32V203. That bootloader stays in place whatever firmware you write, so a
 bad firmware never bricks a board: the BOOT button always brings it back.
-Write a `.hex` or a `.bin`, never an `.elf`: a broken ELF file was reported
-to erase the bootloader once. The buttons sit on the board, so the
-enclosure has to be open. The CH32V203 starts its bootloader only from a
-reset with BOOT held, never from software.
+Write the `.hex` or the `.bin` of a build, never the `.elf`, which is for
+the debugger. The buttons sit on the board, so the enclosure has to be
+open. The CH32V203 starts its bootloader only from a reset with BOOT held,
+never from software.
 
 ## From the desktop app
 

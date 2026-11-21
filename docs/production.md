@@ -98,13 +98,12 @@ otherwise:
 | No touch detected | Touch the lid within the 10 s of blue. If the touch still fails, check the electrode. |
 | Colors | The LED, its MOSFETs and their soldering. |
 
-The ROM bootloader stays whatever firmware a `.hex` or a `.bin` writes, so a
-board that failed can always be flashed and tested again.
+A board that failed can always be flashed and tested again
+([flashing.md](flashing.md)).
 
 ## Unsigned firmware
 
 `--unsigned` flashes any firmware file without checking it, to try the tool
 with a local build or to install a custom firmware, at your own risk. Give
-it a `.hex` or a `.bin`, never an `.elf`: a broken ELF file was reported to
-erase the ROM bootloader once. The tool then checks no version, and the log
-marks the rows `signature: none`.
+it a `.hex` or a `.bin`, never an `.elf` ([flashing.md](flashing.md)). The
+tool then checks no version, and the log marks the rows `signature: none`.

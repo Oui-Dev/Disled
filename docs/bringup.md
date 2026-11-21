@@ -141,10 +141,10 @@ board ground and doubles the drop, which hides a weak signal.
       on, and a phone left on the lid fires once, then the lamp ignores it.
 - [ ] Twenty light, quick taps with the hand resting near the lid: one
       color step per tap, no skipped color, no long press.
-- [ ] `set sensitivity 50`, then `set sensitivity -50`: `state` shows the
-      press, release and rise thresholds scaled by the correction. A light
-      tap fires at +50 %, and misses more often at −50 %. `set sensitivity
-      0` restores the factory thresholds.
+- [ ] `set sensitivity 50`, then `set sensitivity -50`: each answers with
+      the press, release and rise thresholds scaled by the correction. A
+      light tap fires at +50 %, and misses more often at −50 %.
+      `set sensitivity 0` restores the factory thresholds.
 - [ ] During `alert 10 1500`, short and long presses do nothing, and a
       press still held when the alert ends does nothing at its release.
 
