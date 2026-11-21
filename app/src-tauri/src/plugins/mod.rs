@@ -34,7 +34,7 @@ use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
-use crate::colors::{BUILT_IN, ColorsState, Palette, PreviewState};
+use crate::colors::{ColorsState, Palette, PreviewState};
 use crate::control::{self, ControlState, Input, Integration, IntegrationState};
 use crate::device::DeviceHandle;
 use crate::i18n::{Locale, LocaleState};
@@ -252,9 +252,6 @@ pub struct Host {
     events: tokio::sync::mpsc::Sender<http::Event>,
     server: Option<tauri::async_runtime::JoinHandle<()>>,
     port_taken: Arc<std::sync::atomic::AtomicBool>,
-    /// What the control last heard.
-    announced: Vec<Integration>,
-    announced_states: HashMap<String, Option<IntegrationState>>,
     /// The `lamp` notification that the programs last got, which a program
     /// that starts gets first.
     lamp: String,
@@ -321,7 +318,7 @@ impl Host {
             .get(id)
             .and_then(|entry| entry.colors.get(state))
             .copied()
-            .filter(|slot| *slot < BUILT_IN || palette.defines(*slot));
+            .filter(|slot| palette.defines(*slot));
         Some(picked.unwrap_or(default))
     }
 
@@ -445,7 +442,7 @@ impl Host {
             let feed = self
                 .manifest(&id)
                 .is_some_and(|manifest| manifest.capabilities.lamp)
-                .then(|| Feed::new(Some(self.lamp.clone())));
+                .then(|| Feed::new(self.lamp.clone()));
             let (notes, statuses) = (app.clone(), app.clone());
             let (note_id, status_id) = (id.clone(), id.clone());
             let program = Program::start(
@@ -515,7 +512,9 @@ impl Host {
         outbox.save = Some(self.stored.to_value());
     }
 
-    /// Brings the control and the windows in line with the plugins.
+    /// Brings the control and the windows in line with the plugins. The
+    /// control gets every input at each sync: one that changes nothing does
+    /// nothing.
     fn sync(&mut self, app: &AppHandle, palette: &Palette, language: &str, outbox: &mut Outbox) {
         self.serve(app);
         let integrations: Vec<Integration> = self
@@ -531,12 +530,6 @@ impl Host {
                 })
             })
             .collect();
-        if integrations != self.announced {
-            outbox
-                .control
-                .push(Input::Integrations(integrations.clone()));
-            self.announced = integrations.clone();
-        }
         // The lamp cannot follow a plugin that left.
         if self
             .stored
@@ -547,18 +540,15 @@ impl Host {
             self.stored.mode = None;
             self.save(outbox);
         }
-        for integration in &integrations {
-            let state = self.integration_state(&integration.id, palette, language);
-            if self.announced_states.get(&integration.id) != Some(&state) {
-                outbox.control.push(Input::Announce {
-                    id: integration.id.clone(),
-                    state: state.clone(),
-                });
-                self.announced_states.insert(integration.id.clone(), state);
-            }
-        }
-        self.announced_states
-            .retain(|id, _| integrations.iter().any(|known| &known.id == id));
+        let announces: Vec<Input> = integrations
+            .iter()
+            .map(|integration| Input::Announce {
+                id: integration.id.clone(),
+                state: self.integration_state(&integration.id, palette, language),
+            })
+            .collect();
+        outbox.control.push(Input::Integrations(integrations));
+        outbox.control.extend(announces);
         outbox.views = Some(self.views(palette, language));
     }
 
@@ -670,10 +660,10 @@ impl Host {
     /// An action of a rule or of a program, on a key.
     fn act(&mut self, id: &str, key: &str, action: &Action, outbox: &mut Outbox) {
         let now = Instant::now();
-        let Some(manifest) = self.manifest(id).cloned() else {
+        let Some(plugin) = self.plugins.get_mut(id) else {
             return;
         };
-        let Some(plugin) = self.plugins.get_mut(id) else {
+        let Ok(manifest) = plugin.manifest.as_ref() else {
             return;
         };
         let mut alert = false;
@@ -692,9 +682,10 @@ impl Host {
             Action::Clear => plugin.keys.clear(Some(key)),
             Action::Ignore => return,
         }
+        let alert = alert && manifest.capabilities.alert;
         plugin.heard = Some((updates::now(), given));
         self.refresh(id);
-        if alert && manifest.capabilities.alert {
+        if alert {
             outbox.control.push(Input::Alert {
                 plugin: id.to_owned(),
             });
@@ -769,8 +760,6 @@ pub fn start(app: &AppHandle) {
         events,
         server: None,
         port_taken: Arc::default(),
-        announced: Vec::new(),
-        announced_states: HashMap::new(),
         lamp,
     };
     let mode = host.stored.mode.clone();
@@ -826,10 +815,11 @@ fn on_event(app: &AppHandle, id: &str, event: &Value) {
         if !host.active(id) {
             return;
         }
-        let Some(events) = host
-            .manifest(id)
-            .and_then(|manifest| manifest.events.clone())
-        else {
+        let Some((key, action)) = host.manifest(id).and_then(|manifest| {
+            let events = manifest.events.as_ref()?;
+            let key = rules::key_of(event, events.key.as_deref());
+            Some((key, rules::action_for(&events.rules, event).cloned()))
+        }) else {
             return;
         };
         // The first event folds the installation note.
@@ -837,9 +827,8 @@ fn on_event(app: &AppHandle, id: &str, event: &Value) {
             host.entry(id).installed = true;
             host.save(outbox);
         }
-        let key = rules::key_of(event, events.key.as_deref());
-        match rules::action_for(&events.rules, event) {
-            Some(action) => host.act(id, &key, action, outbox),
+        match action {
+            Some(action) => host.act(id, &key, &action, outbox),
             None => {
                 if let Some(plugin) = host.plugins.get_mut(id) {
                     plugin.heard = Some((updates::now(), None));
@@ -990,7 +979,7 @@ pub fn set_enabled(app: &AppHandle, id: &str, enabled: bool) -> Result<(), Strin
 /// The color of a state of a plugin.
 pub fn set_color(app: &AppHandle, id: &str, state: &str, slot: u8) -> Result<(), String> {
     let palette = app.state::<ColorsState>().get();
-    if slot >= BUILT_IN && !palette.defines(slot) {
+    if !palette.defines(slot) {
         return Err("no such color".into());
     }
     change(app, |host, outbox| {
@@ -1138,9 +1127,7 @@ pub fn colors_changed(app: &AppHandle) {
         let mut changed = false;
         for entry in host.stored.plugins.values_mut() {
             let before = entry.colors.len();
-            entry
-                .colors
-                .retain(|_, slot| *slot < BUILT_IN || palette.defines(*slot));
+            entry.colors.retain(|_, slot| palette.defines(*slot));
             changed |= entry.colors.len() != before;
         }
         if changed {
