@@ -93,6 +93,10 @@ jobs:
         with:
           node-version-file: app/package.json
 
+      # The newest npm that engines in app/package.json allows, rather than
+      # the one that comes with Node.
+      - run: npm install --global "npm@$(node -p "require(process.env.GITHUB_WORKSPACE + '/app/package.json').engines.npm")"
+
       - name: Attach to the draft release
         working-directory: firmware
         env:
@@ -172,6 +176,10 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
 
+      # The newest npm that engines in app/package.json allows, rather than
+      # the one that comes with Node.
+      - run: npm install --global "npm@$(node -p "require(process.env.GITHUB_WORKSPACE + '/app/package.json').engines.npm")"
+
       # The version of rust-toolchain.toml.
       - run: rustup toolchain install
 
@@ -240,6 +248,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: app/package.json
+
+      # The newest npm that engines in app/package.json allows, rather than
+      # the one that comes with Node.
+      - run: npm install --global "npm@$(node -p "require(process.env.GITHUB_WORKSPACE + '/app/package.json').engines.npm")"
 
       - name: Attach the wchisp source and notice
         # wchisp is GPL-2.0, so its source goes with the installers. It is the
