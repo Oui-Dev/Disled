@@ -58,11 +58,6 @@ export function pluginNote(id: string): Promise<FilledBlock | null> {
   return invoke('plugin_note', { id });
 }
 
-/** Writes the block of the note to the clipboard, which the app never reads. */
-export function pluginCopyNote(id: string): Promise<void> {
-  return invoke('plugin_copy_note', { id });
-}
-
 /** "Enable" in the question, for the fingerprint it showed. */
 export function pluginApprove(id: string, fingerprint: string): Promise<void> {
   return invoke('plugin_approve', { id, fingerprint });
@@ -146,11 +141,6 @@ export function colorsDelete(slot: number): Promise<void> {
 
 export function colorsShareCode(): Promise<string> {
   return invoke('colors_share_code');
-}
-
-/** Writes the share code to the clipboard, which the app never reads. */
-export function colorsCopyCode(): Promise<void> {
-  return invoke('colors_copy_code');
 }
 
 /** The colors of a pasted text, null when it holds no readable code. */

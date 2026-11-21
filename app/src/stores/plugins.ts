@@ -16,7 +16,6 @@ import type { PluginView } from '@/bindings/PluginView';
 import type { Reason } from '@/bindings/Reason';
 import {
   pluginApprove,
-  pluginCopyNote,
   pluginInstall,
   pluginOpenSource,
   pluginRegenerateToken,
@@ -152,7 +151,6 @@ export const usePluginsStore = defineStore('plugins', () => {
       change(() => pluginSetColor(id, state, slot)),
     regenerateToken: (id: string) => changeToken(() => pluginRegenerateToken(id)),
     remove: (id: string) => change(() => pluginRemove(id)),
-    copyNote: (id: string) => change(() => pluginCopyNote(id)),
     openFolder: () => change(pluginsOpenFolder),
     /** Follows the backend events. Call once per window. */
     start: () =>
