@@ -67,7 +67,7 @@ characters.
 - Scopes in use: `app`, `firmware`, `protocol`, `factory` (the production
   tool), `hardware`, `deps`.
 - `feat!` or a `BREAKING CHANGE:` footer marks a breaking change. Version 2
-  of the USB protocol is frozen at 2.0 and only grows in compatible ways
+  of the USB protocol is frozen: it only grows in compatible ways
   ([protocol/README.md](protocol/README.md#compatibility)).
 
 ## Checks
@@ -138,8 +138,9 @@ The release workflow builds wchisp, the flasher bundled with the app, at
 the version of `WCHISP_VERSION` (`.github/workflows/release.yml`). wchisp
 has no machine interface, so the app and the production tool read its log
 lines (`crates/disled-flash/src/wchisp.rs`). Before a new version, check
-those lines against it, then update the `cargo install wchisp@0.3.0`
-commands of the documentation.
+those lines against it. Then change `WCHISP_VERSION` in `release.yml` and
+`app.yml`, and every `wchisp@X.Y.Z` that `git grep -n "wchisp@"` lists, the
+hint of the production tool included.
 
 ## Releases
 

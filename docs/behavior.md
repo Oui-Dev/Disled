@@ -181,9 +181,10 @@ lamp that no program holds open
     alternate between them.
 16. Delete the custom color while the lamp shows it: the lamp fades to the
     first color of the cycle.
-17. Follow an integration in the app: short presses do nothing, and a long
-    press still turns the lamp off and on. End the app's process without
-    quitting: after about 10 s, a short press changes the color again.
+17. In the app, follow an integration whose plugin does not read the lamp,
+    such as Claude Code: short presses do nothing, and a long press still
+    turns the lamp off and on. End the app's process without quitting:
+    after about 10 s, a short press changes the color again.
 18. Start an alert from a plugin: three breaths, then the lamp stops by
     itself. Short and long presses during the breaths do nothing, and a
     press held past the end of the alert does nothing at its release.

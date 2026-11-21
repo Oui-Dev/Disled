@@ -204,9 +204,9 @@ for instance, at room temperature.
       the LED body or on R15/R16, the red resistors, the warmest in warm
       white, gives their temperature.
 - [ ] `cap 300` (debug builds only) lifts the current cap. Then
-      `set color 3` and `set level 100` give warm white at full duty, the
-      color that draws the most: about 140 mA for the LED at worst, under
-      0.9 W for the whole board.
+      `set color 3` and `set level 100` give warm white at its full drive,
+      the built-in color that draws the most: about 150 mA for the LED at
+      worst, about 0.9 W for the whole board.
 - [ ] After one hour, measure: inside of the lid ____ °C, LED body ____ °C,
       R15/R16 ____ °C, room ____ °C. Without a thermometer, a rough check:
       the cube is barely warm to the touch, and it has neither warped nor
@@ -224,10 +224,11 @@ for instance, at room temperature.
       plug it back: the Diagnostics window shows the same correction under
       Health, sent again at the connection. Check both ends, −50 % and
       +50 %.
-- [ ] Follow an integration in the app (the mode button of the popup):
-      short presses do nothing for minutes on end, as the app repeats the
-      power-only mode every 3 s. End the app's process without quitting:
-      after about 10 s, a short press changes the color again.
+- [ ] Follow an integration whose plugin does not read the lamp, such as
+      Claude Code (the mode button of the popup): short presses do nothing
+      for minutes on end, as the app repeats the power-only mode every 3 s.
+      End the app's process without quitting: after about 10 s, a short
+      press changes the color again.
 - [ ] Self-test tab, **Run the self-test**: check the four colors by eye and
       touch the lid while it glows blue. Every check passes, and the lamp is
       back in its previous state.
@@ -250,14 +251,14 @@ another LED or another cube material. The scripts used are not in the
 repository; this section says what they did, so that they can be written
 again.
 
-**Equipment.** The debug firmware, whose console has two commands for this
-work: `raw <r> <g> <b>` sets the duties in sub-ticks, and `pat` cycles up
-to 32 PWM periods of whole ticks. A webcam (a Logitech C920 here) in front
-of the cube, with exposure, gain (0), white balance (6500 K) and focus all
-locked, in 640 x 480 YUY2: its 1080p mode delivers 5 frames per second
-only. A phone whose screen shows sRGB faithfully: a Galaxy S23 in its
-Natural mode, with the eye comfort filter off and a fixed brightness. A
-dark room.
+**Equipment.** The debug firmware, whose console commands `raw` and `pat`
+set the duties in sub-ticks and cycle up to 32 PWM periods of whole ticks
+([flashing.md](flashing.md#debug-console)). A webcam (a Logitech C920
+here) in front of the cube, with exposure, gain (0), white balance
+(6500 K) and focus all locked, in 640 x 480 YUY2: its 1080p mode delivers
+5 frames per second only. A phone whose screen shows sRGB faithfully: a
+Galaxy S23 in its Natural mode, with the eye comfort filter off and a
+fixed brightness. A dark room.
 
 **The camera as a light meter.** A camera only compares lights of the same
 spectrum, inside the middle of its range:

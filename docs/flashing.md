@@ -101,6 +101,8 @@ Type `help` for the list of commands:
 | `watch <ms>\|off` | stream touch, light (lux, count, level) and current (`watch 20`: every touch window) |
 | `cap <mA>\|off` | override the LED current cap, for the heat test of [bringup.md](bringup.md#8-heat) only |
 | `alert [breaths] [period ms]` | breathe as for an alert from the host, 3 breaths of 1.5 s by default; `alert 0` stops it |
+| `raw <r> <g> <b>\|off` | set the three LED duties in sub-ticks, scaled down to the current cap, for the [LED calibration](bringup.md#led-calibration) |
+| `pat <i> <r> <g> <b>\|on <n>\|off` | set entry i (0 to 31) of a pattern of PWM periods in whole ticks, then cycle its first n entries, for the LED calibration; a pattern over the current cap is refused, and a USB suspend ends it |
 
 The Diagnostics window of the desktop app shows the rest: chip, faults,
 counters and the self-test.
