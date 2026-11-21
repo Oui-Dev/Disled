@@ -74,6 +74,9 @@ restart `npm run tauri dev` after using one for the first time.
   `src/bindings` when the Rust tests run. After a change to one of those
   Rust types, run `npm run bindings`. The checks fail when the committed
   files are out of date ([CONTRIBUTING.md](../CONTRIBUTING.md#checks)).
+- **Tests.** `npm test` runs the `*.test.ts` files, next to the code they
+  test, with Vitest in Node. Rust tests check that the windows name the
+  commands, events, limits and plugin icons of the backend.
 - **Accessibility.** The windows aim at WCAG 2.2 AA, except for the
   contrast of the primary color (below).
 
@@ -91,12 +94,12 @@ Nothing checks the contrasts, so a change there must keep neutral text at
 
 The messages live in `src/locales/en.json` and `src/locales/fr.json`. The
 windows read them with [vue-i18n](https://vue-i18n.intlify.dev), compiled
-at build time. The backend reads the `tray` and `window` sections for the
-tray menu and the window titles (`src-tauri/src/i18n.rs`), so these must
-stay plain text. English is the reference: TypeScript rejects a French file
-that lacks a message, and `cargo test` checks that both files have the same
-keys. Errors from the libraries of the backend stay in English, inside a
-translated sentence.
+at build time. The backend reads the `tray`, `window` and `lamp.colors`
+sections for the tray menu and tooltip and the window titles
+(`src-tauri/src/i18n.rs`), so these must stay plain text. English is the
+reference: TypeScript rejects a French file that lacks a message, and
+`cargo test` checks that both files have the same keys. Errors from the
+libraries of the backend stay in English, inside a translated sentence.
 
 To add a language:
 
@@ -131,14 +134,15 @@ To add a language:
 | `src-tauri/src/main.rs`             | Plugins, start-up, Tauri commands                                                                              |
 | `src/App.vue`                       | One root for every window: its view, its stores, its color mode and language                                   |
 | `src/views/`                        | One view per window: popup, Diagnostics, lamp update, reinstall, integrations                                  |
-| `src/components/`                   | Their parts, by domain: `lamp/`, `colors/`, `popup/`, `diagnostics/`, `update/`, `integrations/`               |
+| `src/components/`                   | Their parts, by domain (`lamp/`, `colors/`, `popup/`, `diagnostics/`, `update/`, `integrations/`), or shared   |
 | `src/stores/`                       | Pinia stores: lamp, settings, colors, control, plugins, telemetry, diagnostics, updates, firmware, errors      |
 | `src/ipc/`                          | Typed Tauri commands and events                                                                                |
 | `src/bindings/`                     | Types generated from the Rust ones (ts-rs, `npm run bindings`)                                                 |
 | `src/locales/`, `src/i18n.ts`       | Messages in English and French (shared with the backend), vue-i18n setup                                       |
-| `src/composables/`                  | Popup height, names under the tiles, update status, error, fault and plugin wording                            |
-| `src/utils/`                        | Lamp colors and limits, color math, number formats, Health tab checks, update steps, plugin icons, CSV, charts |
+| `src/composables/`                  | Popup height, names under the tiles, held sliders, copy, update status and steps, fault and plugin wording     |
+| `src/utils/`                        | Lamp colors and limits, versions, Health tab checks, update steps, plugin icons and abilities, CSV, charts     |
 | `src/assets/css/`                   | Tailwind, Nuxt UI, the font and the palettes                                                                   |
+| `vitest.config.ts`                  | The unit tests of the front end, `src/**/*.test.ts` (`npm test`)                                               |
 | `src-tauri/tauri.updater.conf.json` | Release builds: also create the signed update files                                                            |
 | `src-tauri/tauri.wchisp.conf.json`  | Release builds: bundle wchisp, its license and notice (`src-tauri/third-party`)                                |
 | `scripts/updater-manifest.mjs`      | Writes the `latest.json` of a release (release workflow)                                                       |
