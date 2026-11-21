@@ -19,21 +19,17 @@
 #include "disled_types.h"
 #include "led_cal.h"
 
-#define PALETTE_SLOTS        LAMP_SLOT_COUNT
-#define PALETTE_FIXED_SLOTS  LAMP_COLOR_COUNT /* green, orange, red, warm white */
-#define PALETTE_CUSTOM_SLOTS (PALETTE_SLOTS - PALETTE_FIXED_SLOTS)
-
 /* Bit n set: slot n holds a color. */
-#define PALETTE_FIXED_MASK ((uint16_t)((1u << PALETTE_FIXED_SLOTS) - 1u))
+#define PALETTE_FIXED_MASK ((uint16_t)((1u << LAMP_COLOR_COUNT) - 1u))
 
 typedef struct {
-    const rgb16_t *fixed; /* PALETTE_FIXED_SLOTS colors */
-    rgb16_t custom[PALETTE_CUSTOM_SLOTS];
+    const rgb16_t *fixed; /* LAMP_COLOR_COUNT colors */
+    rgb16_t custom[LAMP_SLOT_COUNT - LAMP_COLOR_COUNT];
     uint16_t defined; /* bit per slot; the fixed bits are always set */
 } palette_t;
 
 /* The built-in colors only, every custom slot empty. */
-void palette_init(palette_t *palette, const rgb16_t fixed[PALETTE_FIXED_SLOTS]);
+void palette_init(palette_t *palette, const rgb16_t fixed[LAMP_COLOR_COUNT]);
 
 bool palette_defined(const palette_t *palette, uint32_t slot);
 

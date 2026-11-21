@@ -46,7 +46,7 @@ static bool same_rgb(rgb16_t a, rgb16_t b)
 
 static uint16_t subticks_to_ticks(uint16_t subticks)
 {
-    return (uint16_t)((subticks + LED_DUTY_SUBTICKS / 2u) / LED_DUTY_SUBTICKS);
+    return (uint16_t)((subticks + PWM_DITHER_SUBTICKS / 2u) / PWM_DITHER_SUBTICKS);
 }
 
 static state_content_t observe(void)

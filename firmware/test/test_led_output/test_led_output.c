@@ -17,7 +17,7 @@ void tearDown(void);
 
 #define PERIOD 3600u
 /* 100 % in sub-ticks. */
-#define FULL (PERIOD * LED_DUTY_SUBTICKS)
+#define FULL (PERIOD * PWM_DITHER_SUBTICKS)
 
 static const power_config_t power = {
     .full_scale_ma = { 86, 63, 125 },

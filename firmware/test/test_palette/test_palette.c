@@ -13,7 +13,7 @@
 void setUp(void);
 void tearDown(void);
 
-static const rgb16_t fixed[PALETTE_FIXED_SLOTS] = {
+static const rgb16_t fixed[LAMP_COLOR_COUNT] = {
     { 0, 65535, 0 },
     { 65535, 29000, 0 },
     { 65535, 0, 0 },
@@ -39,11 +39,11 @@ static void assert_color(rgb16_t expected, rgb16_t actual)
 
 static void test_starts_with_the_built_in_colors_only(void)
 {
-    for (uint32_t slot = 0; slot < PALETTE_FIXED_SLOTS; slot++) {
+    for (uint32_t slot = 0; slot < LAMP_COLOR_COUNT; slot++) {
         TEST_ASSERT_TRUE(palette_defined(&palette, slot));
         assert_color(fixed[slot], palette_color(&palette, slot));
     }
-    for (uint32_t slot = PALETTE_FIXED_SLOTS; slot < PALETTE_SLOTS + 2u; slot++) {
+    for (uint32_t slot = LAMP_COLOR_COUNT; slot < LAMP_SLOT_COUNT + 2u; slot++) {
         TEST_ASSERT_FALSE(palette_defined(&palette, slot));
         assert_color(black, palette_color(&palette, slot));
     }
@@ -52,7 +52,7 @@ static void test_starts_with_the_built_in_colors_only(void)
 
 static void test_built_in_colors_never_change(void)
 {
-    for (uint32_t slot = 0; slot < PALETTE_FIXED_SLOTS; slot++) {
+    for (uint32_t slot = 0; slot < LAMP_COLOR_COUNT; slot++) {
         TEST_ASSERT_FALSE(palette_set(&palette, slot, violet));
         TEST_ASSERT_FALSE(palette_set(&palette, slot, black));
         TEST_ASSERT_TRUE(palette_defined(&palette, slot));
@@ -100,7 +100,7 @@ static const led_color_cal_t cal = {
 static void test_light_calibrates_the_custom_colors_only(void)
 {
     /* The built-in colors are LED drives already. */
-    for (uint32_t slot = 0; slot < PALETTE_FIXED_SLOTS; slot++) {
+    for (uint32_t slot = 0; slot < LAMP_COLOR_COUNT; slot++) {
         assert_color(fixed[slot], palette_light(&palette, slot, &cal));
     }
     /* A custom color is sRGB: its white takes half the blue. */
@@ -118,7 +118,7 @@ static void test_light_calibrates_the_custom_colors_only(void)
 static void test_light_of_an_empty_or_unknown_slot_is_black(void)
 {
     assert_color(black, palette_light(&palette, 5, &cal));
-    assert_color(black, palette_light(&palette, PALETTE_SLOTS, &cal));
+    assert_color(black, palette_light(&palette, LAMP_SLOT_COUNT, &cal));
     assert_color(black, palette_light(&palette, 255, &cal));
     TEST_ASSERT_TRUE(palette_set(&palette, 9, violet));
     TEST_ASSERT_TRUE(palette_set(&palette, 9, black));
@@ -127,11 +127,11 @@ static void test_light_of_an_empty_or_unknown_slot_is_black(void)
 
 static void test_every_custom_slot_and_no_other(void)
 {
-    for (uint32_t slot = PALETTE_FIXED_SLOTS; slot < PALETTE_SLOTS; slot++) {
+    for (uint32_t slot = LAMP_COLOR_COUNT; slot < LAMP_SLOT_COUNT; slot++) {
         TEST_ASSERT_TRUE(palette_set(&palette, slot, violet));
     }
     TEST_ASSERT_EQUAL_HEX16(0xFFFF, palette.defined);
-    TEST_ASSERT_FALSE(palette_set(&palette, PALETTE_SLOTS, violet));
+    TEST_ASSERT_FALSE(palette_set(&palette, LAMP_SLOT_COUNT, violet));
     TEST_ASSERT_FALSE(palette_set(&palette, 255, violet));
 }
 

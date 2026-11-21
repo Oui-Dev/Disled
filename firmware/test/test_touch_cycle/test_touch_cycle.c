@@ -44,7 +44,7 @@ static void test_default_is_green_orange_red(void)
 static void test_a_color_outside_the_cycle_goes_to_the_first(void)
 {
     TEST_ASSERT_EQUAL(LAMP_COLOR_GREEN, touch_cycle_next(&cycle, LAMP_COLOR_WARM_WHITE));
-    TEST_ASSERT_EQUAL(LAMP_COLOR_GREEN, touch_cycle_next(&cycle, (lamp_color_t)9));
+    TEST_ASSERT_EQUAL(LAMP_COLOR_GREEN, touch_cycle_next(&cycle, 9));
 }
 
 static void test_custom_cycle_in_its_order(void)
@@ -52,9 +52,9 @@ static void test_custom_cycle_in_its_order(void)
     const uint8_t slots[] = { 12, LAMP_COLOR_RED, 4, LAMP_COLOR_GREEN };
     TEST_ASSERT_TRUE(touch_cycle_set(&cycle, slots, 4, DEFINED));
     assert_cycle(slots, 4);
-    TEST_ASSERT_EQUAL(LAMP_COLOR_RED, touch_cycle_next(&cycle, (lamp_color_t)12));
+    TEST_ASSERT_EQUAL(LAMP_COLOR_RED, touch_cycle_next(&cycle, 12));
     TEST_ASSERT_EQUAL(4, touch_cycle_next(&cycle, LAMP_COLOR_RED));
-    TEST_ASSERT_EQUAL(LAMP_COLOR_GREEN, touch_cycle_next(&cycle, (lamp_color_t)4));
+    TEST_ASSERT_EQUAL(LAMP_COLOR_GREEN, touch_cycle_next(&cycle, 4));
     TEST_ASSERT_EQUAL(12, touch_cycle_next(&cycle, LAMP_COLOR_GREEN));
     TEST_ASSERT_EQUAL(12, touch_cycle_next(&cycle, LAMP_COLOR_ORANGE)); /* outside */
 }
@@ -79,8 +79,8 @@ static void test_a_cycle_of_nine_colors(void)
     const uint32_t defined = DEFINED | (1u << 5) | (1u << 15);
     TEST_ASSERT_TRUE(touch_cycle_set(&cycle, nine, 9, defined));
     assert_cycle(nine, 9);
-    TEST_ASSERT_EQUAL(LAMP_COLOR_WARM_WHITE, touch_cycle_next(&cycle, (lamp_color_t)15));
-    TEST_ASSERT_EQUAL(LAMP_COLOR_GREEN, touch_cycle_next(&cycle, (lamp_color_t)5)); /* wraps */
+    TEST_ASSERT_EQUAL(LAMP_COLOR_WARM_WHITE, touch_cycle_next(&cycle, 15));
+    TEST_ASSERT_EQUAL(LAMP_COLOR_GREEN, touch_cycle_next(&cycle, 5)); /* wraps */
     touch_cycle_remove(&cycle, LAMP_COLOR_GREEN);
     assert_cycle(&nine[1], 8);
 }
@@ -129,7 +129,7 @@ static void test_an_emptied_cycle_is_the_default_again(void)
 {
     const uint8_t slots[] = { 9 };
     TEST_ASSERT_TRUE(touch_cycle_set(&cycle, slots, 1, DEFINED));
-    TEST_ASSERT_EQUAL(9, touch_cycle_next(&cycle, (lamp_color_t)9));
+    TEST_ASSERT_EQUAL(9, touch_cycle_next(&cycle, 9));
     touch_cycle_remove(&cycle, 9);
     const uint8_t expected[] = { LAMP_COLOR_GREEN, LAMP_COLOR_ORANGE, LAMP_COLOR_RED };
     assert_cycle(expected, 3);

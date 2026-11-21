@@ -13,12 +13,12 @@
 
 /* The four built-in colors. With custom colors, a color is a palette slot:
  * these four, then the custom ones up to LAMP_SLOT_COUNT - 1. */
-typedef enum {
+enum {
     LAMP_COLOR_GREEN = 0,
     LAMP_COLOR_ORANGE = 1,
     LAMP_COLOR_RED = 2,
     LAMP_COLOR_WARM_WHITE = 3,
-} lamp_color_t;
+};
 
 #define LAMP_COLOR_COUNT 4u
 

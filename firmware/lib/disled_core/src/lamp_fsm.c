@@ -22,7 +22,7 @@ bool lamp_fsm_short_press(lamp_state_t *state, const touch_cycle_t *cycle)
     if (!state->on) {
         return false;
     }
-    const lamp_color_t next = touch_cycle_next(cycle, state->color);
+    const uint8_t next = touch_cycle_next(cycle, state->color);
     const bool changed = next != state->color;
     state->color = next;
     return changed;
@@ -55,7 +55,7 @@ bool lamp_request_is_valid(const lamp_request_t *request)
     if ((request->fields & (uint8_t)~LAMP_FIELD_ALL) != 0u) {
         return false;
     }
-    if ((request->fields & LAMP_FIELD_COLOR) != 0u && (uint32_t)request->color >= LAMP_SLOT_COUNT) {
+    if ((request->fields & LAMP_FIELD_COLOR) != 0u && request->color >= LAMP_SLOT_COUNT) {
         return false;
     }
     if ((request->fields & LAMP_FIELD_TOUCH_MODE) != 0u &&

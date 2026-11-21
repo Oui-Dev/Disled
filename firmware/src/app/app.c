@@ -40,7 +40,7 @@ void app_apply_request(const lamp_request_t *request)
 
 rgb16_t app_lamp_rgb(void)
 {
-    return palette_color(&app.palette, (uint32_t)app.lamp.color);
+    return palette_color(&app.palette, app.lamp.color);
 }
 
 uint16_t app_level_permille(void)
@@ -70,9 +70,8 @@ bool app_set_color(uint32_t slot, rgb16_t color)
         return true; /* a lamp showing it fades to the new color */
     }
     touch_cycle_remove(&app.cycle, slot);
-    const lamp_color_t fallback = (lamp_color_t)app.cycle.slots[0];
-    if ((uint32_t)app.lamp.color == slot) {
-        app.lamp.color = fallback;
+    if (app.lamp.color == slot) {
+        app.lamp.color = app.cycle.slots[0];
         app.source = CHANGE_SOURCE_HOST;
     }
     return true;
@@ -316,7 +315,7 @@ static void task_output(uint32_t now_ms)
     const uint16_t breath = update_alert(now_ms, testing);
     const led_output_inputs_t inputs = {
         .on = app.lamp.on,
-        .drive = palette_light(&app.palette, (uint32_t)app.lamp.color, &app_led_color_cal),
+        .drive = palette_light(&app.palette, app.lamp.color, &app_led_color_cal),
         .level_permille = color_level_shown(app_level_permille(), APP_LED_FLOOR_PERMILLE),
         .link = app.link,
         .cap_override_ma = app.cap_override_ma,

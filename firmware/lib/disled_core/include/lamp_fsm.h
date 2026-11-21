@@ -23,7 +23,7 @@ typedef struct {
     bool on;
     /* Shown when on; kept while off so that the lamp comes back with it. A
      * palette slot with custom colors. */
-    lamp_color_t color;
+    uint8_t color;
     brightness_mode_t brightness_mode;
     /* Percent, BRIGHTNESS_MANUAL_MIN to BRIGHTNESS_MANUAL_MAX. */
     uint8_t manual_level;
@@ -41,7 +41,7 @@ typedef struct {
 typedef struct {
     uint8_t fields; /* LAMP_FIELD_* bits: which members below apply */
     bool on;
-    lamp_color_t color;
+    uint8_t color; /* palette slot */
     brightness_mode_t brightness_mode;
     uint8_t manual_level;
     touch_mode_t touch_mode;

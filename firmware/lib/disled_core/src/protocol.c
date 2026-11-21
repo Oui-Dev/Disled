@@ -95,7 +95,7 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
             lamp_request_t *request = &command->body.set_state;
             request->fields = body[0];
             request->on = body[1] != 0u;
-            request->color = (lamp_color_t)body[2];
+            request->color = body[2];
             request->brightness_mode = (brightness_mode_t)body[3];
             request->manual_level = body[4];
             request->touch_mode = (touch_mode_t)body[5];
@@ -132,7 +132,7 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
             }
             const rgb16_t color = { get_u16(&body[1]), get_u16(&body[3]), get_u16(&body[5]) };
             /* The built-in colors never change. */
-            if (body[0] < PALETTE_FIXED_SLOTS || body[0] >= PALETTE_SLOTS ||
+            if (body[0] < LAMP_COLOR_COUNT || body[0] >= LAMP_SLOT_COUNT ||
                 !palette_color_is_valid(color)) {
                 return PROTO_ERR_BAD_VALUE;
             }
@@ -145,7 +145,7 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
             if (length < PROTO_GET_COLOR_SIZE) {
                 return PROTO_ERR_BAD_LENGTH;
             }
-            if (body[0] >= PALETTE_SLOTS) {
+            if (body[0] >= LAMP_SLOT_COUNT) {
                 return PROTO_ERR_BAD_VALUE;
             }
             command->body.color_slot = body[0];
@@ -232,7 +232,7 @@ void proto_encode_state(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, const p
     writer_t w = begin_message(payload, PROTO_MSG_STATE, seq);
     put_u16(&w, state->state_seq);
     put_u8(&w, state->lamp.on ? 1u : 0u);
-    put_u8(&w, (uint8_t)state->lamp.color);
+    put_u8(&w, state->lamp.color);
     put_u8(&w, (uint8_t)state->lamp.brightness_mode);
     put_u8(&w, state->lamp.manual_level);
     put_u8(&w, state->applied_percent);

@@ -141,7 +141,7 @@ typedef struct {
         uint16_t telemetry_period_ms;
         int8_t auto_bias; /* percent */
         struct {
-            uint8_t slot; /* custom: PALETTE_FIXED_SLOTS and up */
+            uint8_t slot; /* a custom slot: LAMP_COLOR_COUNT and up */
             rgb16_t color;
         } set_color;
         uint8_t color_slot; /* GET_COLOR */

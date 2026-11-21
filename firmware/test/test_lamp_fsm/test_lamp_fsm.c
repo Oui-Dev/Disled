@@ -150,9 +150,9 @@ static void test_request_validation_limits(void)
     TEST_ASSERT_TRUE(lamp_request_is_valid(&request));
 
     request.fields = LAMP_FIELD_COLOR;
-    request.color = (lamp_color_t)LAMP_SLOT_COUNT;
+    request.color = LAMP_SLOT_COUNT;
     TEST_ASSERT_FALSE(lamp_request_is_valid(&request));
-    request.color = (lamp_color_t)(LAMP_SLOT_COUNT - 1u);
+    request.color = LAMP_SLOT_COUNT - 1u;
     TEST_ASSERT_TRUE(lamp_request_is_valid(&request));
 
     request.fields = LAMP_FIELD_BRIGHTNESS_MODE;
