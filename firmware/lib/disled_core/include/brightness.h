@@ -42,8 +42,6 @@ typedef struct {
 
 typedef struct {
     const brightness_config_t *config;
-    brightness_mode_t mode;
-    uint8_t manual_percent;
     int8_t bias_percent;
     bool have_lux;
     bool fast;               /* following a large change */
@@ -56,10 +54,6 @@ typedef struct {
 
 void brightness_init(brightness_t *b, const brightness_config_t *config);
 
-/* `manual_percent` is 1 to 100. Back in automatic mode, the automatic level
- * applies at once, and the LED output fades to it. */
-void brightness_set_mode(brightness_t *b, brightness_mode_t mode, uint8_t manual_percent);
-
 /* The automatic level times (100 + bias) / 100, within 1 to 1000. The bias is
  * clamped to the BRIGHTNESS_BIAS_ limits, and manual mode ignores it. */
 void brightness_set_auto_bias(brightness_t *b, int8_t bias_percent);
@@ -71,11 +65,15 @@ void brightness_update_lux(brightness_t *b, uint32_t lux_milli, uint32_t now_ms)
 /* The sensor stopped answering: automatic mode falls back to `fallback_permille`. */
 void brightness_lux_lost(brightness_t *b);
 
-/* Level to apply now, 0 to 1000. */
-uint16_t brightness_level_permille(const brightness_t *b);
+/* Level to apply now, 0 to 1000, after the mode of the lamp at the call:
+ * `manual_percent` (1 to 100) in manual mode, else the automatic level. A
+ * change of mode applies at once, and the LED output fades to it. */
+uint16_t brightness_level_permille(const brightness_t *b, brightness_mode_t mode,
+                                   uint8_t manual_percent);
 
 /* The same in percent, rounded. */
-uint8_t brightness_level_percent(const brightness_t *b);
+uint8_t brightness_level_percent(const brightness_t *b, brightness_mode_t mode,
+                                 uint8_t manual_percent);
 
 /* The curve of the automatic level, without the filter. */
 uint16_t brightness_curve_permille(const brightness_config_t *config, uint32_t lux_milli);

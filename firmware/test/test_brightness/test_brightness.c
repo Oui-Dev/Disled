@@ -39,6 +39,12 @@ void tearDown(void)
 {
 }
 
+/* The level in automatic mode, where the manual level counts for nothing. */
+static uint16_t auto_level(void)
+{
+    return brightness_level_permille(&b, BRIGHTNESS_MODE_AUTO, BRIGHTNESS_MANUAL_MAX);
+}
+
 /* Readings of a steady light, `period_ms` apart. */
 static void read_lux(uint32_t lux_milli, int count, uint32_t period_ms)
 {
@@ -80,22 +86,22 @@ static void test_curve_is_monotonic(void)
 
 static void test_fallback_until_the_first_reading(void)
 {
-    TEST_ASSERT_EQUAL_UINT16(500, brightness_level_permille(&b));
+    TEST_ASSERT_EQUAL_UINT16(500, auto_level());
     read_lux(LUX(100), 1, 100);
-    TEST_ASSERT_EQUAL_UINT16(300, brightness_level_permille(&b));
+    TEST_ASSERT_EQUAL_UINT16(300, auto_level());
 }
 
 static void test_a_lasting_large_change_is_followed_within_1_5_s(void)
 {
     read_lux(LUX(1000), 1, 100); /* 800 per mille */
     read_lux(LUX(10), 4, 100);   /* target 80 */
-    TEST_ASSERT_EQUAL_UINT16(800, brightness_level_permille(&b));
+    TEST_ASSERT_EQUAL_UINT16(800, auto_level());
     read_lux(LUX(10), 7, 100); /* 1.1 s: most of the way */
-    TEST_ASSERT_TRUE(brightness_level_permille(&b) < 120);
+    TEST_ASSERT_TRUE(auto_level() < 120);
     read_lux(LUX(10), 4, 100); /* 1.5 s */
-    TEST_ASSERT_UINT16_WITHIN(10, 80, brightness_level_permille(&b));
+    TEST_ASSERT_UINT16_WITHIN(10, 80, auto_level());
     read_lux(LUX(10), 30, 100);
-    TEST_ASSERT_UINT16_WITHIN(3, 80, brightness_level_permille(&b));
+    TEST_ASSERT_UINT16_WITHIN(3, 80, auto_level());
 }
 
 static void test_a_brief_shadow_does_not_move_the_lamp(void)
@@ -103,28 +109,28 @@ static void test_a_brief_shadow_does_not_move_the_lamp(void)
     read_lux(LUX(100), 1, 100); /* 300 per mille */
     read_lux(LUX(10), 3, 100);  /* a hand over the sensor for 0.3 s */
     read_lux(LUX(100), 10, 100);
-    TEST_ASSERT_EQUAL_UINT16(300, brightness_level_permille(&b));
+    TEST_ASSERT_EQUAL_UINT16(300, auto_level());
 }
 
 static void test_a_shadow_while_following_a_change_does_not_move_the_lamp(void)
 {
     read_lux(LUX(10), 1, 100);   /* 80 per mille */
     read_lux(LUX(1000), 5, 100); /* light on: confirmed, the fast filter takes its first step */
-    const uint16_t level = brightness_level_permille(&b);
+    const uint16_t level = auto_level();
     TEST_ASSERT_TRUE(level > 80);
     read_lux(LUX(10), 3, 100); /* a hand over the sensor for 0.3 s */
-    TEST_ASSERT_EQUAL_UINT16(level, brightness_level_permille(&b));
+    TEST_ASSERT_EQUAL_UINT16(level, auto_level());
     read_lux(LUX(1000), 30, 100);
-    TEST_ASSERT_UINT16_WITHIN(10, 800, brightness_level_permille(&b));
+    TEST_ASSERT_UINT16_WITHIN(10, 800, auto_level());
 }
 
 static void test_a_second_change_the_same_way_is_followed_at_once(void)
 {
     read_lux(LUX(10), 1, 100);    /* 80 per mille */
     read_lux(LUX(1000), 10, 100); /* light on: followed, not settled yet */
-    const uint16_t level = brightness_level_permille(&b);
+    const uint16_t level = auto_level();
     read_lux(LUX(3000), 1, 100); /* a second light while the first one is followed */
-    TEST_ASSERT_TRUE(brightness_level_permille(&b) > level);
+    TEST_ASSERT_TRUE(auto_level() > level);
 }
 
 static void test_small_changes_are_followed_gently(void)
@@ -132,77 +138,74 @@ static void test_small_changes_are_followed_gently(void)
     read_lux(LUX(100), 1, 100); /* 300 per mille */
     const uint16_t target = brightness_curve_permille(&config, LUX(150));
     read_lux(LUX(150), 1, 100);
-    const uint16_t first = brightness_level_permille(&b);
+    const uint16_t first = auto_level();
     TEST_ASSERT_TRUE(first > 300);
     TEST_ASSERT_TRUE(first < 300 + (target - 300) / 4);
     read_lux(LUX(150), 30, 100);
-    TEST_ASSERT_UINT16_WITHIN(6, target, brightness_level_permille(&b));
+    TEST_ASSERT_UINT16_WITHIN(6, target, auto_level());
 }
 
 static void test_noise_within_the_hold_band_does_not_move_the_lamp(void)
 {
     read_lux(LUX(100), 1, 100);
-    const uint16_t level = brightness_level_permille(&b);
+    const uint16_t level = auto_level();
     for (int i = 0; i < 100; i++) {
         read_lux((i % 2) ? LUX(101) : LUX(99), 1, 100);
     }
-    TEST_ASSERT_EQUAL_UINT16(level, brightness_level_permille(&b));
+    TEST_ASSERT_EQUAL_UINT16(level, auto_level());
 }
 
 static void test_slow_readings_catch_up_with_the_time_elapsed(void)
 {
     read_lux(LUX(10), 1, 100);
     read_lux(LUX(15), 4, 100);
-    const uint16_t fast_readings = brightness_level_permille(&b);
+    const uint16_t fast_readings = auto_level();
 
     brightness_init(&b, &config);
     read_lux(LUX(10), 1, 100);
     read_lux(LUX(15), 1, 400); /* one 400 ms integration in the dark */
-    TEST_ASSERT_EQUAL_UINT16(fast_readings, brightness_level_permille(&b));
+    TEST_ASSERT_EQUAL_UINT16(fast_readings, auto_level());
 }
 
 static void test_lights_on_in_the_dark_with_slow_readings(void)
 {
     read_lux(LUX(1), 1, 400); /* 20 per mille */
     read_lux(LUX(100), 1, 400);
-    TEST_ASSERT_EQUAL_UINT16(20, brightness_level_permille(&b)); /* not confirmed yet */
+    TEST_ASSERT_EQUAL_UINT16(20, auto_level()); /* not confirmed yet */
     read_lux(LUX(100), 2, 400);
-    TEST_ASSERT_UINT16_WITHIN(20, 300, brightness_level_permille(&b));
+    TEST_ASSERT_UINT16_WITHIN(20, 300, auto_level());
 }
 
 static void test_manual_mode_uses_the_host_level(void)
 {
     read_lux(LUX(100), 1, 100);
-    brightness_set_mode(&b, BRIGHTNESS_MODE_MANUAL, 37);
-    TEST_ASSERT_EQUAL_UINT16(370, brightness_level_permille(&b));
-    TEST_ASSERT_EQUAL_UINT8(37, brightness_level_percent(&b));
+    TEST_ASSERT_EQUAL_UINT16(370, brightness_level_permille(&b, BRIGHTNESS_MODE_MANUAL, 37));
+    TEST_ASSERT_EQUAL_UINT8(37, brightness_level_percent(&b, BRIGHTNESS_MODE_MANUAL, 37));
 }
 
 static void test_back_to_auto_takes_the_automatic_level(void)
 {
     read_lux(LUX(1000), 1, 100);
-    brightness_set_mode(&b, BRIGHTNESS_MODE_MANUAL, 10);
-    TEST_ASSERT_EQUAL_UINT16(100, brightness_level_permille(&b));
-    brightness_set_mode(&b, BRIGHTNESS_MODE_AUTO, 10);
-    TEST_ASSERT_EQUAL_UINT16(800, brightness_level_permille(&b));
+    TEST_ASSERT_EQUAL_UINT16(100, brightness_level_permille(&b, BRIGHTNESS_MODE_MANUAL, 10));
+    TEST_ASSERT_EQUAL_UINT16(800, brightness_level_permille(&b, BRIGHTNESS_MODE_AUTO, 10));
 }
 
 static void test_lost_sensor_falls_back(void)
 {
     read_lux(LUX(1), 1, 100);
     brightness_lux_lost(&b);
-    TEST_ASSERT_EQUAL_UINT16(500, brightness_level_permille(&b));
+    TEST_ASSERT_EQUAL_UINT16(500, auto_level());
     read_lux(LUX(100), 1, 100); /* found again: no crawl from the fallback */
-    TEST_ASSERT_EQUAL_UINT16(300, brightness_level_permille(&b));
+    TEST_ASSERT_EQUAL_UINT16(300, auto_level());
 }
 
 static void test_bias_scales_the_automatic_level(void)
 {
     read_lux(LUX(100), 1, 100); /* 300 per mille */
     brightness_set_auto_bias(&b, 20);
-    TEST_ASSERT_EQUAL_UINT16(360, brightness_level_permille(&b));
+    TEST_ASSERT_EQUAL_UINT16(360, auto_level());
     brightness_set_auto_bias(&b, -50);
-    TEST_ASSERT_EQUAL_UINT16(150, brightness_level_permille(&b));
+    TEST_ASSERT_EQUAL_UINT16(150, auto_level());
     TEST_ASSERT_EQUAL_INT8(-50, brightness_auto_bias(&b));
 }
 
@@ -211,7 +214,7 @@ static void test_bias_is_clamped_and_kept_in_range(void)
     read_lux(LUX(3000), 1, 100); /* 1000 per mille */
     brightness_set_auto_bias(&b, 90);
     TEST_ASSERT_EQUAL_INT8(BRIGHTNESS_BIAS_MAX, brightness_auto_bias(&b));
-    TEST_ASSERT_EQUAL_UINT16(1000, brightness_level_permille(&b));
+    TEST_ASSERT_EQUAL_UINT16(1000, auto_level());
     brightness_set_auto_bias(&b, -100);
     TEST_ASSERT_EQUAL_INT8(BRIGHTNESS_BIAS_MIN, brightness_auto_bias(&b));
 }
@@ -219,16 +222,13 @@ static void test_bias_is_clamped_and_kept_in_range(void)
 static void test_bias_does_not_touch_manual_mode(void)
 {
     brightness_set_auto_bias(&b, 50);
-    brightness_set_mode(&b, BRIGHTNESS_MODE_MANUAL, 40);
-    TEST_ASSERT_EQUAL_UINT16(400, brightness_level_permille(&b));
+    TEST_ASSERT_EQUAL_UINT16(400, brightness_level_permille(&b, BRIGHTNESS_MODE_MANUAL, 40));
 }
 
 static void test_percent_is_rounded(void)
 {
-    brightness_set_mode(&b, BRIGHTNESS_MODE_MANUAL, 1);
-    TEST_ASSERT_EQUAL_UINT8(1, brightness_level_percent(&b));
-    brightness_set_mode(&b, BRIGHTNESS_MODE_MANUAL, 100);
-    TEST_ASSERT_EQUAL_UINT8(100, brightness_level_percent(&b));
+    TEST_ASSERT_EQUAL_UINT8(1, brightness_level_percent(&b, BRIGHTNESS_MODE_MANUAL, 1));
+    TEST_ASSERT_EQUAL_UINT8(100, brightness_level_percent(&b, BRIGHTNESS_MODE_MANUAL, 100));
 }
 
 int main(void)

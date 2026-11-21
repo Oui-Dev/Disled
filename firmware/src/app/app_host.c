@@ -53,7 +53,8 @@ static state_content_t observe(void)
 {
     const state_content_t content = {
         .lamp = app.lamp,
-        .applied_percent = brightness_level_percent(&app.brightness),
+        .applied_percent = brightness_level_percent(&app.brightness, app.lamp.brightness_mode,
+                                                    app.lamp.manual_level),
         .link = app.link,
         .rgb = app_lamp_rgb(),
     };
@@ -400,7 +401,7 @@ static void send_telemetry(uint32_t now_ms)
         .led_current_ma_x10 = (uint16_t)led_output_estimate_ma_x10(&app.output),
         .cap_ma = led_output_cap_ma(&app.output),
         .link = app.link,
-        .level_permille = brightness_level_permille(&app.brightness),
+        .level_permille = app_level_permille(),
     };
     uint8_t payload[PROTO_REPORT_SIZE];
     proto_encode_telemetry(payload, &telemetry);
