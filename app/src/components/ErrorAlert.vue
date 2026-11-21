@@ -3,7 +3,7 @@
   SPDX-FileCopyrightText: 2026 The Disled contributors
 
   The last error of the window, with a button that closes it: the cause in
-  the user's language, the backend's detail as it came. UAlert has no role
+  the user's language, the detail as it came. UAlert has no role
   of its own, so this one gets alert, for screen readers.
 -->
 <script setup lang="ts">
