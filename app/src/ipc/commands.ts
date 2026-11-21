@@ -218,14 +218,9 @@ export function firmwareCheck(): Promise<void> {
   return invoke('firmware_check');
 }
 
-/** Starts the update to the newest firmware 2.x; `firmware-status` events follow it. */
-export function firmwareInstall(): Promise<void> {
-  return invoke('firmware_install');
-}
-
-/** Starts the update to a version of the list, "X.Y.Z". */
-export function firmwareInstallManual(version: string): Promise<void> {
-  return invoke('firmware_install_manual', { version });
+/** Starts the update to a version of the list, "X.Y.Z"; `firmware-status` events follow it. */
+export function firmwareInstall(version: string): Promise<void> {
+  return invoke('firmware_install', { version });
 }
 
 /** Stops an update that waits for the bootloader. */

@@ -10,13 +10,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { FirmwareStatus } from '@/bindings/FirmwareStatus';
 import type { Flash } from '@/bindings/Flash';
-import {
-  firmwareCancel,
-  firmwareCheck,
-  firmwareInstall,
-  firmwareInstallManual,
-  firmwareStatus,
-} from '@/ipc/commands';
+import { firmwareCancel, firmwareCheck, firmwareInstall, firmwareStatus } from '@/ipc/commands';
 import { follow } from '@/ipc/events';
 import { useLampStore } from './lamp';
 
@@ -71,29 +65,14 @@ export const useFirmwareStore = defineStore('firmware', () => {
    */
   const updateForLamp = computed(() => (lamp.generation === 'v2' ? newerForLamp.value : null));
 
-  /** The status events bring the result, in order with the other changes. */
-  async function check(): Promise<void> {
-    await firmwareCheck();
-  }
-
-  /** An update that does not start shows as failed. */
-  async function run(start: Promise<void>): Promise<void> {
+  /** A version of the list; an update that does not start shows as failed. */
+  async function install(version: string): Promise<void> {
     try {
-      await start;
+      await firmwareInstall(version);
     } catch (error) {
       const failed: Flash = { step: 'failed', error: String(error) };
       status.value = { ...status.value, flash: failed };
     }
-  }
-
-  /** The newest firmware 2.x, from the guided window. */
-  function install(): Promise<void> {
-    return run(firmwareInstall());
-  }
-
-  /** A version of the list, from the reinstall window. */
-  function installManual(version: string): Promise<void> {
-    return run(firmwareInstallManual(version));
   }
 
   /** Follows the backend events. Call once, in the popup or an update window. */
@@ -115,9 +94,9 @@ export const useFirmwareStore = defineStore('firmware', () => {
     onLamp,
     newerForLamp,
     updateForLamp,
-    check,
+    // The status events bring the result, in order with the other changes.
+    check: firmwareCheck,
     install,
-    installManual,
     cancel: firmwareCancel,
     start,
   };

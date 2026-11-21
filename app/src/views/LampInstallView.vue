@@ -92,7 +92,7 @@ if (firmware.loaded) {
 
 function install(): void {
   if (version.value) {
-    void firmware.installManual(version.value);
+    void firmware.install(version.value);
   }
 }
 
