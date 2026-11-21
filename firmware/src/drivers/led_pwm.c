@@ -135,16 +135,24 @@ static void dither_period(void)
 #if DISLED_DEBUG
 void led_pwm_set_pattern(size_t index, const uint16_t ticks[LED_CHANNEL_COUNT])
 {
-    if (index < LED_PWM_PATTERN_MAX) {
-        for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
-            s_pattern[index][i] = (ticks[i] > s_period) ? s_period : ticks[i];
-        }
+    for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
+        s_pattern[index][i] = ticks[i];
     }
 }
 
 void led_pwm_run_pattern(uint8_t length)
 {
-    s_pattern_length = (length > LED_PWM_PATTERN_MAX) ? (uint8_t)LED_PWM_PATTERN_MAX : length;
+    s_pattern_length = length;
+}
+
+const uint16_t *led_pwm_pattern_entry(size_t index)
+{
+    return s_pattern[index];
+}
+
+uint8_t led_pwm_pattern_length(void)
+{
+    return s_pattern_length;
 }
 #endif
 
