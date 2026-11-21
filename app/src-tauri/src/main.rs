@@ -709,6 +709,10 @@ fn main() {
             code: Some(code), ..
         } => restarting = code == tauri::RESTART_EXIT_CODE,
         RunEvent::Exit if !restarting => leave(app),
+        // Opening the app again from the Finder, Spotlight or the Launchpad
+        // starts no second process on macOS: the running app hears it here.
+        #[cfg(target_os = "macos")]
+        RunEvent::Reopen { .. } => windows::show_popup(app),
         _ => {}
     });
 }
