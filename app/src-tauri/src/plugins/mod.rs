@@ -24,7 +24,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -35,7 +35,7 @@ use crate::colors::{BUILT_IN, ColorsState, Palette, PreviewState};
 use crate::control::{self, ControlState, Input, Integration, IntegrationState};
 use crate::device::DeviceHandle;
 use crate::i18n::{Locale, LocaleState};
-use crate::settings;
+use crate::{settings, updates};
 use manifest::{Capabilities, Manifest, Reason};
 use process::{Feed, Notification, Program, ProgramStatus, Spec, Timing};
 use rules::Action;
@@ -177,12 +177,6 @@ pub struct FilledBlock {
     pub text: String,
     pub url: String,
     pub token: Option<String>,
-}
-
-fn now_s() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |since| since.as_secs())
 }
 
 /// A command as the approval shows it: its arguments with spaces between
@@ -596,7 +590,7 @@ impl Host {
         let current = plugin.keys.current(manifest).map(str::to_owned);
         let same = plugin.shown.as_ref().map(|(state, _)| state) == current.as_ref();
         if !same {
-            plugin.shown = current.map(|state| (state, now_s()));
+            plugin.shown = current.map(|state| (state, updates::now()));
         }
     }
 
@@ -696,7 +690,7 @@ impl Host {
             Action::Clear => plugin.keys.clear(Some(key)),
             Action::Ignore => return,
         }
-        plugin.heard = Some((now_s(), given));
+        plugin.heard = Some((updates::now(), given));
         self.refresh(id);
         if alert && manifest.capabilities.alert {
             outbox.control.push(Input::Alert {
@@ -842,7 +836,7 @@ fn on_event(app: &AppHandle, id: &str, event: &Value) {
             Some(action) => host.act(id, &key, action, outbox),
             None => {
                 if let Some(plugin) = host.plugins.get_mut(id) {
-                    plugin.heard = Some((now_s(), None));
+                    plugin.heard = Some((updates::now(), None));
                 }
             }
         }
