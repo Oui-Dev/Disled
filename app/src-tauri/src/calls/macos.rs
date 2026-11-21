@@ -8,7 +8,7 @@
 //! microphone (`NSMicrophoneUsageDescription`), which the CI checks.
 
 use std::collections::HashMap;
-use std::ffi::{CStr, c_void};
+use std::ffi::c_void;
 use std::ptr::{self, NonNull};
 use std::time::Duration;
 
@@ -35,8 +35,7 @@ const _: () = assert!(
 
 /// macOS 14.2 or later, whose system object lists its processes.
 pub fn available() -> bool {
-    sysctl_string(c"kern.osproductversion").is_some_and(|version| rules::supported(&version))
-        && has_property(SYSTEM, kAudioHardwarePropertyProcessObjectList)
+    objc2::available!(macos = 14.2) && has_property(SYSTEM, kAudioHardwarePropertyProcessObjectList)
 }
 
 /// Reads the process objects every second until asked to stop.
@@ -160,41 +159,4 @@ fn ids(
         return Ok(list);
     }
     Err(kAudioHardwareBadPropertySizeError)
-}
-
-/// A string of sysctl, such as kern.osproductversion ("15.1").
-fn sysctl_string(name: &CStr) -> Option<String> {
-    let mut length: libc::size_t = 0;
-    // SAFETY: a question of size, without a buffer.
-    let status = unsafe {
-        libc::sysctlbyname(
-            name.as_ptr(),
-            ptr::null_mut(),
-            &raw mut length,
-            ptr::null_mut(),
-            0,
-        )
-    };
-    if status != 0 || length == 0 {
-        return None;
-    }
-    let mut buffer = vec![0u8; length];
-    // SAFETY: `buffer` holds `length` bytes, and the call writes no more.
-    let status = unsafe {
-        libc::sysctlbyname(
-            name.as_ptr(),
-            buffer.as_mut_ptr().cast(),
-            &raw mut length,
-            ptr::null_mut(),
-            0,
-        )
-    };
-    if status != 0 {
-        return None;
-    }
-    buffer.truncate(length);
-    while buffer.last() == Some(&0) {
-        buffer.pop();
-    }
-    Some(String::from_utf8_lossy(&buffer).into_owned())
 }
