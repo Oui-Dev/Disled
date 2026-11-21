@@ -7,14 +7,13 @@
   shows next to the switch. Settings, saved here and applied at every connection.
 -->
 <script setup lang="ts">
-import { useThrottleFn } from '@vueuse/core';
-import { computed, nextTick, ref } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { SettingsPatch } from '@/bindings/SettingsPatch';
-import { useSignedPercent } from '@/composables/useSignedPercent';
+import { useHeldSlider } from '@/composables/useHeldSlider';
+import { useCorrectionText } from '@/composables/useSignedPercent';
 import { useLampStore } from '@/stores/lamp';
 import { useSettingsStore } from '@/stores/settings';
-import { AUTO_BIAS_MAX, AUTO_BIAS_MIN, MOVE_UPDATE_MS } from '@/utils/lamp';
+import { AUTO_BIAS_MAX, AUTO_BIAS_MIN } from '@/utils/lamp';
 
 /** The correction moves by this much, percent. */
 const BIAS_STEP = 5;
@@ -22,22 +21,17 @@ const BIAS_STEP = 5;
 const { t, n } = useI18n();
 const lamp = useLampStore();
 const settingsStore = useSettingsStore();
-const signedPercent = useSignedPercent();
+const correction = useCorrectionText();
 
 const settings = computed(() => settingsStore.settings);
 const auto = computed(() => settings.value?.brightness_mode !== 'manual');
 /** A lamp the app does not drive, whose level the app does not know either. */
 const locked = computed(() => !settings.value || lamp.locked);
 
-/** The value under the user's hand, kept until saved so that the thumb never jumps back. */
-const held = ref<number | null>(null);
-let moving = false;
-
 /** The slider: the correction in automatic mode, the fixed level otherwise. */
-const value = computed(
-  () =>
-    held.value
-    ?? (auto.value ? (settings.value?.auto_bias ?? 0) : (settings.value?.manual_level ?? 50)),
+const { value, move, release, drop } = useHeldSlider(
+  () => (auto.value ? (settings.value?.auto_bias ?? 0) : (settings.value?.manual_level ?? 50)),
+  (next) => (auto.value ? { auto_bias: next } : { brightness_mode: 'manual', manual_level: next }),
 );
 
 /**
@@ -53,45 +47,10 @@ const level = computed(() => {
 const levelText = computed(() =>
   level.value === null ? undefined : n(level.value / 100, 'percent'),
 );
-const biasText = computed(() =>
-  value.value === 0 ? t('lamp.brightness.noCorrection') : signedPercent(value.value),
-);
-
-function patchFor(next: number): SettingsPatch {
-  return auto.value ? { auto_bias: next } : { brightness_mode: 'manual', manual_level: next };
-}
-
-const saveWhileMoving = useThrottleFn(
-  (patch: SettingsPatch) => settingsStore.update(patch),
-  MOVE_UPDATE_MS,
-  true,
-);
-
-function move(next: number | number[] | undefined): void {
-  if (typeof next !== 'number') {
-    return;
-  }
-  moving = true;
-  held.value = next;
-  void saveWhileMoving(patchFor(next));
-}
-
-async function release(): Promise<void> {
-  // A key commits before it moves the slider, so wait for the move.
-  await nextTick();
-  moving = false;
-  if (held.value === null) {
-    return;
-  }
-  await settingsStore.update(patchFor(held.value));
-  // The settings hold the value now, unless the hand came back meanwhile.
-  if (!moving) {
-    held.value = null;
-  }
-}
+const biasText = computed(() => correction.text(value.value));
 
 function setAuto(on: boolean): void {
-  held.value = null;
+  drop();
   if (on) {
     void settingsStore.update({ brightness_mode: 'auto' });
   } else {
@@ -105,9 +64,7 @@ const hint = computed(() => {
   if (!auto.value) {
     return t('lamp.brightness.fixed');
   }
-  const correction =
-    value.value === 0 ? biasText.value : t('lamp.brightness.correction', { value: biasText.value });
-  return `${t('lamp.brightness.follows')} · ${correction}`;
+  return `${t('lamp.brightness.follows')} · ${correction.phrase(value.value)}`;
 });
 </script>
 

@@ -25,3 +25,22 @@ export function useSignedPercent(): (percent: number) => string {
   const { n, locale } = useI18n();
   return (percent) => percentSpace(trueMinus(n(percent / 100, 'signedPercent')), locale.value);
 }
+
+/**
+ * A correction of a slider in words: `text` says "+10 %", or "no
+ * correction" at 0, and `phrase` says "correction +10 %" in a sentence.
+ */
+export function useCorrectionText() {
+  const { t } = useI18n();
+  const signedPercent = useSignedPercent();
+
+  function text(percent: number): string {
+    return percent === 0 ? t('lamp.brightness.noCorrection') : signedPercent(percent);
+  }
+
+  function phrase(percent: number): string {
+    return percent === 0 ? text(0) : t('lamp.brightness.correction', { value: text(percent) });
+  }
+
+  return { text, phrase };
+}
