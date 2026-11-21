@@ -7,7 +7,6 @@
  * driven as task_touch() and task_output() drive it, and the short presses
  * that the host still hears of.
  */
-#include <stddef.h>
 #include <unity.h>
 
 #include "alert.h"
@@ -209,11 +208,13 @@ static void test_a_press_held_past_the_end_fires_nothing(void)
 
 static void test_a_release_on_the_first_sample_after_the_block_fires_nothing(void)
 {
+    touch_event_t seen;
+
     /* A short press, blocked from its start. */
     for (uint32_t i = 0; i < 100u; i++) {
         now_ms++;
         TEST_ASSERT_EQUAL(TOUCH_EVENT_NONE,
-                          touch_gate_feed(&gate, &td, TOUCHED, now_ms, true, NULL));
+                          touch_gate_feed(&gate, &td, TOUCHED, now_ms, true, &seen));
     }
     TEST_ASSERT_EQUAL(TOUCH_STATE_PRESSED, touch_detector_state(&td));
 
@@ -232,10 +233,10 @@ static void test_a_release_on_the_first_sample_after_the_block_fires_nothing(voi
     while (now_ms + 1u < release_ms) {
         now_ms++;
         TEST_ASSERT_EQUAL(TOUCH_EVENT_NONE,
-                          touch_gate_feed(&gate, &td, BASELINE, now_ms, true, NULL));
+                          touch_gate_feed(&gate, &td, BASELINE, now_ms, true, &seen));
     }
     now_ms++;
-    touch_event_t seen = TOUCH_EVENT_SHORT_PRESS;
+    seen = TOUCH_EVENT_SHORT_PRESS; /* the gate must overwrite it */
     TEST_ASSERT_EQUAL(TOUCH_EVENT_NONE,
                       touch_gate_feed(&gate, &td, BASELINE, now_ms, false, &seen));
     TEST_ASSERT_EQUAL(TOUCH_EVENT_NONE, seen);

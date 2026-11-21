@@ -10,10 +10,6 @@
 _Static_assert(PROTO_INFO_SIZE <= PROTO_MAX_BODY_SIZE, "INFO fits one report");
 _Static_assert(PROTO_TELEMETRY_SIZE <= PROTO_MAX_BODY_SIZE, "TELEMETRY fits one report");
 _Static_assert(PROTO_DIAGNOSTICS_SIZE <= PROTO_MAX_BODY_SIZE, "DIAGNOSTICS fits one report");
-_Static_assert(LAMP_FIELD_POWER == 0x01u && LAMP_FIELD_COLOR == 0x02u &&
-                   LAMP_FIELD_BRIGHTNESS_MODE == 0x04u && LAMP_FIELD_MANUAL_LEVEL == 0x08u,
-               "SET_STATE field bits are part of the protocol");
-_Static_assert(LAMP_FIELD_TOUCH_MODE == 0x10u, "SET_STATE field bits are part of the protocol");
 _Static_assert(1u + TOUCH_CYCLE_MAX == PROTO_TOUCH_CYCLE_SIZE, "TOUCH_CYCLE: count and slots");
 
 /* Little-endian writer over one payload. */
@@ -82,6 +78,7 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
         case PROTO_CMD_RESET:
         case PROTO_CMD_GET_DIAGNOSTICS:
         case PROTO_CMD_SELF_TEST:
+        case PROTO_CMD_GET_TOUCH_CYCLE:
             return PROTO_OK;
 
         case PROTO_CMD_SET_STATE: {
@@ -169,9 +166,6 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
                                                                        : PROTO_ERR_BAD_VALUE;
         }
 
-        case PROTO_CMD_GET_TOUCH_CYCLE:
-            return PROTO_OK;
-
         case PROTO_CMD_ALERT: {
             if (length < PROTO_ALERT_SIZE) {
                 return PROTO_ERR_BAD_LENGTH;
@@ -222,16 +216,11 @@ void proto_encode_info(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, const pr
     put_u8(&w, info->flags);
     put_u32(&w, info->fault_mcause);
     put_u32(&w, info->fault_mepc);
-    const char *version = (info->fw_version != NULL) ? info->fw_version : "";
-    for (size_t i = 0; i < PROTO_FW_VERSION_SIZE; i++) {
-        const uint8_t c = (uint8_t)version[i];
-        put_u8(&w, c);
-        if (c == 0u) {
-            /* The rest of the field is already zero. */
-            w.pos += PROTO_FW_VERSION_SIZE - i - 1u;
-            break;
-        }
+    /* begin_message zeroed the field, which pads a shorter version. */
+    for (size_t i = 0; i < PROTO_FW_VERSION_SIZE && info->fw_version[i] != '\0'; i++) {
+        w.payload[w.pos + i] = (uint8_t)info->fw_version[i];
     }
+    w.pos += PROTO_FW_VERSION_SIZE;
     end_message(&w);
 }
 

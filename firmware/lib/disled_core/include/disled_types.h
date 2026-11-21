@@ -65,8 +65,6 @@ typedef enum {
     RESET_CAUSE_PIN = 2,
     RESET_CAUSE_SOFTWARE = 3,
     RESET_CAUSE_WATCHDOG = 4,
-    RESET_CAUSE_WINDOW_WATCHDOG = 5,
-    RESET_CAUSE_LOW_POWER = 6,
 } reset_cause_t;
 
 /* LED channels, in PWM channel order. */

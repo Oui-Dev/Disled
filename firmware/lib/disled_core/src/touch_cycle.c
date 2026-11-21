@@ -15,7 +15,7 @@ void touch_cycle_init(touch_cycle_t *cycle)
     };
 }
 
-bool touch_cycle_is_valid(const uint8_t *slots, uint32_t count, uint32_t defined)
+static bool is_valid(const uint8_t *slots, uint32_t count, uint32_t defined)
 {
     if (count == 0u || count > TOUCH_CYCLE_MAX) {
         return false;
@@ -36,7 +36,7 @@ bool touch_cycle_is_valid(const uint8_t *slots, uint32_t count, uint32_t defined
 
 bool touch_cycle_set(touch_cycle_t *cycle, const uint8_t *slots, uint32_t count, uint32_t defined)
 {
-    if (!touch_cycle_is_valid(slots, count, defined)) {
+    if (!is_valid(slots, count, defined)) {
         return false;
     }
     *cycle = (touch_cycle_t){ .count = (uint8_t)count };
