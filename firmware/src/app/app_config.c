@@ -74,7 +74,7 @@ const brightness_config_t app_brightness_config = {
 };
 
 /* The LED, measured on 2026-11-20 on a closed lamp (pcb 1.0.0, 100 Ω gate
- * resistors, white PLA) with the procedure of docs/bringup.md.
+ * resistors, white PLA) with the procedure of docs/bringup.md#led-calibration.
  *
  * Built-in colors, as LED drives: green, orange and red are the LED's own
  * primaries, more saturated than any sRGB color and kept so; their app
@@ -89,11 +89,8 @@ const rgb16_t app_builtin_colors[LAMP_COLOR_COUNT] = {
     [LAMP_COLOR_WARM_WHITE] = { 65535, 62887,  3435 }, /* 2700 K, #FFAD59 */
 };
 
-/* Linear sRGB to LED drive, with the D65 white of #FFFFFF. The primaries
- * were matched by eye, by A/B choices, against the screen of a Galaxy S23 in
- * its Natural (sRGB) mode, the only calibrated reference at hand: no camera
- * sees narrow LED primaries as the eye does. Their dominant wavelengths are
- * 619, 521 and 458 nm as the matches see them. */
+/* Linear sRGB to LED drive, with the D65 white of #FFFFFF, from LED
+ * primaries matched by eye against an sRGB screen. */
 const led_color_cal_t app_led_color_cal = {
     .matrix = {
         {  11785,   6713,     -3 },
@@ -103,10 +100,9 @@ const led_color_cal_t app_led_color_cal = {
 };
 
 /* Light of a pulse of each length in whole ticks, measured with a camera
- * through the cube: a pulse of 4 ticks or less gives almost no light, the
- * slow gate edges (note N4) give the next ticks up to 1.4 times the light of
- * those of a long pulse, and a long pulse gives about 13 ticks more light than
- * its duty, its edges outlasting it. */
+ * through the cube. Through the slow gate edges (note N4 in
+ * hardware/README.md), a pulse of 4 ticks or less gives almost no light,
+ * and a long pulse about 13 ticks more light than its duty. */
 const led_light_cal_t app_led_light_cal[LED_CHANNEL_COUNT] = {
     [LED_CHANNEL_RED] = {
         .offset = -203,

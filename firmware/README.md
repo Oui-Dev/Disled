@@ -38,24 +38,15 @@ driver, the debug console and troubleshooting.
 | `release` | HID protocol only, no logs, USB ID `1209:0001` |
 | `native` | Unity tests of `lib/disled_core`, with the protocol vectors, and of the shipped configuration (`src/app/app_config.c`) |
 
-Both IDs are test PIDs of pid.codes. The release build moves to the lamp's
-own, `1209:D1ED`, once pid.codes grants it, and the debug build keeps
-`1209:0002` ([LICENSING.md](../LICENSING.md#usb-identifiers)). Both start
-at 0x0 and may fill the 32 KB of flash: the ROM bootloader of WCH, which
-writes them, lives outside it.
+Both are pid.codes test PIDs
+([LICENSING.md](../LICENSING.md#usb-identifiers)).
 
 ## Layout
 
 | Path | Content |
 |---|---|
-| `src/main.c` | entry point |
-| `src/app/` | wiring and tasks (`app.c`), host protocol (`app_host.c`), console commands, **all tunables** (`app_config.c`) |
-| `src/bsp/` | pin map (`board.h`), clocks, time base, watchdog, faults, unique ID |
-| `src/drivers/` | LED PWM, TouchKey, I2C, VEML7700 |
-| `src/usb/` | TinyUSB configuration, descriptors, link state and report queues |
-| `src/diag/` | logs and console (debug builds) |
-| `lib/disled_core/` | hardware-independent logic, unit tested |
-| `lib/tinyusb/` | TinyUSB 0.21.0 (submodule `upstream/`) and its build description |
+| `src/`, `lib/disled_core/` | the layers of [architecture.md](../docs/architecture.md#layers) |
+| `lib/tinyusb/` | TinyUSB (submodule `upstream/`, at a release tag) and its build description |
 | `test/` | Unity tests, one folder per core module, `test_app_config` for the shipped configuration, and the fixtures they share (`test_support.h`) |
 | `scripts/` | version from git, Intel HEX, protocol vectors to C |
 | `pyproject.toml`, `uv.lock` | build and check tools (PlatformIO, clang-format) for uv, kept up to date by Dependabot |
@@ -70,6 +61,7 @@ writes them, lives outside it.
   23 (`.clang-format`). Warnings are errors on our sources.
 - No dynamic allocation, no floating point, no 64-bit division
   ([why](../docs/architecture.md#safety-rules)).
-- Interrupt handlers use `BSP_ISR` and only capture data.
+- Interrupt handlers use `BSP_ISR` and keep their work short
+  ([concurrency](../docs/architecture.md#concurrency)).
 - Includes are relative to `src/`, so each one names the layer it uses.
 - The firmware version comes from the latest `fw-vX.Y.Z` tag.

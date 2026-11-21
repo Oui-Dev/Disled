@@ -81,13 +81,6 @@ The buttons sit on the board, so flash it before the assembly.
    On Windows, the window asks once for the driver of the update mode.
 3. The lamp fades in green, and the app finds it.
 
-For a batch, `disled-factory` flashes the boards and runs the self-test
-([production.md](production.md)).
-
-The release firmware still uses `1209:0001`, a test PID of pid.codes, until
-pid.codes grants the lamp its own, `1209:D1ED`. A firmware update then
-moves the lamp to it ([LICENSING.md](../LICENSING.md#usb-identifiers)).
-
 ## 4. Cut the copper ring
 
 The cutter holds two blade points at 8.75 and 14.25 mm from the axis of its

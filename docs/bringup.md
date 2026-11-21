@@ -236,9 +236,7 @@ for instance, at room temperature.
 ## 10. Release firmware
 
 - [ ] `pio run -e release -t upload`: the lamp shows up as `1209:0001`,
-      HID only, and the app works the same. `1209:0001` is the test PID of
-      pid.codes, which the release builds keep until the lamp gets its own
-      ([LICENSING.md](../LICENSING.md#usb-identifiers)).
+      HID only, and the app works the same.
 
 ## LED calibration
 
@@ -279,8 +277,8 @@ spectrum, inside the middle of its range:
 up to 32, then up to 3600), one pulse every K periods, with K and the
 exposure chosen so that the reading lands in range. A reference pattern
 read every six points corrects any drift. The lights of long pulses (128 to
-1024 ticks) fit a line, whose intercept is the offset: about −13 ticks on
-every channel, the light outlasting the duty. Below 128 ticks, the table
+1024 ticks) fit a line, whose intercept is the offset: −12.5 to −14.4
+ticks, the light outlasting the duty. Below 128 ticks, the table
 keeps the measured lights, with the efficiency (light over the line)
 smoothed from 12 ticks on, and joins the line over its last 24 ticks.
 Below 8 ticks the light is too weak for the camera even at its longest
@@ -320,4 +318,5 @@ moves. At full brightness the red LED loses about 4 % of its light within
 minutes as it warms (time constant about 75 s), green and blue less than
 1 %: white leans slightly toward cyan, about 0.003 in u'v', and much less at
 ordinary levels. VBUS sets the LED currents through the series resistors,
-so the brightness follows it, by about 3 % per 0.1 V.
+so the brightness follows it (note N5 of
+[hardware/README.md](../hardware/README.md#found-after-production)).
