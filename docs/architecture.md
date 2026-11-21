@@ -29,7 +29,7 @@ call, the app chooses its color.
 | USB | `src/usb/` | bsp, TinyUSB, core | descriptors, link state, HID queues, CDC stream |
 | Drivers | `src/drivers/` | bsp, SDK | LED PWM, TouchKey, I2C, VEML7700 |
 | Board support | `src/bsp/` | SDK | pin map, clocks, time base, watchdog, unique ID, faults |
-| Core | `lib/disled_core/` | C library only | all decisions: state machine, palette and touch cycle, touch detection and its gate during an alert, alert breathing, brightness, color, power cap, PWM dithering, self-test, protocol codec, scheduler, formatter, assertions |
+| Core | `lib/disled_core/` | C library only | all decisions: state machine, palette and touch cycle, touch detection and its gate during an alert, alert breathing, brightness, color, power cap, PWM dithering, self-test, protocol codec, STATE notifications and telemetry pace, scheduler, formatter, assertions |
 
 Only `src/bsp/ch32.h` includes the vendor device header. Includes are
 relative to `src/` (`#include "drivers/led_pwm.h"`), so every include shows
@@ -188,8 +188,9 @@ but passes no gesture, nor the release of a press that outlived the alert.
   signals (mains hum, drift, objects, finger at power-up, hand resting near
   the lid, sensitivity), the touch gate, alerts, brightness, color, the
   LED calibration (color matrix, gamut, light tables), power cap, output
-  fades, PWM dithering, self-test, scheduler, formatter and the protocol
-  codec.
+  fades, PWM dithering, self-test, the STATE notifications (state_seq,
+  causes, the pace of the level changes) and the telemetry pace, scheduler,
+  formatter and the protocol codec.
 - `test_app_config` checks the shipped configuration (`app_config.c`) the
   same way: the light tables and the color matrix pass the boot checks,
   the dimmest level lights every channel of a built-in color, the colors

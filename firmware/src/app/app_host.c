@@ -12,48 +12,26 @@
 #include "bsp/board.h"
 #include "bsp/bsp.h"
 #include "bsp/bsp_uid.h"
+#include "host_notify.h"
 #include "protocol.h"
 #include "time_utils.h"
 #include "usb/usb_device.h"
 
-/* What a STATE message describes, without its sequence number. */
-typedef struct {
-    lamp_state_t lamp;
-    uint8_t applied_percent;
-    usb_link_t link;
-    rgb16_t rgb; /* changes alone when the host redefines the current color */
-} state_content_t;
-
-/* s_seen: the state of the last pass, s_sent: that of the last STATE message. The
- * sequence number grows only with new content, so a gap tells the host that it
- * lost a message, even when level changes are coalesced. */
-static state_content_t s_seen;
-static state_content_t s_sent;
-static uint16_t s_state_seq;
-static change_source_t s_source;
-static uint32_t s_last_level_notify_ms;
-
-static uint16_t s_telemetry_period_ms;
-static uint32_t s_telemetry_next_ms;
+static host_notify_t s_notify; /* STATE notifications and the telemetry */
 
 static bool s_reset_pending;
 static uint32_t s_reset_at_ms;
 
 static uint32_t s_host_seen_ms; /* last command, for the touch mode fallback */
 
-static bool same_rgb(rgb16_t a, rgb16_t b)
-{
-    return a.r == b.r && a.g == b.g && a.b == b.b;
-}
-
 static uint16_t subticks_to_ticks(uint16_t subticks)
 {
     return (uint16_t)((subticks + PWM_DITHER_SUBTICKS / 2u) / PWM_DITHER_SUBTICKS);
 }
 
-static state_content_t observe(void)
+static host_notify_state_t observe(void)
 {
-    const state_content_t content = {
+    const host_notify_state_t content = {
         .lamp = app.lamp,
         .applied_percent = brightness_level_percent(&app.brightness, app.lamp.brightness_mode,
                                                     app.lamp.manual_level),
@@ -61,17 +39,6 @@ static state_content_t observe(void)
         .rgb = app_lamp_rgb(),
     };
     return content;
-}
-
-/* Everything but the applied level. */
-static bool same_but_level(const state_content_t *a, const state_content_t *b)
-{
-    return same_rgb(a->rgb, b->rgb) && lamp_state_equal(&a->lamp, &b->lamp) && a->link == b->link;
-}
-
-static bool same_content(const state_content_t *a, const state_content_t *b)
-{
-    return same_but_level(a, b) && a->applied_percent == b->applied_percent;
 }
 
 /* Power-only touch needs a host that drives the lamp (APP_HOST_SILENCE_MS). */
@@ -84,63 +51,26 @@ static void check_touch_mode(uint32_t now_ms)
     }
 }
 
-/* Records the cause of the latest change, and stops the telemetry when the
- * host leaves. */
 static void observe_changes(void)
 {
-    const state_content_t now = observe();
-    if (now.link != USB_LINK_CONFIGURED) {
-        s_telemetry_period_ms = 0; /* the host left: stop streaming */
-    }
+    const host_notify_state_t now = observe();
     if (now.link == USB_LINK_UNCONFIGURED) {
         /* A suspended host still waits for the result; the next one never asked. */
         app.self_test_report = false;
         app.alert_report = false;
     }
-    if (!lamp_state_equal(&now.lamp, &s_seen.lamp)) {
-        s_source = app.source;
-    } else if (now.link != s_seen.link) {
-        s_source = CHANGE_SOURCE_USB;
-    } else if (now.applied_percent != s_seen.applied_percent) {
-        s_source = CHANGE_SOURCE_AUTO_BRIGHTNESS;
-    } else if (!same_rgb(now.rgb, s_seen.rgb)) {
-        s_source = CHANGE_SOURCE_HOST; /* only the host redefines a color */
-    }
-    s_seen = now;
-}
-
-static bool notification_pending(void)
-{
-    return !same_content(&s_seen, &s_sent);
-}
-
-/* Only the automatic brightness changed since the last STATE message. */
-static bool only_level_pending(void)
-{
-    return same_but_level(&s_seen, &s_sent);
+    host_notify_observe(&s_notify, &now, app.source);
 }
 
 /* Sends the current state; `seq` is the request it answers (0: none). */
-static bool send_state(uint8_t seq)
+static void send_state(uint8_t seq, uint32_t now_ms)
 {
-    const bool new_content = notification_pending();
-    const uint16_t state_seq = new_content ? (uint16_t)(s_state_seq + 1u) : s_state_seq;
-    const proto_state_t state = {
-        .state_seq = state_seq,
-        .lamp = s_seen.lamp,
-        .applied_percent = s_seen.applied_percent,
-        .link = s_seen.link,
-        .source = s_source,
-        .rgb = s_seen.rgb,
-    };
+    const proto_state_t state = host_notify_state(&s_notify);
     uint8_t payload[PROTO_REPORT_SIZE];
     proto_encode_state(payload, seq, &state);
-    if (!usb_hid_send(payload)) {
-        return false;
+    if (usb_hid_send(payload)) {
+        host_notify_state_sent(&s_notify, now_ms);
     }
-    s_state_seq = state_seq;
-    s_sent = s_seen;
-    return true;
 }
 
 static uint32_t capabilities(void)
@@ -299,7 +229,7 @@ static void handle_command(const uint8_t payload[PROTO_REPORT_SIZE], uint32_t no
             break;
         case PROTO_CMD_GET_STATE:
             observe_changes();
-            (void)send_state(command.seq);
+            send_state(command.seq, now_ms);
             break;
         case PROTO_CMD_SET_STATE:
             if (!app_request_allowed(&command.body.set_state)) {
@@ -310,7 +240,7 @@ static void handle_command(const uint8_t payload[PROTO_REPORT_SIZE], uint32_t no
             /* The answer is the new state; it also serves as the
              * notification of the change. */
             observe_changes();
-            (void)send_state(command.seq);
+            send_state(command.seq, now_ms);
             break;
         case PROTO_CMD_SET_COLOR:
             send_outcome(&command,
@@ -341,8 +271,7 @@ static void handle_command(const uint8_t payload[PROTO_REPORT_SIZE], uint32_t no
                                              command.body.alert.period_ms));
             break;
         case PROTO_CMD_SET_TELEMETRY:
-            s_telemetry_period_ms = command.body.telemetry_period_ms;
-            s_telemetry_next_ms = now_ms;
+            host_notify_set_telemetry(&s_notify, command.body.telemetry_period_ms, now_ms);
             send_ack(command.seq, command.type);
             break;
         case PROTO_CMD_RESET:
@@ -377,12 +306,9 @@ static void handle_command(const uint8_t payload[PROTO_REPORT_SIZE], uint32_t no
 static void send_telemetry(uint32_t now_ms)
 {
     /* A sample due waits for the previous messages to leave. */
-    if (s_telemetry_period_ms == 0u || !time_reached(now_ms, s_telemetry_next_ms) ||
-        !usb_hid_idle()) {
+    if (!usb_hid_idle() || !host_notify_take_telemetry(&s_notify, now_ms)) {
         return;
     }
-    s_telemetry_next_ms = now_ms + s_telemetry_period_ms;
-
     const proto_telemetry_t telemetry = {
         .uptime_ms = now_ms,
         .touch_raw = touch_detector_raw(&app.touch),
@@ -408,10 +334,8 @@ static void send_telemetry(uint32_t now_ms)
 
 void app_host_init(void)
 {
-    s_seen = observe();
-    s_sent = s_seen;
-    s_state_seq = 0;
-    s_source = CHANGE_SOURCE_BOOT;
+    const host_notify_state_t now = observe();
+    host_notify_init(&s_notify, &now, APP_AUTO_LEVEL_NOTIFY_MS);
 }
 
 void app_host_task(uint32_t now_ms)
@@ -424,14 +348,9 @@ void app_host_task(uint32_t now_ms)
     check_touch_mode(now_ms);
     observe_changes();
     report_touch(now_ms);
-    /* Until the way is clear, the changes add up in s_seen and go out as one STATE. */
-    if (notification_pending() && usb_hid_idle()) {
-        const bool level_only = only_level_pending();
-        const bool throttled = level_only && time_elapsed_ms(now_ms, s_last_level_notify_ms) <
-                                                 APP_AUTO_LEVEL_NOTIFY_MS;
-        if (!throttled && send_state(0) && level_only) {
-            s_last_level_notify_ms = now_ms;
-        }
+    /* Until the way is clear, the changes merge and go out as one STATE. */
+    if (usb_hid_idle() && host_notify_state_due(&s_notify, now_ms)) {
+        send_state(0, now_ms);
     }
 
     send_telemetry(now_ms);
