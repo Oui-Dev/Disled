@@ -147,7 +147,7 @@ To add a language:
 | `src-tauri/tauri.wchisp.conf.json`  | Release builds: bundle wchisp, its license and notice (`src-tauri/third-party`)                                |
 | `scripts/updater-manifest.mjs`      | Writes the `latest.json` of a release (release workflow)                                                       |
 | `app-icon.png`                      | The logo, source of the app icons (`npx tauri icon`)                                                           |
-| `src-tauri/installer/`              | Windows installer bitmaps and macOS disk image background                                                      |
+| `src-tauri/installer/`              | Windows installer bitmaps and hooks (NSIS), macOS disk image background                                        |
 
 The Rust code is one Cargo workspace at the repository root, with this app
 (`src-tauri`), the shared crates (`../crates`) and the production tool

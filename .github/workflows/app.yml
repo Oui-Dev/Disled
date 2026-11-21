@@ -90,9 +90,10 @@ jobs:
           test -z "$(git status --porcelain -- app/src/bindings)"
 
   # The code behind #[cfg(target_os = ...)] compiles and runs its tests on
-  # the systems of the releases too, long before a release. On macOS, the
-  # job also builds the disk image as the release does, wchisp included,
-  # checks it, and attaches it: the test build of the Mac.
+  # the systems of the releases too, long before a release. On Windows, the
+  # job also builds the installer. On macOS, it builds the disk image as the
+  # release does, wchisp included, checks it, and attaches it: the test
+  # build of the Mac.
   native:
     if: ${{ !github.event.pull_request.draft }}
     strategy:
@@ -129,6 +130,14 @@ jobs:
         run: |
           cargo clippy -p disled-app -p disled-flash --all-targets -- -D warnings
           cargo test -p disled-app -p disled-flash
+
+      # The installer hook, src-tauri/installer/nsis-hooks.nsh, relies on
+      # the NSIS template of the Tauri CLI: a CLI update that breaks it
+      # fails here rather than in the release. Without the updater
+      # configuration and wchisp, which the hook does not need.
+      - name: Build the Windows installer
+        if: runner.os == 'Windows'
+        run: npm run tauri build -- --bundles nsis
 
       - uses: ./.github/actions/wchisp
         if: runner.os == 'macOS'
