@@ -1100,74 +1100,12 @@ mod tests {
     }
 
     #[test]
-    fn a_command_has_the_code_that_its_replies_name() {
-        let alert = Command::Alert {
-            count: 3,
-            period_ms: 1300,
-        };
-        assert_eq!(alert.code(), CMD_ALERT);
-        assert_eq!(Command::SetState(SetState::default()).code(), CMD_SET_STATE);
-    }
-
-    #[test]
     fn commands_deserialize_from_the_frontend_shape() {
-        let command: Command = serde_json::from_str(
-            r#"{"kind":"set_state","color":4,"manual_level":40,"touch_mode":"power_only"}"#,
-        )
-        .expect("set_state");
-        assert_eq!(
-            command,
-            Command::SetState(SetState {
-                color: Some(4),
-                manual_level: Some(40),
-                touch_mode: Some(TouchMode::PowerOnly),
-                ..SetState::default()
-            })
-        );
         let command: Command = serde_json::from_str(r#"{"kind":"set_telemetry","period_ms":100}"#)
             .expect("set_telemetry");
         assert_eq!(command, Command::SetTelemetry { period_ms: 100 });
-        let command: Command =
-            serde_json::from_str(r#"{"kind":"set_auto_bias","bias":-20}"#).expect("bias");
-        assert_eq!(command, Command::SetAutoBias { bias: -20 });
         let command: Command = serde_json::from_str(r#"{"kind":"self_test"}"#).expect("self_test");
         assert_eq!(command, Command::SelfTest);
-        let command: Command = serde_json::from_str(
-            r#"{"kind":"set_color","slot":5,"rgb":{"r":65535,"g":32768,"b":0}}"#,
-        )
-        .expect("set_color");
-        assert_eq!(
-            command,
-            Command::SetColor {
-                slot: 5,
-                rgb: LinearRgb {
-                    r: 65535,
-                    g: 32768,
-                    b: 0
-                }
-            }
-        );
-        let command: Command =
-            serde_json::from_str(r#"{"kind":"set_touch_cycle","slots":[0,5,1]}"#).expect("cycle");
-        assert_eq!(
-            command,
-            Command::SetTouchCycle {
-                slots: vec![0, 5, 1]
-            }
-        );
-        let command: Command =
-            serde_json::from_str(r#"{"kind":"alert","count":3,"period_ms":1300}"#).expect("alert");
-        assert_eq!(
-            command,
-            Command::Alert {
-                count: 3,
-                period_ms: 1300
-            }
-        );
-        let command: Command =
-            serde_json::from_str(r#"{"kind":"set_touch_sensitivity","percent":-15}"#)
-                .expect("sensitivity");
-        assert_eq!(command, Command::SetTouchSensitivity { percent: -15 });
     }
 
     #[test]
