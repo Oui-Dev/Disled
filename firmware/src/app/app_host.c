@@ -39,6 +39,8 @@ static uint32_t s_telemetry_next_ms;
 static bool s_reset_pending;
 static uint32_t s_reset_at_ms;
 
+static uint32_t s_host_seen_ms; /* last command, for the touch mode fallback */
+
 static bool same_rgb(rgb16_t a, rgb16_t b)
 {
     return a.r == b.r && a.g == b.g && a.b == b.b;
@@ -61,17 +63,22 @@ static state_content_t observe(void)
     return content;
 }
 
+/* Everything but the applied level. */
+static bool same_but_level(const state_content_t *a, const state_content_t *b)
+{
+    return same_rgb(a->rgb, b->rgb) && lamp_state_equal(&a->lamp, &b->lamp) && a->link == b->link;
+}
+
 static bool same_content(const state_content_t *a, const state_content_t *b)
 {
-    return same_rgb(a->rgb, b->rgb) && lamp_state_equal(&a->lamp, &b->lamp) &&
-           a->applied_percent == b->applied_percent && a->link == b->link;
+    return same_but_level(a, b) && a->applied_percent == b->applied_percent;
 }
 
 /* Power-only touch needs a host that drives the lamp (APP_HOST_SILENCE_MS). */
 static void check_touch_mode(uint32_t now_ms)
 {
     change_source_t cause;
-    if (lamp_fsm_touch_fallback(&app.lamp, app.link, time_elapsed_ms(now_ms, app.host_seen_ms),
+    if (lamp_fsm_touch_fallback(&app.lamp, app.link, time_elapsed_ms(now_ms, s_host_seen_ms),
                                 APP_HOST_SILENCE_MS, &cause)) {
         app.source = cause;
     }
@@ -110,8 +117,7 @@ static bool notification_pending(void)
 /* Only the automatic brightness changed since the last STATE message. */
 static bool only_level_pending(void)
 {
-    return same_rgb(s_seen.rgb, s_sent.rgb) && lamp_state_equal(&s_seen.lamp, &s_sent.lamp) &&
-           s_seen.link == s_sent.link;
+    return same_but_level(&s_seen, &s_sent);
 }
 
 /* Sends the current state; `seq` is the request it answers (0: none). */
@@ -155,7 +161,7 @@ static void send_info(uint8_t seq)
         .fw_patch = DISLED_FW_VERSION_PATCH,
         .board_revision = BOARD_REVISION,
         .capabilities = capabilities(),
-        .reset_cause = app.reset_cause,
+        .reset_cause = bsp_reset_cause(),
         .flags = (uint8_t)((DISLED_DEBUG ? PROTO_INFO_FLAG_DEBUG_BUILD : 0u) |
                            (app.fault.valid ? PROTO_INFO_FLAG_FAULT : 0u)),
         .fault_mcause = app.fault.mcause,
@@ -271,7 +277,7 @@ static void send_outcome(const proto_command_t *command, proto_status_t status)
 
 static void handle_command(const uint8_t payload[PROTO_REPORT_SIZE], uint32_t now_ms)
 {
-    app.host_seen_ms = now_ms; /* any command is a heartbeat */
+    s_host_seen_ms = now_ms; /* any command is a heartbeat */
     proto_command_t command;
     const proto_status_t status = proto_decode_command(payload, &command);
     if (status != PROTO_OK) {

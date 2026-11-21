@@ -31,8 +31,8 @@ void tkey_stop(void);
 /* Pops the oldest sample. Returns false when the queue is empty. */
 bool tkey_read(uint16_t *sample, uint32_t *time_ms);
 
-/* Samples lost: the main loop did not read them in time, or the measurement
- * never completed (hardware fault). */
-uint32_t tkey_samples_lost(void);
+/* Samples lost, up to 65535: the main loop did not read them in time, or the
+ * measurement never completed (hardware fault). */
+uint16_t tkey_samples_lost(void);
 
 #endif /* DISLED_TKEY_H */

@@ -138,6 +138,9 @@ static void test_states_differing_in_one_field_are_not_equal(void)
     other = base;
     other.manual_level = (uint8_t)(base.manual_level + 1u);
     TEST_ASSERT_FALSE(lamp_state_equal(&base, &other));
+    other = base;
+    other.touch_mode = TOUCH_MODE_POWER_ONLY;
+    TEST_ASSERT_FALSE(lamp_state_equal(&base, &other));
 }
 
 static void test_request_validation_limits(void)
@@ -157,6 +160,10 @@ static void test_request_validation_limits(void)
 
     request.fields = LAMP_FIELD_BRIGHTNESS_MODE;
     request.brightness_mode = (brightness_mode_t)2;
+    TEST_ASSERT_FALSE(lamp_request_is_valid(&request));
+
+    request.fields = LAMP_FIELD_TOUCH_MODE;
+    request.touch_mode = (touch_mode_t)2;
     TEST_ASSERT_FALSE(lamp_request_is_valid(&request));
 
     request.fields = (uint8_t)(LAMP_FIELD_ALL + 1u); /* the first unknown bit */
@@ -240,16 +247,6 @@ static void test_touch_mode_falls_back_after_host_silence(void)
     TEST_ASSERT_FALSE(lamp_fsm_touch_fallback(&lamp, USB_LINK_SUSPENDED, 99999, 10000, &source));
 }
 
-static void test_states_differing_in_touch_mode_are_not_equal(void)
-{
-    lamp_state_t other = lamp;
-    other.touch_mode = TOUCH_MODE_POWER_ONLY;
-    TEST_ASSERT_FALSE(lamp_state_equal(&lamp, &other));
-
-    lamp_request_t request = { .fields = LAMP_FIELD_TOUCH_MODE, .touch_mode = (touch_mode_t)2 };
-    TEST_ASSERT_FALSE(lamp_request_is_valid(&request));
-}
-
 int main(void)
 {
     UNITY_BEGIN();
@@ -270,6 +267,5 @@ int main(void)
     RUN_TEST(test_power_only_ignores_the_short_press_not_the_long_one);
     RUN_TEST(test_touch_mode_falls_back_when_the_host_leaves);
     RUN_TEST(test_touch_mode_falls_back_after_host_silence);
-    RUN_TEST(test_states_differing_in_touch_mode_are_not_equal);
     return UNITY_END();
 }
