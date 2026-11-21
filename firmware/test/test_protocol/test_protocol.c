@@ -346,6 +346,9 @@ static void test_command_vectors(void)
             if (want->fields & LAMP_FIELD_MANUAL_LEVEL) {
                 TEST_ASSERT_EQUAL_UINT8_MESSAGE(want->manual_level, got->manual_level, v->name);
             }
+            if (want->fields & LAMP_FIELD_TOUCH_MODE) {
+                TEST_ASSERT_EQUAL_MESSAGE(want->touch_mode, got->touch_mode, v->name);
+            }
         }
         if (v->has_period) {
             TEST_ASSERT_EQUAL_UINT16_MESSAGE(v->telemetry_period_ms,
@@ -353,10 +356,6 @@ static void test_command_vectors(void)
         }
         if (v->has_auto_bias) {
             TEST_ASSERT_EQUAL_INT8_MESSAGE(v->auto_bias, command.body.auto_bias, v->name);
-        }
-        if (v->has_set_state && (v->set_state.fields & LAMP_FIELD_TOUCH_MODE) != 0u) {
-            TEST_ASSERT_EQUAL_MESSAGE(v->set_state.touch_mode, command.body.set_state.touch_mode,
-                                      v->name);
         }
         if (v->has_set_color) {
             TEST_ASSERT_EQUAL_UINT8_MESSAGE(v->set_color_slot, command.body.set_color.slot,

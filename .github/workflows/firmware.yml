@@ -52,6 +52,10 @@ jobs:
       - name: Format
         run: uv run clang-format --dry-run --Werror $(git ls-files 'lib/disled_core/*.[ch]' 'src/*.[ch]' 'test/*.c' 'tools/*.c')
 
+      # Nothing else builds the replay tool, which shares app_config.c.
+      - name: Touch replay tool (host)
+        run: gcc -std=c11 -Wall -Werror -I lib/disled_core/include -I src tools/touch_replay/touch_replay.c src/app/app_config.c lib/disled_core/src/touch_detector.c -o /tmp/touch_replay
+
       - name: Unit tests (host)
         run: uv run pio test -e native
 

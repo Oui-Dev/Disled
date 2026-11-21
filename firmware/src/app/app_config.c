@@ -5,8 +5,6 @@
  */
 #include "app_config.h"
 
-#include "bsp/ch32.h"
-
 #define LUX(x)  ((uint32_t)(x) * 1000u)
 #define MLUX(x) ((uint32_t)(x))
 
@@ -26,7 +24,7 @@
 const tkey_config_t app_tkey_config = {
     .charge_time = 3,
     .discharge_time = 8,
-    .adc_sample_time = ADC_SampleTime_1Cycles5,
+    .adc_sample_time = TKEY_SAMPLE_1CYCLE5,
 };
 
 const touch_config_t app_touch_config = {

@@ -18,15 +18,16 @@ enough to compare settings, not to time a long press to the millisecond.
 Any C11 compiler for the build machine:
 
 ```sh
-gcc -std=c11 -O2 -I../../lib/disled_core/include \
-    touch_replay.c ../../lib/disled_core/src/touch_detector.c -o touch_replay
+gcc -std=c11 -O2 -I../../lib/disled_core/include -I../../src \
+    touch_replay.c ../../src/app/app_config.c ../../lib/disled_core/src/touch_detector.c \
+    -o touch_replay
 ./touch_replay recording.log
 ./touch_replay recording.log rise=15 debounce=60
 ```
 
 Settings: `press`, `release`, `rise`, `proximity` (per mille), `debounce`,
-`rearm`, `long`, `object` (ms). The defaults copy `app_touch_config` from
-`src/app/app_config.c`, so check that they still match.
+`rearm`, `long`, `object` (ms). The defaults are those of the lamp,
+`app_touch_config` in `src/app/app_config.c`.
 
 `sensitivity` (percent, −50 to 50) applies the correction of the desktop
 app's touch sensitivity setting to those thresholds, as the lamp does. The

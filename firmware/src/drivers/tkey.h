@@ -13,6 +13,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/* ADC_SampleTime_1Cycles5 of the SDK, for a configuration that builds without
+ * the SDK (app_config.c, also built natively). */
+#define TKEY_SAMPLE_1CYCLE5 0u
+
 typedef struct {
     uint8_t charge_time;     /* electrode charge time, ADC clock cycles */
     uint8_t discharge_time;  /* discharge time, ADC clock cycles */
@@ -31,8 +35,8 @@ void tkey_stop(void);
 /* Pops the oldest sample. Returns false when the queue is empty. */
 bool tkey_read(uint16_t *sample, uint32_t *time_ms);
 
-/* Samples lost: the main loop did not read them in time, or the measurement
- * never completed (hardware fault). */
-uint32_t tkey_samples_lost(void);
+/* Samples lost, up to 65535: the main loop did not read them in time, or the
+ * measurement never completed (hardware fault). */
+uint16_t tkey_samples_lost(void);
 
 #endif /* DISLED_TKEY_H */
