@@ -3,9 +3,8 @@
 The lamp is a USB HID device with one vendor-defined interface. The host
 sends **commands**; the lamp answers with **messages** and also sends
 messages on its own (state changes, presses on the lid, telemetry, the end
-of an alert). The
-lamp owns the lamp state: the host reads it, changes it and follows its
-notifications.
+of an alert). The lamp owns the lamp state: the host reads it, changes it
+and follows its notifications.
 
 > **Status.** Version 2 is **frozen**: it only grows by the compatible
 > changes listed in [Compatibility](#compatibility), and anything else needs
