@@ -10,7 +10,6 @@ use disled_protocol::Command;
 use parking_lot::Mutex;
 use tauri::{
     AppHandle, LogicalSize, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
-    Wry,
 };
 use tauri_plugin_positioner::{Position, WindowExt};
 
@@ -39,12 +38,13 @@ const TITLED: [(&str, &str); 4] = [
 /// which hides it; the click itself must then not reopen it.
 const REOPEN_GUARD: Duration = Duration::from_millis(300);
 
-/// The width of the popup, as in tauri.conf.json; its height follows its
-/// content.
+/// The width of the popup; its height follows its content.
 const POPUP_WIDTH: f64 = 340.0;
-/// The popup is never shorter, as in tauri.conf.json, so that the lamp page
-/// gets some room and the footer stays at the bottom.
+/// The popup is never shorter, so that the lamp page gets some room and the
+/// footer stays at the bottom.
 const POPUP_MIN_HEIGHT: f64 = 360.0;
+/// The resizable windows never get smaller.
+const MIN_SIZE: (f64, f64) = (760.0, 560.0);
 /// Room kept on the screen around a popup taller than the screen, whose
 /// content then scrolls.
 const SCREEN_MARGIN: f64 = 48.0;
@@ -60,7 +60,9 @@ fn popup(app: &AppHandle) -> Option<WebviewWindow> {
 
 /// Places the popup next to the tray icon, above it on Windows and below it
 /// on macOS, or in a screen corner while the icon position is unknown,
-/// before the first click or on Linux. The panel of macOS places itself.
+/// before the first click. On Linux, whose tray never tells its position,
+/// the popup opens in the middle of the screen. The panel of macOS places
+/// itself.
 fn place(window: &WebviewWindow) {
     let (tray, fallback) = if cfg!(target_os = "macos") {
         (Position::TrayBottomCenter, Position::TopRight)
@@ -93,30 +95,33 @@ pub fn hide_popup(app: &AppHandle) {
     }
 }
 
-/// Hides the popup whenever it loses the focus, and instead of closing it on
-/// Alt+F4 or Cmd+W, since nothing would create it again.
-pub fn hide_popup_on_blur_or_close(app: &AppHandle) {
-    if let Some(window) = popup(app) {
-        let owner = app.clone();
-        window.on_window_event(move |event| match event {
-            WindowEvent::Focused(false) => hide_popup(&owner),
-            WindowEvent::CloseRequested { api, .. } => {
-                api.prevent_close();
-                hide_popup(&owner);
-            }
-            _ => {}
-        });
-    }
-}
-
-/// Makes the popup a panel on macOS, so that it opens over an app in full
-/// screen too. Should that fail, it stays a plain window, which shows
+/// Creates the popup, hidden. It hides whenever it loses the focus, and
+/// instead of closing on Alt+F4 or Cmd+W, since nothing would create it
+/// again. On macOS it becomes a panel, so that it opens over an app in full
+/// screen too; should that fail, it stays a plain window, which shows
 /// everywhere else.
-#[cfg(target_os = "macos")]
-pub fn make_popup_a_panel(app: &AppHandle) {
-    if let Some(window) = popup(app) {
-        panel::convert(&window);
-    }
+pub fn create_popup(app: &AppHandle) -> tauri::Result<()> {
+    let window = WebviewWindowBuilder::new(app, POPUP, WebviewUrl::App("index.html".into()))
+        .title("Disled")
+        .inner_size(POPUP_WIDTH, POPUP_MIN_HEIGHT)
+        .resizable(false)
+        .decorations(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .visible(false)
+        .build()?;
+    let owner = app.clone();
+    window.on_window_event(move |event| match event {
+        WindowEvent::Focused(false) => hide_popup(&owner),
+        WindowEvent::CloseRequested { api, .. } => {
+            api.prevent_close();
+            hide_popup(&owner);
+        }
+        _ => {}
+    });
+    #[cfg(target_os = "macos")]
+    panel::convert(&window);
+    Ok(())
 }
 
 /// Fits the popup to the height of its content, in logical pixels, from its
@@ -183,12 +188,32 @@ fn title(label: &str, locale: Locale) -> String {
         .unwrap_or_default()
 }
 
-/// A window opened on demand, in the language in force. Its frame takes the
-/// color mode set on the app and follows it, because a theme of its own
-/// would outlast a change of mode on Windows.
-fn builder<'a>(app: &'a AppHandle, label: &str) -> WebviewWindowBuilder<'a, Wry, AppHandle> {
-    WebviewWindowBuilder::new(app, label, WebviewUrl::App("index.html".into()))
+/// Opens a window on demand, and hides the popup. A window already open
+/// comes to the front instead: `None`. A new one takes the title of its
+/// label in the language in force, and the focus; resizable, it never gets
+/// smaller than `MIN_SIZE`. Its frame takes the color mode set on the app
+/// and follows it, because a theme of its own would outlast a change of
+/// mode on Windows.
+fn open(
+    app: &AppHandle,
+    label: &str,
+    (width, height): (f64, f64),
+    resizable: bool,
+) -> Option<WebviewWindow> {
+    hide_popup(app);
+    if raise(app, label) {
+        return None;
+    }
+    let mut builder = WebviewWindowBuilder::new(app, label, WebviewUrl::App("index.html".into()))
         .title(title(label, app.state::<LocaleState>().get()))
+        .inner_size(width, height)
+        .resizable(resizable);
+    if resizable {
+        builder = builder.min_inner_size(MIN_SIZE.0, MIN_SIZE.1);
+    }
+    let window = builder.build().ok()?;
+    let _ = window.set_focus();
+    Some(window)
 }
 
 /// Titles the open windows in another language.
@@ -201,43 +226,25 @@ pub fn retitle(app: &AppHandle, locale: Locale) {
 }
 
 pub fn open_diagnostics(app: &AppHandle) {
-    hide_popup(app);
-    if raise(app, DIAGNOSTICS) {
+    let Some(window) = open(app, DIAGNOSTICS, (1040.0, 760.0), true) else {
         return;
-    }
-    let built = builder(app, DIAGNOSTICS)
-        .inner_size(1040.0, 760.0)
-        .min_inner_size(760.0, 560.0)
-        .build();
-    if let Ok(window) = built {
-        // The window starts the telemetry, and a lamp streams until told to
-        // stop, so the stream ends with the window.
-        let owner = app.clone();
-        window.on_window_event(move |event| {
-            if let WindowEvent::Destroyed = event
-                && let Some(device) = owner.try_state::<DeviceHandle>()
-            {
-                // Without a lamp, nothing streams.
-                let _ = device.send(Command::SetTelemetry { period_ms: 0 });
-            }
-        });
-        let _ = window.set_focus();
-    }
+    };
+    // The window starts the telemetry, and a lamp streams until told to
+    // stop, so the stream ends with the window.
+    let owner = app.clone();
+    window.on_window_event(move |event| {
+        if let WindowEvent::Destroyed = event
+            && let Some(device) = owner.try_state::<DeviceHandle>()
+        {
+            // Without a lamp, nothing streams.
+            let _ = device.send(Command::SetTelemetry { period_ms: 0 });
+        }
+    });
 }
 
 /// Opens the integrations window, from the mode menu of the popup.
 pub fn open_integrations(app: &AppHandle) {
-    hide_popup(app);
-    if raise(app, INTEGRATIONS) {
-        return;
-    }
-    let built = builder(app, INTEGRATIONS)
-        .inner_size(880.0, 680.0)
-        .min_inner_size(760.0, 560.0)
-        .build();
-    if let Ok(window) = built {
-        let _ = window.set_focus();
-    }
+    open(app, INTEGRATIONS, (880.0, 680.0), true);
 }
 
 /// Opens the guided lamp update.
@@ -251,10 +258,12 @@ pub fn open_lamp_install(app: &AppHandle) {
 }
 
 /// Opens a lamp update window, a window rather than the popup, which hides
-/// as soon as the user turns to the lamp or to Zadig. One update at a time:
-/// while the other window runs one, it comes to the front instead, and when
-/// it does not, it closes, so that a single window follows the updates.
+/// as soon as the user turns to the lamp or to Zadig. It opens without the
+/// result of the last update. One update at a time: while the other window
+/// runs one, it comes to the front instead, and when it does not, it closes,
+/// so that a single window follows the updates.
 fn open_update_window(app: &AppHandle, label: &str, other: &str) {
+    firmware::clear_result(app);
     hide_popup(app);
     if let Some(window) = app.get_webview_window(other) {
         if firmware::running(app) {
@@ -263,26 +272,19 @@ fn open_update_window(app: &AppHandle, label: &str, other: &str) {
         }
         let _ = window.close();
     }
-    if raise(app, label) {
-        return;
-    }
     // The longest step, the Windows driver in French, fits without scrolling.
-    let built = builder(app, label)
-        .inner_size(480.0, 640.0)
-        .resizable(false)
-        .build();
-    if let Ok(window) = built {
-        firmware::uncancel(app);
-        // Otherwise the update would keep waiting for a bootloader, and flash
-        // the next one with no window to show it.
-        let owner = app.clone();
-        window.on_window_event(move |event| {
-            if let WindowEvent::Destroyed = event {
-                firmware::cancel(&owner);
-            }
-        });
-        let _ = window.set_focus();
-    }
+    let Some(window) = open(app, label, (480.0, 640.0), false) else {
+        return;
+    };
+    firmware::uncancel(app);
+    // Otherwise the update would keep waiting for a bootloader, and flash
+    // the next one with no window to show it.
+    let owner = app.clone();
+    window.on_window_event(move |event| {
+        if let WindowEvent::Destroyed = event {
+            firmware::cancel(&owner);
+        }
+    });
 }
 
 /// The edges of a rectangle as AppKit counts them on macOS: in points, from
