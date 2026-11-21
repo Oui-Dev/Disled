@@ -20,28 +20,22 @@
         "decorations": false,
         "alwaysOnTop": true,
         "skipTaskbar": true,
-        "visible": false,
-        "focus": true
+        "visible": false
       }
     ],
     "security": {
-      "csp": "default-src 'self' ipc: http://ipc.localhost; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'",
-      "devCsp": null
+      "csp": "default-src 'self' ipc: http://ipc.localhost; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'"
     }
   },
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM1QThCQjQ2ODRCODJGREYKUldUZkw3aUVScnVvTlFvSng1R29rOUYxWFlXTnM5bEZUVU5GNG53d3lNekFQRmozK1RwOGxtYi8K",
       "endpoints": ["https://github.com/Oui-Dev/Disled/releases/latest/download/latest.json"],
-      "requireSignedVersion": true,
-      "windows": {
-        "installMode": "passive"
-      }
+      "requireSignedVersion": true
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
     "linux": {
       "deb": {
         "recommends": ["libpulse0"],

@@ -153,11 +153,12 @@ The Rust code is one Cargo workspace at the repository root, with this app
 
 The logo is the lamp in isometric view, at the enclosure's dimensions, lit
 green. `app-icon.png` is the source of the app icons. After a change,
-regenerate them:
+regenerate them, then delete those that no bundle uses:
 
 ```sh
 npx tauri icon
-rm -r src-tauri/icons/android src-tauri/icons/ios src-tauri/icons/64x64.png
+rm -r src-tauri/icons/android src-tauri/icons/ios src-tauri/icons/64x64.png \
+  src-tauri/icons/icon.png src-tauri/icons/Square*Logo.png src-tauri/icons/StoreLogo.png
 ```
 
 The tray icon is not an image. `src-tauri/src/tray.rs` draws it at run time

@@ -587,15 +587,10 @@ fn open_link(app: AppHandle, link: Link) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-/// "Quit" of the popup.
+/// "Quit" of the popup, as of the tray menu. On the way out, the lamp gets
+/// its own behavior back (`leave`).
 #[tauri::command]
 fn quit(app: AppHandle) {
-    quit_app(&app);
-}
-
-/// "Quit" in the popup and in the tray menu. On the way out, the lamp gets
-/// its own behavior back (`leave`).
-fn quit_app(app: &AppHandle) {
     app.exit(0);
 }
 

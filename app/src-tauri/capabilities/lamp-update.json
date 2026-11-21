@@ -1,9 +1,10 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "lamp-update",
-  "description": "Lamp update window: its Close button",
+  "description": "Lamp update windows: their Close button",
   "windows": [
-    "lamp-update"
+    "lamp-update",
+    "lamp-install"
   ],
   "permissions": [
     "core:window:allow-close"

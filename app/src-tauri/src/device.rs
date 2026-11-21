@@ -65,7 +65,7 @@ pub enum Generation {
 }
 
 impl Generation {
-    pub fn of(info: &Info) -> Self {
+    fn of(info: &Info) -> Self {
         match info.protocol[0] {
             PROTOCOL_MAJOR => Generation::V2,
             major if major < PROTOCOL_MAJOR => Generation::V1,
@@ -133,7 +133,7 @@ impl Session {
 /// of the protocol: the state first, then the corrections, the palette, and
 /// the state the app sets, with the touch mode and the color that the
 /// control imposes.
-pub fn commands_after_info(
+fn commands_after_info(
     info: &Info,
     settings: &Settings,
     palette: &Palette,
@@ -164,7 +164,7 @@ pub fn commands_after_info(
 
 /// Whether the heartbeat is due: on, and no command for `HEARTBEAT`, since
 /// every command counts as one.
-pub fn heartbeat_due(on: bool, last_write: Instant, now: Instant) -> bool {
+fn heartbeat_due(on: bool, last_write: Instant, now: Instant) -> bool {
     on && now.saturating_duration_since(last_write) >= HEARTBEAT
 }
 
