@@ -10,7 +10,7 @@
  * lamp shows its swatch through its calibration, as it does a custom color.
  */
 export const BUILT_IN_COLORS = [
-  { key: 'green', swatch: '#00ffa2' },
+  { key: 'green', swatch: '#00f57a' },
   { key: 'orange', swatch: '#ff6f00' },
   { key: 'red', swatch: '#ff001c' },
   { key: 'warm_white', swatch: '#ffad59' },

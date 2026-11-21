@@ -28,7 +28,7 @@ const CORNER: f32 = 8.0;
 /// The built-in colors, by palette slot: the key of their default name, and
 /// their color on screen, as the swatches of the popup (`app/src/utils/lamp.ts`).
 const BUILT_IN_COLORS: [(&str, [u8; 3]); 4] = [
-    ("green", [0x00, 0xff, 0xa2]),
+    ("green", [0x00, 0xf5, 0x7a]),
     ("orange", [0xff, 0x6f, 0x00]),
     ("red", [0xff, 0x00, 0x1c]),
     ("warm_white", [0xff, 0xad, 0x59]),

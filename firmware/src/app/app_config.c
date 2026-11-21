@@ -78,9 +78,11 @@ const brightness_config_t app_brightness_config = {
  *
  * Built-in colors, as LED drives: green, orange and red are the LED's own
  * primaries, more saturated than any sRGB color and kept so; their app
- * swatches are the nearest sRGB colors (#00FFA2, #FF6F00, #FF001C). The warm
- * white is 2700 K (#FFAD59) through the color calibration below, which the
- * native suite test_app_config checks, with the tables of this file. */
+ * swatches are sRGB colors near them (#00F57A, #FF6F00, #FF001C), the green
+ * a little less bluish than the LED, so that it looks as saturated as the
+ * others. The warm white is 2700 K (#FFAD59) through the color calibration
+ * below, which the native suite test_app_config checks, with the tables of
+ * this file. */
 /* clang-format off */
 const rgb16_t app_builtin_colors[LAMP_COLOR_COUNT] = {
     [LAMP_COLOR_GREEN] = {     0, 65535,     0 }, /* the green LED alone */
