@@ -53,10 +53,6 @@ pub const SLOT_WARM_WHITE: u8 = 3;
 pub const FIRST_CUSTOM_SLOT: u8 = 4;
 /// Most slots in the touch cycle.
 pub const TOUCH_CYCLE_MAX: usize = 9;
-/// Limits of an alert: breaths, and the period of one breath.
-pub const ALERT_COUNT_MAX: u8 = 10;
-pub const ALERT_PERIOD_MIN_MS: u16 = 500;
-pub const ALERT_PERIOD_MAX_MS: u16 = 5000;
 
 const CMD_GET_INFO: u8 = 0x01;
 const CMD_GET_STATE: u8 = 0x02;
@@ -224,9 +220,8 @@ pub enum Command {
         slots: Vec<u8>,
     },
     GetTouchCycle,
-    /// `count` breaths (1 to `ALERT_COUNT_MAX`) of `period_ms`
-    /// (`ALERT_PERIOD_MIN_MS` to `ALERT_PERIOD_MAX_MS`); a count of 0 stops
-    /// the alert and ignores the period.
+    /// 1 to 10 breaths of 500 to 5000 ms; a count of 0 stops the alert and
+    /// ignores the period.
     Alert {
         count: u8,
         period_ms: u16,
@@ -424,13 +419,6 @@ pub struct SelfTestResult {
     pub lux_centi: u32,
     pub touch_baseline: u16,
     pub touch_peak_permille: i16,
-}
-
-impl SelfTestResult {
-    /// Everything the lamp can check by itself passed.
-    pub fn passed(&self) -> bool {
-        self.light_sensor_ok && self.touch_idle_ok && self.touch_pressed && self.completed
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -1078,22 +1066,6 @@ mod tests {
         };
         assert_eq!(alert.code(), CMD_ALERT);
         assert_eq!(Command::SetState(SetState::default()).code(), CMD_SET_STATE);
-    }
-
-    #[test]
-    fn self_test_passes_only_when_every_check_did() {
-        let mut result = SelfTestResult {
-            light_sensor_ok: true,
-            touch_idle_ok: true,
-            touch_pressed: true,
-            completed: true,
-            lux_centi: 0,
-            touch_baseline: 0,
-            touch_peak_permille: 0,
-        };
-        assert!(result.passed());
-        result.touch_pressed = false;
-        assert!(!result.passed());
     }
 
     #[test]
