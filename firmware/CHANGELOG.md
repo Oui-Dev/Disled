@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/Oui-Dev/Disled/compare/fw-v2.1.0...fw-v2.2.0) (2026-11-21)
+
+
+### 🚀 Enhancements
+
+* **firmware:** custom colors through a measured LED calibration, the built-ins as LED drives, and a 3 % floor ([b594319](https://github.com/Oui-Dev/Disled/commit/b594319c10a451b8ceed60565b95fbdc5a48c09d))
+
 ## [2.1.0](https://github.com/Oui-Dev/Disled/compare/fw-v2.0.0...fw-v2.1.0) (2026-11-20)
 
 
