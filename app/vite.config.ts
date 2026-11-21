@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 The Disled contributors
+
 import { fileURLToPath } from 'node:url';
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite';
 import ui from '@nuxt/ui/vite';

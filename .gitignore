@@ -19,8 +19,7 @@ __pycache__/
 # Firmware: PlatformIO builds and the tools uv installs
 firmware/.pio/
 firmware/.venv/
-firmware/.vscode/*
-!firmware/.vscode/extensions.json
+firmware/.vscode/
 firmware/tools/*/touch_replay
 firmware/tools/*/touch_replay.exe
 

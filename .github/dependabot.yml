@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Disled contributors
 version: 2
 # Commit messages follow Conventional Commits, which release-please reads
 # (docs/releasing.md). fix(deps) releases the component it touches;

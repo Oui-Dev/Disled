@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Disled contributors
+
 [package]
 name = "disled-flash"
 description = "Flashing a Disled lamp: the files signed with tauri signer and the wchisp flasher, run as a separate program"
