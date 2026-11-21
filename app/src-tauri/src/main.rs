@@ -704,3 +704,93 @@ fn main() {
         _ => {}
     });
 }
+
+/// Guards on what the windows copy of the backend: the names of the
+/// commands and the events, and some limits and codes. TypeScript cannot
+/// import them, so these tests read the files of the windows.
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    use super::*;
+
+    #[test]
+    fn the_windows_invoke_the_commands_of_the_backend() {
+        // The first list of the file is that of main(), above these tests.
+        let main = include_str!("main.rs");
+        let (_, list) = main.split_once("generate_handler![").expect("the handlers");
+        let (list, _) = list.split_once(']').expect("the end of the handlers");
+        let handled: BTreeSet<&str> = list
+            .split(',')
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .collect();
+        let commands = include_str!("../../src/ipc/commands.ts");
+        let invoked: BTreeSet<&str> = commands
+            .split("invoke('")
+            .skip(1)
+            .filter_map(|call| call.split_once('\'').map(|(name, _)| name))
+            .collect();
+        assert_eq!(invoked, handled);
+    }
+
+    #[test]
+    fn the_windows_listen_to_the_events_of_the_backend() {
+        let events = include_str!("../../src/ipc/events.ts");
+        let listened: BTreeSet<&str> = events
+            .lines()
+            .filter_map(|line| line.trim().strip_prefix('\'')?.split_once("':"))
+            .map(|(name, _)| name)
+            .collect();
+        let sent = BTreeSet::from([
+            device::EVENT_CONNECTION,
+            device::EVENT_MESSAGE,
+            device::EVENT_PROTOCOL_ERROR,
+            EVENT_SETTINGS,
+            EVENT_COLORS,
+            EVENT_LOCALE,
+            control::EVENT_CONTROL,
+            plugins::EVENT_PLUGINS,
+            updates::EVENT_STATUS,
+            firmware::EVENT_STATUS,
+        ]);
+        assert_eq!(listened, sent);
+    }
+
+    #[test]
+    fn the_windows_keep_the_limits_and_codes_of_the_backend() {
+        let lamp = include_str!("../../src/utils/lamp.ts");
+        let value = |name: &str| -> i64 {
+            let (_, rest) = lamp
+                .split_once(&format!("export const {name} = "))
+                .unwrap_or_else(|| panic!("lamp.ts lacks {name}"));
+            let (literal, _) = rest.split_once(';').expect("a semicolon");
+            let parsed = match literal.strip_prefix("0x") {
+                Some(hex) => i64::from_str_radix(hex, 16),
+                None => literal.parse(),
+            };
+            parsed.unwrap_or_else(|_| panic!("{name} = {literal}"))
+        };
+        assert_eq!(
+            value("AUTO_BIAS_MIN"),
+            i64::from(disled_protocol::AUTO_BIAS_MIN)
+        );
+        assert_eq!(
+            value("AUTO_BIAS_MAX"),
+            i64::from(disled_protocol::AUTO_BIAS_MAX)
+        );
+        assert_eq!(
+            value("TOUCH_SENSITIVITY_MIN"),
+            i64::from(disled_protocol::TOUCH_SENSITIVITY_MIN)
+        );
+        assert_eq!(
+            value("TOUCH_SENSITIVITY_MAX"),
+            i64::from(disled_protocol::TOUCH_SENSITIVITY_MAX)
+        );
+        assert_eq!(
+            value("CUSTOM_MAX"),
+            i64::try_from(colors::CUSTOM_MAX).expect("a small count")
+        );
+        assert_eq!(value("CMD_SELF_TEST"), i64::from(Command::SelfTest.code()));
+    }
+}

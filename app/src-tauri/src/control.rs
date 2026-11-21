@@ -27,7 +27,7 @@ use crate::colors::DEFAULT_CYCLE;
 use crate::device::DeviceHandle;
 use crate::settings::CallSettings;
 
-const EVENT_CONTROL: &str = "control-changed";
+pub(crate) const EVENT_CONTROL: &str = "control-changed";
 
 /// Breaths of an alert, the same for every plugin.
 const ALERT_COUNT: u8 = 3;

@@ -22,7 +22,7 @@ use crate::device::DeviceHandle;
 use crate::net::{MAX_SIGNATURE, fetch, get_at_most};
 use crate::updates::now;
 
-const EVENT_STATUS: &str = "firmware-status";
+pub(crate) const EVENT_STATUS: &str = "firmware-status";
 
 /// The published releases only, since GitHub hides the drafts from
 /// anonymous callers.
