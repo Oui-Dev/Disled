@@ -188,7 +188,7 @@ defineExpose({ save, canSave });
     <h2
       data-page-heading
       tabindex="-1"
-      class="text-sm font-semibold text-highlighted focus:outline-none"
+      class="text-highlighted text-sm font-semibold focus:outline-none"
     >
       {{ slot === null ? t('colors.editor.new') : t('colors.editor.edit') }}
     </h2>
@@ -225,7 +225,7 @@ defineExpose({ save, canSave });
       <template #label="{ item }">
         <span
           :title="item.label"
-          class="swatch-ring block size-6 rounded-full border border-accented"
+          class="swatch-ring border-accented block size-6 rounded-full border"
           :style="{ background: String(item.value) }"
         />
         <span class="sr-only">{{ item.label }}</span>
@@ -238,14 +238,14 @@ defineExpose({ save, canSave });
     <ColorAreaRoot :model-value="point" x-channel="hue" y-channel="saturation" @update:color="move">
       <ColorAreaArea
         :aria-roledescription="t('colors.editor.square.role')"
-        class="color-square relative h-36 rounded-md ring ring-accented select-none"
+        class="color-square ring-accented relative h-36 rounded-md ring select-none"
       >
         <!-- A white ring with a dark line shows on every point, in both themes. -->
         <ColorAreaThumb
           :aria-roledescription="t('colors.editor.square.thumb')"
           :aria-label="t('colors.editor.square.label')"
           :aria-valuetext="valueText"
-          class="size-5 rounded-full border-2 border-white shadow-[0_0_0_1px_rgb(0_0_0/0.45)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+          class="focus-visible:ring-offset-bg focus-visible:ring-primary size-5 rounded-full border-2 border-white shadow-[0_0_0_1px_rgb(0_0_0/0.45)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden"
           :style="{ background: hex }"
         />
       </ColorAreaArea>

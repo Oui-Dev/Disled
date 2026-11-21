@@ -96,7 +96,7 @@ async function select(choice: Choice): Promise<void> {
 
 <template>
   <div class="flex flex-col gap-2">
-    <span aria-hidden="true" class="text-sm font-semibold text-highlighted">
+    <span aria-hidden="true" class="text-highlighted text-sm font-semibold">
       {{ t('lamp.colors.title') }}
     </span>
     <div ref="row" class="-mx-2 flex">

@@ -54,7 +54,7 @@ const { subtitle } = usePluginTexts();
             }"
           />
           <span class="flex min-w-0 flex-col">
-            <span class="truncate text-sm font-medium text-highlighted">{{ plugin.name }}</span>
+            <span class="text-highlighted truncate text-sm font-medium">{{ plugin.name }}</span>
             <span class="truncate text-xs" :class="plugin.unreadable ? 'text-error' : 'text-muted'">
               {{ subtitle(plugin, control.status.mode === plugin.id) }}
             </span>

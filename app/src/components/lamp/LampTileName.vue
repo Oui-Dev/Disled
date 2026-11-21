@@ -62,7 +62,7 @@ watch(
       data-tile-name
       aria-hidden="true"
       :title="clamped ? name : undefined"
-      class="line-clamp-2 text-center text-[11px]/3.5 font-normal text-balance text-muted wrap-anywhere group-has-data-[state=checked]:text-highlighted"
+      class="text-muted group-has-data-[state=checked]:text-highlighted line-clamp-2 text-center text-[11px]/3.5 font-normal text-balance wrap-anywhere"
       :class="narrow ? 'mx-1' : 'w-full'"
     >
       {{ text }}

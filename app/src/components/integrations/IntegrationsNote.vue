@@ -68,13 +68,13 @@ const blockPieces = computed(() => {
 <template>
   <section class="flex flex-col gap-3">
     <div class="flex items-center justify-between gap-3">
-      <h3 class="text-sm font-semibold text-highlighted">{{ t('integrations.install') }}</h3>
-      <span class="text-xs text-muted">{{ t('integrations.noteSource') }}</span>
+      <h3 class="text-highlighted text-sm font-semibold">{{ t('integrations.install') }}</h3>
+      <span class="text-muted text-xs">{{ t('integrations.noteSource') }}</span>
     </div>
 
     <div v-if="folded" class="flex items-center justify-between gap-3 text-sm">
-      <span class="flex items-center gap-2 text-default">
-        <UIcon name="i-lucide-circle-check" class="size-4 text-success" />
+      <span class="text-default flex items-center gap-2">
+        <UIcon name="i-lucide-circle-check" class="text-success size-4" />
         {{ t('integrations.installed', { name: plugin.from ?? plugin.name }) }}
       </span>
       <UButton variant="link" size="sm" class="p-0" @click="unfolded = true">
@@ -86,10 +86,10 @@ const blockPieces = computed(() => {
       <p
         v-for="(paragraph, index) in plugin.note?.paragraphs ?? []"
         :key="index"
-        class="text-sm text-default"
+        class="text-default text-sm"
       >
         <template v-for="(piece, at) in pieces(paragraph)" :key="at">
-          <code v-if="piece.code" class="rounded bg-muted px-1 py-0.5 font-mono text-xs">{{
+          <code v-if="piece.code" class="bg-muted rounded px-1 py-0.5 font-mono text-xs">{{
             piece.text
           }}</code>
           <template v-else>{{ piece.text }}</template>
@@ -104,16 +104,16 @@ const blockPieces = computed(() => {
         }"
       >
         <template #header>
-          <UIcon name="i-lucide-file-json" class="size-4 text-muted" />
-          <span class="font-medium text-default">{{ plugin.note?.file }}</span>
+          <UIcon name="i-lucide-file-json" class="text-muted size-4" />
+          <span class="text-default font-medium">{{ plugin.note?.file }}</span>
           <i18n-t keypath="integrations.filled" tag="span" scope="global" class="text-muted">
             <template #address>
-              <mark class="rounded bg-primary/10 px-0.5 text-default">{{
+              <mark class="text-default bg-primary/10 rounded px-0.5">{{
                 t('integrations.address')
               }}</mark>
             </template>
             <template #token>
-              <mark class="rounded bg-primary/10 px-0.5 text-default">{{
+              <mark class="text-default bg-primary/10 rounded px-0.5">{{
                 t('integrations.token')
               }}</mark>
             </template>
@@ -131,13 +131,13 @@ const blockPieces = computed(() => {
         </template>
         <!-- Spans keep the spaces of the block, as a <pre> would. -->
         <figure
-          class="max-h-72 overflow-auto p-3 font-mono text-xs whitespace-pre text-default"
+          class="text-default max-h-72 overflow-auto p-3 font-mono text-xs whitespace-pre"
           :aria-label="t('integrations.blockLabel', { file: plugin.note?.file ?? '' })"
         >
           <span
             v-for="(piece, at) in blockPieces"
             :key="at"
-            :class="piece.marked ? 'rounded bg-primary/10 text-highlighted' : undefined"
+            :class="piece.marked ? 'text-highlighted bg-primary/10 rounded' : undefined"
             >{{
               piece.text
             }}</span
@@ -147,7 +147,7 @@ const blockPieces = computed(() => {
 
       <p
         v-if="block && plugin.capabilities.events"
-        class="flex items-start gap-2 text-xs text-muted"
+        class="text-muted flex items-start gap-2 text-xs"
       >
         <UIcon name="i-lucide-lock" class="mt-0.5 size-3.5 shrink-0" />
         {{ t('integrations.neverEdits', { name: plugin.from ?? plugin.name }) }}

@@ -24,7 +24,18 @@
   "linter": {
     // The rules of the tests check the test files only: elsewhere they take
     // the `fit` of the popup for a focused test.
-    "domains": { "test": "none" }
+    "domains": { "test": "none" },
+    "rules": {
+      // Nursery rules: a Biome update may rename them, which `biome migrate --write` follows.
+      "nursery": {
+        "noTailwindLegacyUtilities": "error",
+        "noTailwindRawColors": "error",
+        "useTailwindShorthandClasses": "error",
+        "useTailwindSortedClasses": "error",
+        "useTailwindStaticClassStrings": "error",
+        "useTailwindVariablesShorthand": "error"
+      }
+    }
   },
   "overrides": [
     {
@@ -49,5 +60,6 @@
     "formatter": {
       "quoteStyle": "single"
     }
-  }
+  },
+  "assist": { "actions": { "source": { "noDuplicateClasses": "on" } } }
 }

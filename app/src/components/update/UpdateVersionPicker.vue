@@ -30,7 +30,7 @@ const rows = computed(() => props.versions.map((version) => ({ label: version, v
 <template>
   <div class="flex flex-col gap-1.5">
     <div class="flex items-center justify-between gap-3">
-      <span id="version-label" class="text-sm font-medium text-default">
+      <span id="version-label" class="text-default text-sm font-medium">
         {{ t('lampInstall.version') }}
       </span>
       <UButton

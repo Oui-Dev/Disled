@@ -45,7 +45,7 @@ defineExpose({ save, canSave });
     <h2
       data-page-heading
       tabindex="-1"
-      class="flex items-center gap-2 text-sm font-semibold text-highlighted focus:outline-none"
+      class="text-highlighted flex items-center gap-2 text-sm font-semibold focus:outline-none"
     >
       <span aria-hidden="true" class="swatch size-5 shrink-0" :style="{ background: color?.hex }" />
       {{ color?.name }}

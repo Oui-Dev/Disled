@@ -72,7 +72,7 @@ const hint = computed(() => {
   <fieldset class="flex min-w-0 flex-col gap-3">
     <legend class="sr-only">{{ t('lamp.brightness.title') }}</legend>
     <div class="flex items-center justify-between gap-3">
-      <span aria-hidden="true" class="text-sm font-semibold text-highlighted">
+      <span aria-hidden="true" class="text-highlighted text-sm font-semibold">
         {{ t('lamp.brightness.title') }}
       </span>
       <div class="flex items-center gap-3">
@@ -80,7 +80,7 @@ const hint = computed(() => {
         <span
           v-if="levelText"
           :aria-hidden="!auto || undefined"
-          class="text-sm text-muted tabular-nums"
+          class="text-muted text-sm tabular-nums"
         >
           {{ levelText }}
         </span>
@@ -97,7 +97,7 @@ const hint = computed(() => {
     <!-- One row for both modes, as tall as the larger sun, so the slider and the hint stay put when the mode changes. -->
     <div class="flex h-5 items-center gap-2.5">
       <template v-if="auto">
-        <span class="shrink-0 text-xs text-muted">{{ t('lamp.brightness.darker') }}</span>
+        <span class="text-muted shrink-0 text-xs">{{ t('lamp.brightness.darker') }}</span>
         <USlider
           :model-value="value"
           :min="AUTO_BIAS_MIN"
@@ -111,10 +111,10 @@ const hint = computed(() => {
           @update:model-value="move"
           @change="release"
         />
-        <span class="shrink-0 text-xs text-muted">{{ t('lamp.brightness.brighter') }}</span>
+        <span class="text-muted shrink-0 text-xs">{{ t('lamp.brightness.brighter') }}</span>
       </template>
       <template v-else>
-        <UIcon name="i-lucide-sun-dim" class="size-4 shrink-0 text-muted" />
+        <UIcon name="i-lucide-sun-dim" class="text-muted size-4 shrink-0" />
         <USlider
           :model-value="value"
           :min="1"
@@ -126,10 +126,10 @@ const hint = computed(() => {
           @update:model-value="move"
           @change="release"
         />
-        <UIcon name="i-lucide-sun" class="size-5 shrink-0 text-muted" />
+        <UIcon name="i-lucide-sun" class="text-muted size-5 shrink-0" />
       </template>
     </div>
 
-    <p class="text-xs text-muted">{{ hint }}</p>
+    <p class="text-muted text-xs">{{ hint }}</p>
   </fieldset>
 </template>

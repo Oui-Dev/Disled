@@ -53,7 +53,7 @@ watch(
 
 <template>
   <figure class="flex flex-col gap-1">
-    <figcaption class="text-xs font-medium text-muted">{{ title }}</figcaption>
+    <figcaption class="text-muted text-xs font-medium">{{ title }}</figcaption>
     <div ref="box" class="relative flex-1" :style="{ minHeight: `${minHeight}px` }">
       <UChart
         :data="rows"
@@ -69,7 +69,7 @@ watch(
       />
     </div>
     <!-- Ours rather than the chart's, which sits on top, centered. -->
-    <ul class="flex flex-wrap justify-end gap-x-4 gap-y-1 text-xs text-muted">
+    <ul class="text-muted flex flex-wrap justify-end gap-x-4 gap-y-1 text-xs">
       <li v-for="line in series" :key="line.key" class="flex items-center gap-1.5">
         <span
           aria-hidden="true"

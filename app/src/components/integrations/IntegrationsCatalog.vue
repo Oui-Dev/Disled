@@ -54,7 +54,7 @@ async function install(entry: CatalogView): Promise<void> {
 
 <template>
   <section :aria-label="t('integrations.catalog.label')" class="flex flex-col gap-4 p-6">
-    <p class="text-sm text-muted">{{ t('integrations.catalog.intro') }}</p>
+    <p class="text-muted text-sm">{{ t('integrations.catalog.intro') }}</p>
 
     <UAlert
       v-if="plugins.catalogError"
@@ -88,7 +88,7 @@ async function install(entry: CatalogView): Promise<void> {
       <li
         v-for="entry in plugins.catalog"
         :key="entry.id"
-        class="flex gap-3 rounded-lg border border-default p-4"
+        class="border-default flex gap-3 rounded-lg border p-4"
       >
         <UAvatar
           :icon="pluginIcon(entry.icon)"
@@ -97,8 +97,8 @@ async function install(entry: CatalogView): Promise<void> {
         <div class="flex min-w-0 flex-1 flex-col gap-2">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <h3 class="truncate text-sm font-medium text-highlighted">{{ entry.name }}</h3>
-              <p class="text-xs text-muted">
+              <h3 class="text-highlighted truncate text-sm font-medium">{{ entry.name }}</h3>
+              <p class="text-muted text-xs">
                 {{
                   t('integrations.catalog.meta', { version: entry.version, author: entry.author })
                 }}
@@ -128,7 +128,7 @@ async function install(entry: CatalogView): Promise<void> {
               :label="t('integrations.catalog.installed')"
             />
           </div>
-          <p class="text-sm text-default">{{ entry.description }}</p>
+          <p class="text-default text-sm">{{ entry.description }}</p>
           <div class="flex flex-wrap items-center gap-1.5">
             <UBadge
               v-for="ability in abilities(entry)"
