@@ -14,15 +14,10 @@ import { useLampStore } from '@/stores/lamp';
 
 type Status = 'pending' | 'passed' | 'failed';
 
-const STATUS_ICONS: Record<Status, string> = {
-  pending: 'i-lucide-circle-dashed',
-  passed: 'i-lucide-circle-check',
-  failed: 'i-lucide-circle-x',
-};
-const STATUS_COLORS: Record<Status, string> = {
-  pending: 'text-dimmed',
-  passed: 'text-success',
-  failed: 'text-error',
+const STATUS: Record<Status, { icon: string; color: string }> = {
+  pending: { icon: 'i-lucide-circle-dashed', color: 'text-dimmed' },
+  passed: { icon: 'i-lucide-circle-check', color: 'text-success' },
+  failed: { icon: 'i-lucide-circle-x', color: 'text-error' },
 };
 
 const { t, n } = useI18n();
@@ -67,9 +62,9 @@ const checks = computed(() => {
     <ul aria-live="polite" class="flex flex-col divide-y divide-default">
       <li v-for="check in checks" :key="check.label" class="flex items-center gap-2.5 py-2 text-sm">
         <UIcon
-          :name="STATUS_ICONS[check.status]"
+          :name="STATUS[check.status].icon"
           class="size-4 shrink-0"
-          :class="STATUS_COLORS[check.status]"
+          :class="STATUS[check.status].color"
         />
         <span>{{ check.label }}</span>
         <span class="sr-only">{{ t(`selfTest.${check.status}`) }}</span>

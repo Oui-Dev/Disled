@@ -10,9 +10,9 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useFaultText } from '@/composables/useFaultText';
+import { useSignedPercent } from '@/composables/useSignedPercent';
 import { useDiagnosticsStore } from '@/stores/diagnostics';
 import { useLampStore } from '@/stores/lamp';
-import { useSignedPercent } from '@/utils/format';
 import { healthIssues } from '@/utils/health';
 
 interface Row {

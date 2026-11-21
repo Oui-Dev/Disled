@@ -26,9 +26,6 @@ const REFRESH_MS = 100;
 
 const telemetry = useTelemetryStore();
 const rows = shallowRef<ChartRow[]>([]);
-const categories = computed(() =>
-  props.series.map(({ key, label, color }) => ({ key, label, color })),
-);
 
 // The plot box gets its height from the layout, never from the chart in it.
 const { height: boxHeight } = useElementSize(useTemplateRef('box'));
@@ -61,7 +58,7 @@ watch(
       <UChart
         :data="rows"
         index="uptime"
-        :categories="categories"
+        :categories="series"
         :height="height"
         :x-axis="false"
         :legend="false"
