@@ -16,7 +16,8 @@ board takes about 30 seconds.
   driver with Zadig
   ([flashing.md](flashing.md#first-time-on-windows-install-the-winusb-driver)).
   The tool shows the steps when the driver is missing. On Linux, install
-  the udev rule of the app ([app/README.md](../app/README.md#the-udev-rule-on-linux)).
+  the udev rule of the app
+  ([app/README.md](../app/README.md#the-udev-rule-on-linux)).
   macOS needs nothing.
 - **The firmware.** From the firmware release to produce (`fw-vX.Y.Z` on
   the [releases page](https://github.com/Oui-Dev/Disled/releases)),

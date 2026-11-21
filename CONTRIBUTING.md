@@ -54,11 +54,11 @@ protocol.
 
 ## Commit messages
 
-Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/),
-in English: `type(scope): summary`. The summary is in lower case and
-describes the result, for example `fix(app): sign the macOS app ad hoc so
-that it opens on Apple Silicon`. The body says why, wrapped at 72
-characters.
+Commit messages follow
+[Conventional Commits](https://www.conventionalcommits.org/), in English:
+`type(scope): summary`. The summary is in lower case and describes the
+result, for example `fix(app): sign the macOS app ad hoc so that it opens
+on Apple Silicon`. The body says why, wrapped at 72 characters.
 
 - `feat`, `fix`, `perf`, `refactor` and `revert` release the part whose
   files the commit changes, and appear in its changelog. `docs`, `style`,
@@ -119,9 +119,14 @@ sensor, USB sleep. [docs/bringup.md](docs/bringup.md) lists the checks.
 - Every source file starts with an SPDX header
   ([LICENSING.md](LICENSING.md)). The firmware's headers also point to the
   permission for the WCH SDK.
-- Code, comments, documentation and commit messages are in English. The
-  app speaks English and French, so every new message goes into both
-  `app/src/locales/en.json` and `fr.json` ([app/README.md](app/README.md#translations)).
+- Code, comments, documentation and commit messages are in English. The app
+  speaks English and French, so every new message goes into both
+  `app/src/locales/en.json` and `fr.json`
+  ([app/README.md](app/README.md#translations)).
+- Comments say why, not what, in plain English and short sentences. No
+  commented-out code and no TODO: open an issue.
+- Each fact lives in one place. A doc or a comment links to it rather than
+  copying it, so that a change edits one file.
 - The firmware follows its own rules, listed in
   [firmware/README.md](firmware/README.md#conventions).
 - A protocol change updates the specification, the shared test vectors

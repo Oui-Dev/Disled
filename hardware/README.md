@@ -43,31 +43,37 @@ They come from the design review of the board before production
 ([PDF, in French](https://github.com/Oui-Dev/Disled/blob/d5e8749603c0b48a2b3b314eaaab88630da2aa92/hardware/review/Review_PCB_v4_connected_status_light_2026-10-10.pdf),
 in the git history):
 
-- **N1, touch.** The touch trace runs next to LED_B. Synchronize TouchKey sampling with the LED PWM.
-- **N2, LED power.** Typical currents at 100 % are R 75, G 52 and B 98 mA, and 86, 63 and 125 mA in the worst case. White at 100 % draws about 225 mA and 1.1 W inside a closed PLA cube, so the firmware caps the total LED current. Declare `bMaxPower` = 300 mA.
-- **N3, shared pins.** Pin 19 bonds PA10 to PA11 (USB D−). Never drive PA10, never enable a pull-up on it and never route USART1 RX to it. Pin 1 bonds BOOT0 to PB8, so never drive PB8 at boot.
+- **N1, touch.** The touch trace runs next to LED_B. Synchronize TouchKey
+  sampling with the LED PWM.
+- **N2, LED power.** Typical currents at 100 % are R 75, G 52 and B 98 mA,
+  and 86, 63 and 125 mA in the worst case. White at 100 % draws about
+  225 mA and 1.1 W inside a closed PLA cube, so the firmware caps the total
+  LED current. Declare `bMaxPower` = 300 mA.
+- **N3, shared pins.** Pin 19 bonds PA10 to PA11 (USB D−). Never drive
+  PA10, never enable a pull-up on it and never route USART1 RX to it. Pin 1
+  bonds BOOT0 to PB8, so never drive PB8 at boot.
 
 ### Found after production
 
 - **N4, LED gates.** Seen with firmware 2.0. The AO3400A gates take about
-  4 nC from the 3.3 V drive (6 nC is the datasheet figure at 4.5 V)
-  through 100 Ω (R7 to R9) plus the pin's own resistance, 20 to 50 Ω by
-  the fits and never measured. A model fitted to the measured tables
-  starts the LED current 50 to 90 ns after the pin rises and stops it 180
-  to 255 ns after it falls. A pulse of 4 timer ticks or less gives almost
-  no light. Past 4 ticks, one more tick adds up to 2.34 times the light
-  that a tick adds to a long pulse for red, 3.38 for green and 2.46 for
-  blue, and a short pulse gives on average up to 1.39, 1.56 and 1.43 times
-  that light per tick. A long pulse gives about 13 ticks more light than
-  its duty. The firmware turns light into duties through a measured table
-  per channel (`app_led_light_cal` in `firmware/src/app/app_config.c`,
-  [docs/bringup.md](../docs/bringup.md#led-calibration)). The tables
-  follow the threshold of each board's MOSFETs: over the datasheet's
-  threshold range, the model moves the first visible pulse from 3 to 8
-  ticks and the extra light of blue from 1 to 18 ticks. Smaller gate
-  resistors do not cure it: with 10 to 22 Ω the edges get only 2 to 3.5
-  times faster, since the pin's own resistance stays in series, and each
-  pin would carry 45 to 95 mA against its 25 mA rating.
+  4 nC from the 3.3 V drive (6 nC is the datasheet figure at 4.5 V) through
+  100 Ω (R7 to R9) plus the pin's own resistance, 20 to 50 Ω by the fits
+  and never measured. A model fitted to the measured tables starts the LED
+  current 50 to 90 ns after the pin rises and stops it 180 to 255 ns after
+  it falls. A pulse of 4 timer ticks or less gives almost no light. Past
+  4 ticks, one more tick adds up to 2.34 times the light that a tick adds
+  to a long pulse for red, 3.38 for green and 2.46 for blue, and a short
+  pulse gives on average up to 1.39, 1.56 and 1.43 times that light per
+  tick. A long pulse gives about 13 ticks more light than its duty. The
+  firmware turns light into duties through a measured table per channel
+  (`app_led_light_cal` in `firmware/src/app/app_config.c`,
+  [docs/bringup.md](../docs/bringup.md#led-calibration)). The tables follow
+  the threshold of each board's MOSFETs: over the datasheet's threshold
+  range, the model moves the first visible pulse from 3 to 8 ticks and the
+  extra light of blue from 1 to 18 ticks. Smaller gate resistors do not
+  cure it: with 10 to 22 Ω the edges get only 2 to 3.5 times faster, since
+  the pin's own resistance stays in series, and each pin would carry 45 to
+  95 mA against its 25 mA rating.
 - **N5, VBUS.** The LED currents move 3 to 4.5 % per 0.1 V of VBUS at 5 V,
   and more on weak ports. C2 on VBUS and C1 behind the regulator, 10 µF
   each, probably make the board draw about 70 µC at plug-in, against the

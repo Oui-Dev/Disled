@@ -39,10 +39,10 @@ A long press is told by the change it makes.
 
 The power-only mode suits a host that chooses the color, as the desktop app
 does while it follows an integration: a short press changes nothing on the
-lamp, and a long press still turns it on or off. The lamp goes back to normal touch by
-itself when the USB link leaves the configured state, and after 10 s without
-any command, as when the app stopped without a word. The app keeps the mode
-with a command every 3 s.
+lamp, and a long press still turns it on or off. The lamp goes back to
+normal touch by itself when the USB link leaves the configured state, and
+after 10 s without any command, as when the app stopped without a word. The
+app keeps the mode with a command every 3 s.
 
 During an alert the touch does nothing, in both modes: no color change and
 no power change, though the host still hears of a short press. A press
@@ -56,9 +56,8 @@ release, and the host does not hear of it.
   mode.
 - It defines the custom colors of slots 4 to 15, in linear sRGB as a screen
   shows them, which the lamp shows through its LED calibration, and empties
-  them. An
-  emptied slot leaves the touch cycle, and a lamp that shows it takes the
-  first color of the cycle.
+  them. An emptied slot leaves the touch cycle, and a lamp that shows it
+  takes the first color of the cycle.
 - It sets the touch cycle: 1 to 9 slots that hold a color, none twice.
   Setting the cycle does not change the color shown.
 - It starts an alert, 1 to 10 breaths over the lamp color
@@ -96,8 +95,8 @@ and its colors drift. Hosts see and send the levels unchanged.
 An alert breathes over the lamp color, up from a dim lamp and down from a
 bright one, for the number of breaths and the period the host asks, then
 ends by itself and tells the host. The desktop app always asks for three
-breaths of 1.5 s. The lamp must be on: an alert never waits for it. Turning the lamp
-off, a USB suspend and the self-test end it.
+breaths of 1.5 s. The lamp must be on: an alert never waits for it. Turning
+the lamp off, a USB suspend and the self-test end it.
 
 ## USB states and LED power limits
 
