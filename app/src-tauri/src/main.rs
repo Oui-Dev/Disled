@@ -23,7 +23,7 @@ mod updates;
 mod windows;
 
 use colors::{Around, ColorsState, Palette, PaletteChange, PreviewState};
-use control::{ControlState, ControlStatus, Input};
+use control::{ControlState, ControlStatus, Input, LampChoice};
 use device::{Connection, DeviceHandle};
 use disled_protocol::{Command, SetState};
 use firmware::{FirmwareState, FirmwareStatus};
@@ -62,30 +62,12 @@ fn device_send(device: State<'_, DeviceHandle>, command: Command) -> Result<(), 
     device.send(command)
 }
 
-/// What the user chose for the lamp: off, or on, with a color slot or the
-/// color it keeps.
-#[derive(Debug, Clone, Copy, Deserialize)]
-#[cfg_attr(test, derive(ts_rs::TS), ts(export, optional_fields))]
-struct LampChoice {
-    on: bool,
-    slot: Option<u8>,
-}
-
 /// A choice of the user for the lamp, from a tile or the card of an
 /// integration in the popup. The control hears of it: during a call, the
 /// choice keeps the hand.
 #[tauri::command]
 fn lamp_choose(app: AppHandle, choice: LampChoice) -> Result<(), String> {
-    if !app.state::<DeviceHandle>().connection().connected {
-        return Err("no Disled lamp connected".into());
-    }
-    control::input(
-        &app,
-        Input::Choose {
-            on: choice.on,
-            slot: choice.slot,
-        },
-    )
+    control::input(&app, Input::Choose(choice))
 }
 
 /// What the windows show of the control, for a window that starts.
