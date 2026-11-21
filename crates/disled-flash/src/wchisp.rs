@@ -9,11 +9,16 @@ use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
+use std::time::Duration;
 
 use serde::Serialize;
 
 /// Start of the name wchisp gives the lamp's chip, `CH32V203G6U6[0x3619]`.
-pub const CHIP: &str = "CH32V203";
+const CHIP: &str = "CH32V203";
+/// How often the wait for the bootloader probes.
+pub const POLL: Duration = Duration::from_secs(1);
+/// Failed probes in a row before the wait for the bootloader gives up.
+const PROBE_FAILURES: u32 = 5;
 
 /// File name of the program.
 pub const PROGRAM: &str = if cfg!(windows) {
@@ -38,7 +43,7 @@ pub enum Probe {
     NoPermission,
 }
 
-/// Steps of `wchisp flash`.
+/// Steps of a flash.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export))]
 #[serde(rename_all = "snake_case")]
@@ -109,10 +114,40 @@ impl Wchisp {
         parse_probe(&text)
     }
 
+    /// Probes every `POLL` until the lamp's bootloader shows up, and returns
+    /// the name of its chip. Fails after `PROBE_FAILURES` failed probes in a
+    /// row. `hear` runs before each probe with None, so that the caller may
+    /// stop the wait with an error, as when the user cancels. It runs again
+    /// after a probe that found something else, with that probe and whether
+    /// it counts yet (`settled`).
+    pub fn wait_for_bootloader<E: From<String>>(
+        &self,
+        mut hear: impl FnMut(Option<&Probe>, bool) -> Result<(), E>,
+    ) -> Result<String, E> {
+        let mut previous = None;
+        let mut failures = 0;
+        loop {
+            hear(None, false)?;
+            match self.probe() {
+                Ok(Probe::Ready(chip)) if chip.starts_with(CHIP) => return Ok(chip),
+                Ok(probe) => {
+                    failures = 0;
+                    hear(Some(&probe), settled(&probe, previous.as_ref()))?;
+                    previous = Some(probe);
+                }
+                Err(error) => {
+                    failures += 1;
+                    if failures >= PROBE_FAILURES {
+                        return Err(error.into());
+                    }
+                }
+            }
+            thread::sleep(POLL);
+        }
+    }
+
     /// Erases the whole code flash of the bootloader that `probe` found.
-    /// `flash` erases only the sectors the new firmware covers, which would
-    /// leave the end of a longer firmware behind it.
-    pub fn erase(&self) -> Result<(), String> {
+    fn erase(&self) -> Result<(), String> {
         let output = self.command().arg("erase").output().map_err(cannot_run)?;
         let text =
             String::from_utf8_lossy(&output.stdout) + String::from_utf8_lossy(&output.stderr);
@@ -124,8 +159,13 @@ impl Wchisp {
     }
 
     /// Flashes a firmware file into the bootloader that `probe` found, then
-    /// restarts the chip. Reports each stage as wchisp reaches it.
+    /// restarts the chip. Reports each stage as it starts. It erases the
+    /// whole flash first: `wchisp flash` erases only the sectors the new
+    /// firmware covers, which would leave the end of a longer firmware behind
+    /// it.
     pub fn flash(&self, file: &Path, mut on_stage: impl FnMut(Stage)) -> Result<(), String> {
+        on_stage(Stage::Erasing);
+        self.erase()?;
         let mut child = self
             .command()
             .arg("flash")
@@ -162,6 +202,13 @@ impl Wchisp {
 
 fn cannot_run(error: std::io::Error) -> String {
     format!("cannot run wchisp: {error}")
+}
+
+/// A probe that found nothing counts at once. Any other counts only when the
+/// probe before found the same, since a bootloader that just appeared may not
+/// open at once.
+fn settled(probe: &Probe, previous: Option<&Probe>) -> bool {
+    *probe == Probe::Nothing || previous == Some(probe)
 }
 
 fn parse_probe(text: &str) -> Result<Probe, String> {
@@ -210,7 +257,6 @@ fn parse_erase(text: &str) -> Result<(), String> {
 
 fn parse_stage(line: &str) -> Option<Stage> {
     [
-        ("Erasing...", Stage::Erasing),
         ("Writing to code flash...", Stage::Writing),
         ("Verifying...", Stage::Verifying),
         ("Now reset device", Stage::Restarting),
@@ -344,14 +390,22 @@ mod tests {
         .into_iter()
         .filter_map(parse_stage)
         .collect();
+        // The erase of `wchisp flash` follows that of the whole flash: it is
+        // no stage of its own.
         assert_eq!(
             stages,
-            [
-                Stage::Erasing,
-                Stage::Writing,
-                Stage::Verifying,
-                Stage::Restarting
-            ]
+            [Stage::Writing, Stage::Verifying, Stage::Restarting]
         );
+    }
+
+    #[test]
+    fn a_probe_counts_once_it_repeats_unless_it_found_nothing() {
+        assert!(settled(&Probe::Nothing, None));
+        assert!(!settled(&Probe::DriverMissing, None));
+        assert!(!settled(&Probe::DriverMissing, Some(&Probe::Several)));
+        assert!(settled(&Probe::DriverMissing, Some(&Probe::DriverMissing)));
+        let other = Probe::Ready("CH32V003F4P6[0x0F]".into());
+        assert!(!settled(&other, Some(&Probe::Nothing)));
+        assert!(settled(&other, Some(&other)));
     }
 }
