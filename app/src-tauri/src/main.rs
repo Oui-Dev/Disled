@@ -604,9 +604,6 @@ fn main() {
         .manage(PluginsState::default())
         .manage(CatalogState::default())
         .setup(move |app| {
-            // No Dock icon, since the app lives in the menu bar.
-            #[cfg(target_os = "macos")]
-            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             // The shortcut of the developer tools, in debug builds only,
             // which a capability file would grant to every build.
             #[cfg(debug_assertions)]
@@ -689,6 +686,17 @@ fn main() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building the Disled app");
+
+    // No Dock icon, since the app lives in the menu bar. Given before the
+    // event loop, the policy is the one the launch applies. Set in the setup,
+    // it changed after the launch had activated the app, and the change
+    // deactivated it, which hid the popup the launch had just shown.
+    #[cfg(target_os = "macos")]
+    let app = {
+        let mut app = app;
+        app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+        app
+    };
 
     let mut restarting = false;
     app.run(move |app, event| match event {
