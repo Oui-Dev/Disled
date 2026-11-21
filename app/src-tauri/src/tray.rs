@@ -101,8 +101,8 @@ pub fn color_of(
 }
 
 /// The look of a lamp state, in the color and under the name of
-/// `color_of`, "More" for a slot without a name. The preview slot of the
-/// editor changes eight times a second, so the icon keeps its look: `None`.
+/// `color_of`, "More" for a slot without a name. The preview slot changes
+/// at every move in the editor, so the icon keeps its look: `None`.
 pub fn look_of(state: &State, palette: &Palette, locale: Locale) -> Option<Look> {
     if !state.on {
         return Some(Look::Off);

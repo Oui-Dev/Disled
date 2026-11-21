@@ -104,11 +104,8 @@ impl Palette {
     /// Reads a saved palette part by part: a name, a custom color or a slot
     /// of the cycle that is not valid drops alone, past the fifth custom color
     /// the rest drops, and a cycle left empty is the default one. A custom
-    /// color takes the color that the lamp shows for its code (`light_hex`):
-    /// app 2.1 kept the codes as the user typed them, such as a brown, which
-    /// the lamp lights as amber. The start of the app saves the palette so,
-    /// once, and the lamp gets it at its next connection, its light barely
-    /// changed.
+    /// color takes the code of its light (`light_hex`), which brightens the
+    /// darker codes that apps 2.0 and 2.1 kept.
     pub fn from_value(value: &Value) -> Self {
         let mut palette = Palette::default();
         if let Some(names) = value.get("names").and_then(Value::as_array) {
@@ -191,9 +188,8 @@ impl Palette {
 
 /// The light of the lamp for a color code: sRGB to linear light (IEC
 /// 61966-2-1), scaled so that the largest channel is 65535, as the lamp
-/// requires. The brightness stays apart, so a dark code and its bright
-/// version give the same light. `None` for a code that is not `#RRGGBB`, or
-/// black, which has no light to scale.
+/// requires. `None` for a code that is not `#RRGGBB`, or black, which has
+/// no light to scale.
 pub fn led_of(hex: &str) -> Option<LinearRgb> {
     let [r, g, b] = parse_hex(hex)
         .filter(|channels| *channels != [0; 3])?
@@ -271,9 +267,8 @@ impl Palette {
         (BUILT_IN..=LAST_CUSTOM_SLOT).find(|slot| !self.defines(*slot))
     }
 
-    /// Adds a custom color, for no `slot`, or changes one. Returns its slot.
-    /// It keeps the color that the lamp shows for the code: the editor sends
-    /// such codes only, and any other turns into one.
+    /// Adds a custom color, for no `slot`, or changes one, under the code of
+    /// its light (`light_hex`). Returns its slot.
     pub fn save_custom(&mut self, slot: Option<u8>, name: &str, hex: &str) -> Result<u8, String> {
         let name = valid_name(name).ok_or("a name has 1 to 16 characters")?;
         let hex = light_hex(hex).ok_or("not a color code")?;
@@ -333,12 +328,12 @@ impl Palette {
         Ok(())
     }
 
-    /// Deletes a custom color, even one in use (annex C, C.6.6). The cycle
-    /// closes on it first, so that no touch reaches it any more. A lamp that
-    /// keeps it then takes its replacement in one step: the call color while
-    /// a call imposes it, the color of the plugin state while a plugin drives
-    /// the lamp, otherwise the first color of the cycle. Last, the slot is
-    /// emptied, which leaves the fallback of the firmware nothing to do.
+    /// Deletes a custom color, even one in use. The cycle closes on it first,
+    /// so that no touch reaches it any more. A lamp that keeps it then takes
+    /// its replacement in one step: the call color while a call imposes it,
+    /// the color of the plugin state while a plugin drives the lamp,
+    /// otherwise the first color of the cycle. Last, the slot is emptied,
+    /// which leaves the fallback of the firmware nothing to do.
     pub fn delete(&self, slot: u8, around: &Around) -> Option<PaletteChange> {
         let mut palette = self.clone();
         let index = palette.custom.iter().position(|color| color.slot == slot)?;
@@ -388,8 +383,7 @@ impl Palette {
     /// Takes a shared palette in place of this one: every custom color goes
     /// first, with the fallbacks of a deletion, then the colors of the code
     /// take the slots from `BUILT_IN` on, in their order, and the names and
-    /// the cycle follow. The colors come as `read_share_code` gives them,
-    /// each the color the lamp shows.
+    /// the cycle follow.
     pub fn import(&self, shared: &Palette, around: &Around) -> PaletteChange {
         let mut change = PaletteChange {
             palette: self.clone(),
@@ -531,8 +525,7 @@ impl PreviewState {
     }
 }
 
-/// The prefix of a share code, which keeps its capitals (decided on
-/// 2026-11-09).
+/// The prefix of a share code, which keeps its capitals.
 pub const SHARE_PREFIX: &str = "DISLED2-";
 /// The version of the content of a share code. A later one raises it only
 /// if an older app would misread the code.
@@ -552,11 +545,11 @@ struct Shared {
 }
 
 /// Reads a share code in a pasted text, which may hold other words and the
-/// line breaks of a messaging app (annex C, C.7.3). From the first prefix,
-/// the code runs to the first blank. As long as it does not decode, the piece
-/// after a line break joins it, up to the next blank. The first code that
-/// decodes wins; past `SHARE_MAX` characters, or with nothing left to join,
-/// the text has no code.
+/// line breaks of a messaging app. From the first prefix, the code runs to
+/// the first blank. As long as it does not decode, the piece after a line
+/// break joins it, up to the next blank. The first code that decodes wins;
+/// past `SHARE_MAX` characters, or with nothing left to join, the text has
+/// no code.
 pub fn read_share_code(text: &str) -> Option<Palette> {
     let mut rest = &text[text.find(SHARE_PREFIX)?..];
     let mut code = String::new();
@@ -580,10 +573,8 @@ pub fn read_share_code(text: &str) -> Option<Palette> {
     }
 }
 
-/// The palette of a share code, if every part of it holds. Its custom colors
-/// take the color that the lamp shows for their codes, as those of the file
-/// do, since an app 2.1 may have shared a darker one: the import preview and
-/// the import both read them here.
+/// The palette of a share code, if every part of it holds, its colors under
+/// the code of their light (`light_hex`).
 fn decode_share(code: &str) -> Option<Palette> {
     let bytes = URL_SAFE_NO_PAD
         .decode(code.strip_prefix(SHARE_PREFIX)?)
@@ -625,7 +616,7 @@ mod tests {
 
     #[test]
     fn led_of_scales_the_linear_light_to_full_scale() {
-        // The table of annex C, computed on the code as typed.
+        // Reference values of led_of.
         let table = [
             ("#FF0000", [65535, 0, 0]),
             ("#FFFFFF", [65535, 65535, 65535]),
@@ -665,8 +656,7 @@ mod tests {
     fn light_hex_keeps_the_codes_it_gives() {
         // A grid of 18 steps per channel, both ends included: a code with a
         // channel at FF keeps itself, any other gets one, and a second pass
-        // changes nothing. A check of all 16,777,215 codes, once, found the
-        // same, but takes too long for a test.
+        // changes nothing.
         let steps: Vec<u8> = (0..=255).step_by(15).collect();
         for &r in &steps {
             for &g in &steps {
