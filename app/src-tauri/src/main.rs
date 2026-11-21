@@ -350,9 +350,7 @@ fn colors_preview(app: AppHandle, hex: Option<String>) -> Result<(), String> {
             if !app.state::<SettingsState>().get().color_preview {
                 return Ok(());
             }
-            let rgb = colors::parse_hex(&hex)
-                .and_then(|hex| colors::led_of(&hex))
-                .ok_or("not a color code")?;
+            let rgb = colors::led_of(&hex).ok_or("not a color code")?;
             preview.follow(&lamp, rgb)
         }
         None => preview.end(None),

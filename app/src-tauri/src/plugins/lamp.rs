@@ -11,7 +11,7 @@
 use disled_protocol::{BrightnessMode, ChangeSource, State};
 use serde::Serialize;
 
-use crate::colors::{PREVIEW_SLOT, Palette};
+use crate::colors::{PREVIEW_SLOT, Palette, hex_of};
 use crate::i18n::Locale;
 use crate::tray;
 
@@ -103,14 +103,14 @@ pub fn view(
         Some(kept) if state.color == PREVIEW_SLOT => kept,
         _ => (state.on, state.color),
     };
-    let ([r, g, b], name) = tray::color_of(slot, state.rgb, palette, locale);
+    let (rgb, name) = tray::color_of(slot, state.rgb, palette, locale);
     Lamp {
         connected: true,
         on: Some(on),
         color: Some(Color {
             slot,
             name,
-            hex: format!("#{r:02X}{g:02X}{b:02X}"),
+            hex: hex_of(rgb),
         }),
         brightness: Some(Brightness {
             mode: state.brightness_mode,

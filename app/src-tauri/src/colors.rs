@@ -84,14 +84,20 @@ fn valid_name(name: &str) -> Option<String> {
         .then(|| name.to_owned())
 }
 
-/// A code of the form `#RRGGBB` in upper case, if it is one and not black.
-fn valid_hex(hex: &str) -> Option<String> {
+/// The channels of a code `#RRGGBB`, in either case.
+pub fn parse_hex(hex: &str) -> Option<[u8; 3]> {
     let digits = hex.strip_prefix('#')?;
-    if digits.len() != 6 || !digits.chars().all(|c| c.is_ascii_hexdigit()) {
+    // Also keeps out the sign that `from_str_radix` accepts.
+    if digits.len() != 6 || !digits.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         return None;
     }
-    let hex = format!("#{}", digits.to_ascii_uppercase());
-    (hex != "#000000").then_some(hex)
+    let [_, r, g, b] = u32::from_str_radix(digits, 16).ok()?.to_be_bytes();
+    Some([r, g, b])
+}
+
+/// The code `#RRGGBB` of three channels, in upper case.
+pub fn hex_of([r, g, b]: [u8; 3]) -> String {
+    format!("#{r:02X}{g:02X}{b:02X}")
 }
 
 impl Palette {
@@ -189,16 +195,16 @@ impl Palette {
 /// version give the same light. `None` for a code that is not `#RRGGBB`, or
 /// black, which has no light to scale.
 pub fn led_of(hex: &str) -> Option<LinearRgb> {
-    let hex = valid_hex(hex)?;
-    let channel = |at: usize| -> f64 {
-        let value = f64::from(u8::from_str_radix(&hex[at..at + 2], 16).unwrap_or(0)) / 255.0;
-        if value <= 0.04045 {
-            value / 12.92
-        } else {
-            ((value + 0.055) / 1.055).powf(2.4)
-        }
-    };
-    let (r, g, b) = (channel(1), channel(3), channel(5));
+    let [r, g, b] = parse_hex(hex)
+        .filter(|channels| *channels != [0; 3])?
+        .map(|channel| {
+            let value = f64::from(channel) / 255.0;
+            if value <= 0.04045 {
+                value / 12.92
+            } else {
+                ((value + 0.055) / 1.055).powf(2.4)
+            }
+        });
     let max = r.max(g).max(b);
     let scale = |value: f64| (value / max * 65535.0).round() as u16;
     Some(LinearRgb {
@@ -228,23 +234,8 @@ pub fn srgb_of(light: LinearRgb) -> [u8; 3] {
 /// as it is, and a darker one becomes its bright version, as a brown becomes
 /// amber. The app keeps and shows the custom colors so, which the lamp then
 /// shows as they are. `None` for a code that `led_of` refuses.
-pub fn light_hex(hex: &str) -> Option<String> {
-    let [r, g, b] = srgb_of(led_of(hex)?);
-    Some(format!("#{r:02X}{g:02X}{b:02X}"))
-}
-
-/// Reads a color code that a window sends: 3 or 6 hexadecimal digits, with
-/// or without "#". It gives the same color as `#RRGGBB` in upper case, and
-/// refuses black, which has no light.
-pub fn parse_hex(input: &str) -> Option<String> {
-    let input = input.trim();
-    let digits = input.strip_prefix('#').unwrap_or(input);
-    let digits: String = match digits.chars().count() {
-        3 => digits.chars().flat_map(|c| [c, c]).collect(),
-        6 => digits.to_owned(),
-        _ => return None,
-    };
-    valid_hex(&format!("#{digits}"))
+fn light_hex(hex: &str) -> Option<String> {
+    Some(hex_of(srgb_of(led_of(hex)?)))
 }
 
 /// What else uses the colors when one goes: the lamp, the calls and the
@@ -285,9 +276,7 @@ impl Palette {
     /// such codes only, and any other turns into one.
     pub fn save_custom(&mut self, slot: Option<u8>, name: &str, hex: &str) -> Result<u8, String> {
         let name = valid_name(name).ok_or("a name has 1 to 16 characters")?;
-        let hex = parse_hex(hex)
-            .and_then(|hex| light_hex(&hex))
-            .ok_or("not a color code")?;
+        let hex = light_hex(hex).ok_or("not a color code")?;
         match slot {
             None => {
                 let slot = self.free_slot().ok_or("five custom colors at most")?;
@@ -611,9 +600,6 @@ fn decode_share(code: &str) -> Option<Palette> {
         };
     }
     for (rank, (name, hex)) in shared.c.iter().enumerate() {
-        if hex.len() != 6 {
-            return None;
-        }
         palette.custom.push(CustomColor {
             slot: BUILT_IN + rank as u8,
             name: valid_name(name)?,
@@ -827,19 +813,6 @@ mod tests {
     }
 
     #[test]
-    fn a_typed_code_is_read_as_it_is_typed() {
-        assert_eq!(parse_hex("#3B82F6").as_deref(), Some("#3B82F6"));
-        assert_eq!(parse_hex("3b82f6").as_deref(), Some("#3B82F6"));
-        assert_eq!(parse_hex("F0A").as_deref(), Some("#FF00AA"));
-        assert_eq!(parse_hex("#f0a").as_deref(), Some("#FF00AA"));
-        // A grey stays grey, though the lamp shows it at full light.
-        assert_eq!(parse_hex("#808080").as_deref(), Some("#808080"));
-        for refused in ["#12345", "#GGGGGG", "#000000", "000", "", "#1234567"] {
-            assert_eq!(parse_hex(refused), None, "{refused}");
-        }
-    }
-
-    #[test]
     fn a_new_color_takes_the_lowest_free_slot() {
         let mut palette = two_colors();
         assert_eq!(palette.save_custom(None, "Lecture", "#F6D32D"), Ok(6));
@@ -885,10 +858,6 @@ mod tests {
             .save_custom(None, "Marron", "#704214")
             .expect("saved");
         assert_eq!(palette.custom[0].hex, "#FF9D3B");
-        palette
-            .save_custom(Some(slot), "Gris", "888")
-            .expect("saved");
-        assert_eq!(palette.custom[0].hex, "#FFFFFF");
         palette
             .save_custom(Some(slot), "Ambre", "#ff9d3b")
             .expect("saved");
