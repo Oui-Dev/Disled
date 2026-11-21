@@ -405,9 +405,7 @@
       "power_on": "power on",
       "pin": "reset pin",
       "software": "software",
-      "watchdog": "watchdog",
-      "window_watchdog": "window watchdog",
-      "low_power": "low power"
+      "watchdog": "watchdog"
     },
     "changeSource": {
       "boot": "start-up",
