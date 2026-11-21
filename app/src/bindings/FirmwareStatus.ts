@@ -10,12 +10,8 @@ export type FirmwareStatus = {
  */
 checking: boolean, 
 /**
- * The newest firmware 2.x, which the update buttons install.
- */
-latest: string | null, 
-/**
- * The firmware the app can install, newest first: the signed 2.x, then
- * the last 1.x, to go back to Disled v1.
+ * The signed firmware 2.x, newest first. The update buttons install
+ * the first.
  */
 versions: Array<string>, 
 /**

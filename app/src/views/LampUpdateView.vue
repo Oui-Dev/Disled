@@ -27,7 +27,8 @@ const finished = computed(() => flash.value.step === 'done' || failed.value);
 const waitingForBootloader = computed(() => stepOf(flash.value) === 1);
 
 const summary = computed(() => {
-  const { latest, error } = firmware.status;
+  const { latest } = firmware;
+  const { error } = firmware.status;
   const version = lamp.info?.firmware_version;
   if (!latest) {
     return error ? t('lampUpdate.notFound', { detail: error }) : t('lampUpdate.noFirmware');
@@ -59,7 +60,7 @@ function close(): Promise<void> {
     </header>
 
     <i18n-t
-      v-if="idle && firmware.status.latest"
+      v-if="idle && firmware.latest"
       keypath="lampUpdate.intro"
       tag="p"
       scope="global"
@@ -74,7 +75,7 @@ function close(): Promise<void> {
     <footer class="mt-auto flex justify-end gap-2">
       <template v-if="idle">
         <UButton
-          v-if="!firmware.status.latest"
+          v-if="!firmware.latest"
           color="neutral"
           variant="outline"
           icon="i-lucide-refresh-cw"

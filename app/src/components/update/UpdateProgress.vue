@@ -26,7 +26,7 @@ const firmware = useFirmwareStore();
 const flash = computed(() => firmware.status.flash);
 const failed = computed(() => flash.value.step === 'failed');
 /** The version on its way to the lamp, or the one the guided window would install. */
-const version = computed(() => firmware.status.target ?? firmware.status.latest);
+const version = computed(() => firmware.status.target ?? firmware.latest);
 
 /** The step on show: the current one, or the one a failed update stopped at. */
 const shown = ref(-1);
