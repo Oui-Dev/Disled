@@ -10,7 +10,7 @@
   settings of the program. A first event folds the note.
 -->
 <script setup lang="ts">
-import { useTimeoutFn } from '@vueuse/core';
+import { refAutoReset } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { FilledBlock } from '@/bindings/FilledBlock';
@@ -63,19 +63,12 @@ const blockPieces = computed(() => {
     .filter((piece) => piece.text);
 });
 
-const copied = ref(false);
-const { start: forgetCopied } = useTimeoutFn(
-  () => {
-    copied.value = false;
-  },
-  2000,
-  { immediate: false },
-);
+/** "Copied" shows for two seconds. */
+const copied = refAutoReset(false, 2000);
 
 async function copy(): Promise<void> {
   if (await plugins.copyNote(props.plugin.id)) {
     copied.value = true;
-    forgetCopied();
   }
 }
 </script>
