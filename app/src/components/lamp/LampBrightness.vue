@@ -14,10 +14,8 @@ import type { SettingsPatch } from '@/bindings/SettingsPatch';
 import { useLampStore } from '@/stores/lamp';
 import { useSettingsStore } from '@/stores/settings';
 import { useSignedPercent } from '@/utils/format';
-import { AUTO_BIAS_MAX, AUTO_BIAS_MIN } from '@/utils/lamp';
+import { AUTO_BIAS_MAX, AUTO_BIAS_MIN, MOVE_UPDATE_MS } from '@/utils/lamp';
 
-/** How often a moving slider updates the lamp. */
-const MOVE_UPDATE_MS = 120;
 /** The correction moves by this much, percent. */
 const BIAS_STEP = 5;
 

@@ -26,6 +26,7 @@ import { colorsPreview } from '@/ipc/commands';
 import { useColorsStore } from '@/stores/colors';
 import { useLampStore } from '@/stores/lamp';
 import { useSettingsStore } from '@/stores/settings';
+import { MOVE_UPDATE_MS } from '@/utils/lamp';
 
 const props = defineProps<{
   /** The color to change, or null for a new one. */
@@ -45,9 +46,6 @@ const SUGGESTIONS = [
   { key: 'pink', hex: '#FF70BA' },
   { key: 'coolWhite', hex: '#EDF5FF' },
 ] as const;
-
-/** The preview follows the draft at most this often, as the brightness does. */
-const PREVIEW_MS = 120;
 
 const { t, n } = useI18n();
 const colors = useColorsStore();
@@ -131,6 +129,11 @@ const previewing = computed(() => (settings.settings?.color_preview ?? true) && 
 let lastSent = 0;
 let pending: ReturnType<typeof setTimeout> | undefined;
 
+/**
+ * Shows a code on the lamp, at most every MOVE_UPDATE_MS, or ends the
+ * preview with null. Not useThrottleFn: a pending call must be dropped when
+ * the preview ends or the color is saved.
+ */
 function preview(code: string | null): void {
   clearTimeout(pending);
   pending = undefined;
@@ -138,7 +141,7 @@ function preview(code: string | null): void {
     void colorsPreview(null);
     return;
   }
-  const wait = lastSent + PREVIEW_MS - Date.now();
+  const wait = lastSent + MOVE_UPDATE_MS - Date.now();
   if (wait > 0) {
     pending = setTimeout(() => preview(code), wait);
     return;
