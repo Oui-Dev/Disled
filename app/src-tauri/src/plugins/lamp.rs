@@ -197,7 +197,7 @@ mod tests {
             json!({
                 "connected": true,
                 "on": true,
-                "color": { "slot": 0, "name": "Libre", "hex": "#00FFA2" },
+                "color": { "slot": 0, "name": "Libre", "hex": "#00F57A" },
                 "brightness": { "mode": "auto", "level": 40 },
                 "source": "touch",
                 "follows": null

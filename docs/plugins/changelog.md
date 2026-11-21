@@ -9,7 +9,7 @@ know. Version 2 will come only with a change that breaks a plugin.
 
 - The `color.hex` of the built-in colors in the `lamp` notifications
   ([reading the lamp](lamp.md)) follows the colors of the lamp: green
-  `#00FFA2`, orange `#FF6F00`, red `#FF001C` and warm white `#FFAD59`, as
+  `#00F57A`, orange `#FF6F00`, red `#FF001C` and warm white `#FFAD59`, as
   the app now shows them.
 - The `color.hex` of a custom color is always the color the lamp shows,
   its largest channel at `FF`: a color saved with a darker code is
