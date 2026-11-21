@@ -699,6 +699,12 @@ impl Host {
     }
 }
 
+/// Reads the host. Unlike `with`, it neither syncs the control nor redraws
+/// the windows, so a window can call it each time it redraws.
+fn read<T>(app: &AppHandle, look: impl FnOnce(&Host) -> T) -> Option<T> {
+    app.state::<PluginsState>().host.lock().as_ref().map(look)
+}
+
 /// Runs a change on the host, then what it leaves to do: the programs that
 /// stop, the control, the settings, the windows.
 fn with<T>(app: &AppHandle, change: impl FnOnce(&mut Host, &mut Outbox) -> T) -> Option<T> {
@@ -726,6 +732,14 @@ fn with<T>(app: &AppHandle, change: impl FnOnce(&mut Host, &mut Outbox) -> T) ->
         let _ = app.emit(EVENT_PLUGINS, views);
     }
     Some(result)
+}
+
+/// A change asked by a window, which fails while the host has not started.
+fn change<T>(
+    app: &AppHandle,
+    edit: impl FnOnce(&mut Host, &mut Outbox) -> Result<T, String>,
+) -> Result<T, String> {
+    with(app, edit).unwrap_or_else(|| Err("the plugins are not ready".into()))
 }
 
 /// Starts the host: reads the plugins, runs the programs of the active
@@ -782,17 +796,12 @@ pub fn start(app: &AppHandle) {
 /// The states whose time ran out leave.
 fn tick(app: &AppHandle) {
     let now = Instant::now();
-    let due = app
-        .state::<PluginsState>()
-        .host
-        .lock()
-        .as_ref()
-        .is_some_and(|host| {
-            host.plugins
-                .values()
-                .any(|plugin| plugin.keys.next_expiry().is_some_and(|until| until <= now))
-        });
-    if due {
+    let due = read(app, |host| {
+        host.plugins
+            .values()
+            .any(|plugin| plugin.keys.next_expiry().is_some_and(|until| until <= now))
+    });
+    if due == Some(true) {
         with(app, |host, _| {
             let ids: Vec<String> = host.plugins.keys().cloned().collect();
             for id in ids {
@@ -901,7 +910,7 @@ pub fn list(app: &AppHandle) -> Vec<PluginView> {
 
 /// The block of a note, with the address and the token of the plugin.
 pub fn note(app: &AppHandle, id: &str) -> Option<FilledBlock> {
-    with(app, |host, _| {
+    read(app, |host| {
         let block = host.manifest(id)?.note.as_ref()?.block.as_ref()?.text();
         let url = format!("{HOOKS_URL}{id}");
         let token = host.tokens.get(id).map(str::to_owned);
@@ -924,7 +933,7 @@ pub fn copy_note(app: &AppHandle, id: &str) -> Result<(), String> {
 /// The approval, for the fingerprint that the question showed: the plugin
 /// turns on, with its token and its program.
 pub fn approve(app: &AppHandle, id: &str, fingerprint: &str) -> Result<(), String> {
-    with(app, |host, outbox| {
+    change(app, |host, outbox| {
         host.rescan(app, outbox);
         let current = host
             .plugins
@@ -949,14 +958,13 @@ pub fn approve(app: &AppHandle, id: &str, fingerprint: &str) -> Result<(), Strin
         host.save(outbox);
         Ok(())
     })
-    .unwrap_or_else(|| Err("the plugins are not ready".into()))
 }
 
 /// Turns a plugin on or off. On wants the approval of its files as they
 /// are; off stops its program and forgets its states, and the lamp it
 /// drove goes back to the user.
 pub fn set_enabled(app: &AppHandle, id: &str, enabled: bool) -> Result<(), String> {
-    with(app, |host, outbox| {
+    change(app, |host, outbox| {
         host.rescan(app, outbox);
         if enabled && !host.approved(id) {
             return Err("the plugin needs an approval".into());
@@ -974,7 +982,6 @@ pub fn set_enabled(app: &AppHandle, id: &str, enabled: bool) -> Result<(), Strin
         host.save(outbox);
         Ok(())
     })
-    .unwrap_or_else(|| Err("the plugins are not ready".into()))
 }
 
 /// The color of a state of a plugin.
@@ -983,7 +990,7 @@ pub fn set_color(app: &AppHandle, id: &str, state: &str, slot: u8) -> Result<(),
     if slot >= BUILT_IN && !palette.defines(slot) {
         return Err("no such color".into());
     }
-    with(app, |host, outbox| {
+    change(app, |host, outbox| {
         if host
             .manifest(id)
             .and_then(|manifest| manifest.state(state))
@@ -995,24 +1002,22 @@ pub fn set_color(app: &AppHandle, id: &str, state: &str, slot: u8) -> Result<(),
         host.save(outbox);
         Ok(())
     })
-    .unwrap_or_else(|| Err("the plugins are not ready".into()))
 }
 
 /// A new token: the old one stops working, and the note unfolds again.
 pub fn regenerate_token(app: &AppHandle, id: &str) -> Result<(), String> {
-    with(app, |host, outbox| {
+    change(app, |host, outbox| {
         host.tokens.regenerate(id).map_err(|e| e.to_string())?;
         host.entry(id).installed = false;
         host.save(outbox);
         Ok(())
     })
-    .unwrap_or_else(|| Err("the plugins are not ready".into()))
 }
 
 /// Removes a plugin: its program, its folder, its token, its data, and what
 /// the app kept of it.
 pub fn remove(app: &AppHandle, id: &str) -> Result<(), String> {
-    with(app, |host, outbox| {
+    change(app, |host, outbox| {
         // A folder the scan found, unreadable ones too: a plain name, never
         // a path, since the scan takes the names of the folder's entries.
         if !host.plugins.contains_key(id) {
@@ -1024,7 +1029,6 @@ pub fn remove(app: &AppHandle, id: &str) -> Result<(), String> {
         host.save(outbox);
         Ok((host.folder.join(id), host.data.join(id)))
     })
-    .unwrap_or_else(|| Err("the plugins are not ready".into()))
     .and_then(|(folder, data)| {
         // Once the program stopped, its files can go.
         std::fs::remove_dir_all(&folder).map_err(|e| e.to_string())?;
@@ -1037,7 +1041,7 @@ pub fn remove(app: &AppHandle, id: &str) -> Result<(), String> {
 /// Imports the plugin of a zip file, in place of the plugin of the same id,
 /// whose token and colors stay. Returns its id; the approval follows.
 pub fn import(app: &AppHandle, zip: &Path) -> Result<String, Reason> {
-    let folder = with(app, |host, _| host.folder.clone()).ok_or(Reason::Missing)?;
+    let folder = read(app, |host| host.folder.clone()).ok_or(Reason::Missing)?;
     let _ = std::fs::create_dir_all(&folder);
     let unpacked = scan::unpack(zip, &folder)?;
     put_in_place(app, &folder, unpacked)
@@ -1052,7 +1056,7 @@ fn import_reviewed(
     fingerprint: &str,
 ) -> Result<String, catalog::CatalogError> {
     let unreadable = |reason| catalog::CatalogError::Unreadable { reason };
-    let folder = with(app, |host, _| host.folder.clone()).ok_or(unreadable(Reason::Missing))?;
+    let folder = read(app, |host| host.folder.clone()).ok_or(unreadable(Reason::Missing))?;
     let _ = std::fs::create_dir_all(&folder);
     let unpacked = scan::unpack(zip, &folder).map_err(unreadable)?;
     if unpacked.id() != id || unpacked.fingerprint().as_deref() != Ok(fingerprint) {
@@ -1102,7 +1106,7 @@ fn installed(app: &AppHandle) -> catalog::Installed {
 
 /// The folder of the plugins, which "Open the plugins folder" shows.
 pub fn folder(app: &AppHandle) -> Option<PathBuf> {
-    with(app, |host, _| host.folder.clone())
+    read(app, |host| host.folder.clone())
 }
 
 /// Remembers the integration the lamp follows, none in manual mode.
@@ -1117,9 +1121,9 @@ pub fn remember_mode(app: &AppHandle, mode: Option<String>) {
 /// plugin: the default color of its state.
 pub fn fallback_color(app: &AppHandle) -> Option<u8> {
     let mode = app.state::<crate::control::ControlState>().status().mode?;
-    with(app, |host, _| {
-        let state = host.plugins.get(&mode)?.shown.as_ref()?.0.clone();
-        Some(host.manifest(&mode)?.state(&state)?.color)
+    read(app, |host| {
+        let (state, _) = host.plugins.get(&mode)?.shown.as_ref()?;
+        Some(host.manifest(&mode)?.state(state)?.color)
     })
     .flatten()
 }
@@ -1190,17 +1194,11 @@ pub fn lamp_changed(app: &AppHandle) {
 
 /// A short press on the lid, for the programs that read the lamp.
 pub fn pressed(app: &AppHandle) {
-    let Some(state) = app.try_state::<PluginsState>() else {
-        return;
-    };
-    let host = state.host.lock();
-    for feed in host
-        .iter()
-        .flat_map(|host| host.programs.values())
-        .filter_map(Program::feed)
-    {
-        feed.press(lamp::TOUCH_LINE);
-    }
+    read(app, |host| {
+        for feed in host.programs.values().filter_map(Program::feed) {
+            feed.press(lamp::TOUCH_LINE);
+        }
+    });
 }
 
 /// The programs stop with the app, all at once, and the server closes.

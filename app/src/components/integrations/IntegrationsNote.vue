@@ -26,20 +26,17 @@ const plugins = usePluginsStore();
 const unfolded = ref(false);
 const folded = computed(() => props.plugin.installed && !unfolded.value);
 
-/** The filled block, asked for anew when the plugin or its token change. */
+/**
+ * The filled block, asked for again when the files or the token of the
+ * plugin change. The window keys the details by plugin, so the id stays.
+ */
 const block = ref<FilledBlock | null>(null);
 watch(
-  () => [props.plugin.id, props.plugin.installed, props.plugin.fingerprint] as const,
-  async ([id]) => {
-    block.value = props.plugin.note?.block ? await pluginNote(id) : null;
+  [() => props.plugin.fingerprint, () => plugins.tokenChanges],
+  async () => {
+    block.value = props.plugin.note?.block ? await pluginNote(props.plugin.id) : null;
   },
   { immediate: true },
-);
-watch(
-  () => props.plugin.id,
-  () => {
-    unfolded.value = false;
-  },
 );
 
 /** A paragraph cut at its backquotes: every other piece is code. */
