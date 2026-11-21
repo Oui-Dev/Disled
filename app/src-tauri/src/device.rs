@@ -211,61 +211,50 @@ fn look_of_info(info: &Info) -> Option<Look> {
     }
 }
 
+/// What the worker last saw of the lamp, for the rest of the app.
+#[derive(Default)]
+struct Seen {
+    connection: Connection,
+    /// The INFO message of the connected lamp, once it answered.
+    info: Option<Info>,
+    /// The last STATE of a version 2 lamp, which the app drives.
+    state: Option<State>,
+}
+
 pub struct DeviceHandle {
     commands: mpsc::Sender<Request>,
-    connection: Arc<Mutex<Connection>>,
-    info: Arc<Mutex<Option<Info>>>,
-    state: Arc<Mutex<Option<State>>>,
+    seen: Arc<Mutex<Seen>>,
 }
 
 impl DeviceHandle {
     pub fn spawn(app: AppHandle) -> Self {
         let (commands, receiver) = mpsc::channel();
-        let connection = Arc::new(Mutex::new(Connection::default()));
-        let info = Arc::new(Mutex::new(None));
-        let state = Arc::new(Mutex::new(None));
-        let (shared, shared_info, shared_state) = (
-            Arc::clone(&connection),
-            Arc::clone(&info),
-            Arc::clone(&state),
-        );
+        let seen = Arc::new(Mutex::new(Seen::default()));
+        let shared = Arc::clone(&seen);
         thread::Builder::new()
             .name("disled-usb".into())
             .spawn(move || {
                 Worker {
                     app,
                     receiver,
-                    connection: shared,
-                    info: shared_info,
-                    state: shared_state,
+                    seen: shared,
                     seq: 0,
-                    session: Session::default(),
-                    automatic: [false; 256],
-                    last_seq: None,
                     last_write: Instant::now(),
-                    heartbeat: false,
-                    heartbeat_seq: None,
-                    flush: None,
                 }
                 .run()
             })
             .expect("spawn the USB worker thread");
-        Self {
-            commands,
-            connection,
-            info,
-            state,
-        }
+        Self { commands, seen }
     }
 
     /// The INFO message of the connected lamp, once it answered.
     pub fn info(&self) -> Option<Info> {
-        self.info.lock().clone()
+        self.seen.lock().info.clone()
     }
 
     /// The last STATE of a version 2 lamp, which the app drives.
     pub fn state(&self) -> Option<State> {
-        self.state.lock().clone()
+        self.seen.lock().state.clone()
     }
 
     /// Queues a command of a window, whose replies the windows get. A lamp
@@ -306,29 +295,77 @@ impl DeviceHandle {
     }
 
     pub fn connection(&self) -> Connection {
-        self.connection.lock().clone()
+        self.seen.lock().connection.clone()
     }
 }
 
-struct Worker {
-    app: AppHandle,
-    receiver: mpsc::Receiver<Request>,
-    connection: Arc<Mutex<Connection>>,
-    info: Arc<Mutex<Option<Info>>>,
-    state: Arc<Mutex<Option<State>>>,
-    seq: u8,
+/// What the worker keeps of one connection. Each connection makes its own,
+/// and the disconnect drops it, so that a flush under way ends at once.
+struct Link {
     session: Session,
     /// For each sequence number, whether the backend sent that command on
     /// its own.
     automatic: [bool; 256],
     /// The sequence number of the last command written.
     last_seq: Option<u8>,
-    last_write: Instant,
     heartbeat: bool,
     /// The sequence number of the last heartbeat.
     heartbeat_seq: Option<u8>,
     /// The sequence number whose reply ends a flush, and whom to tell.
     flush: Option<(u8, mpsc::Sender<()>)>,
+}
+
+impl Link {
+    fn new() -> Self {
+        Self {
+            session: Session::default(),
+            automatic: [false; 256],
+            last_seq: None,
+            heartbeat: false,
+            heartbeat_seq: None,
+            flush: None,
+        }
+    }
+
+    /// Notes the command written under `seq`.
+    fn wrote(&mut self, seq: u8, automatic: bool) {
+        self.automatic[usize::from(seq)] = automatic;
+        self.last_seq = Some(seq);
+    }
+
+    /// The reply to the last command written ends a flush. Without a lamp
+    /// that the app drives, no reply comes.
+    fn begin_flush(&mut self, done: mpsc::Sender<()>) {
+        match self.last_seq {
+            Some(seq) if self.session.drives() => self.flush = Some((seq, done)),
+            _ => {
+                let _ = done.send(());
+            }
+        }
+    }
+
+    /// A message of the lamp under `seq`: whether it answers a command that
+    /// the backend sent on its own, and whether it answers the last
+    /// heartbeat. The reply that a flush waits for ends it. The lamp sends
+    /// its own messages, such as a touch, under 0.
+    fn reply(&mut self, seq: u8) -> (bool, bool) {
+        if let Some((_, done)) = self.flush.take_if(|(wanted, _)| *wanted == seq) {
+            let _ = done.send(());
+        }
+        let answer = seq != 0;
+        (
+            answer && self.automatic[usize::from(seq)],
+            answer && self.heartbeat_seq == Some(seq),
+        )
+    }
+}
+
+struct Worker {
+    app: AppHandle,
+    receiver: mpsc::Receiver<Request>,
+    seen: Arc<Mutex<Seen>>,
+    seq: u8,
+    last_write: Instant,
 }
 
 /// Why the connected loop ended.
@@ -348,21 +385,13 @@ impl Worker {
         loop {
             match self.open(&mut api) {
                 Some(device) => {
-                    self.session = Session::default();
-                    self.automatic = [false; 256];
-                    self.last_seq = None;
-                    self.heartbeat = false;
-                    self.heartbeat_seq = None;
                     if let Exit::AppClosed = self.serve(&device) {
                         return;
                     }
-                    // A flush under way waits no more.
-                    self.flush = None;
-                    self.set_info(None);
-                    self.set_state(None);
+                    *self.seen.lock() = Seen::default();
                     self.app.state::<PreviewState>().forget();
                     let _ = control::input(&self.app, Input::Disconnected);
-                    self.set_connection(Connection::default());
+                    let _ = self.app.emit(EVENT_CONNECTION, Connection::default());
                     tray::show(&self.app, Look::NoLamp);
                     plugins::lamp_changed(&self.app);
                 }
@@ -401,28 +430,25 @@ impl Worker {
     }
 
     fn set_connection(&self, connection: Connection) {
-        *self.connection.lock() = connection.clone();
+        self.seen.lock().connection = connection.clone();
         let _ = self.app.emit(EVENT_CONNECTION, connection);
-    }
-
-    fn set_info(&self, info: Option<Info>) {
-        *self.info.lock() = info;
-    }
-
-    fn set_state(&self, state: Option<State>) {
-        *self.state.lock() = state;
     }
 
     /// Writes a command the session allows, and drops the others. False if
     /// the lamp is gone.
-    fn write(&mut self, device: &HidDevice, command: &Command, automatic: bool) -> bool {
-        if !self.session.allows(command) {
+    fn write(
+        &mut self,
+        link: &mut Link,
+        device: &HidDevice,
+        command: &Command,
+        automatic: bool,
+    ) -> bool {
+        if !link.session.allows(command) {
             return true;
         }
         let seq = protocol::next_seq(self.seq);
         self.seq = seq;
-        self.automatic[usize::from(seq)] = automatic;
-        self.last_seq = Some(seq);
+        link.wrote(seq, automatic);
         self.last_write = Instant::now();
         let written = device.write(&command.report(seq)).is_ok();
         // The lamp refuses the commands of the control during a self-test,
@@ -433,29 +459,10 @@ impl Worker {
         written
     }
 
-    /// The reply to the last command written ends a flush. Without a lamp
-    /// that the app drives, no reply comes.
-    fn begin_flush(&mut self, done: mpsc::Sender<()>) {
-        match self.last_seq {
-            Some(seq) if self.session.drives() => self.flush = Some((seq, done)),
-            _ => {
-                let _ = done.send(());
-            }
-        }
-    }
-
     /// Hands the control what concerns it, and tells whether the windows
     /// get the message.
-    fn route(&mut self, frame: &Frame, previous: Option<u16>) -> bool {
-        let automatic = frame.seq != 0 && self.automatic[usize::from(frame.seq)];
-        let heartbeat = frame.seq != 0 && self.heartbeat_seq == Some(frame.seq);
-        if let Some((seq, done)) = self.flush.take() {
-            if seq == frame.seq {
-                let _ = done.send(());
-            } else {
-                self.flush = Some((seq, done));
-            }
-        }
+    fn route(&self, link: &mut Link, frame: &Frame, previous: Option<u16>) -> bool {
+        let (automatic, heartbeat) = link.reply(frame.seq);
         let input = match &frame.message {
             Message::State(state) => Some(Input::State(state.clone())),
             Message::AlertDone { .. } => Some(Input::AlertDone),
@@ -478,10 +485,16 @@ impl Worker {
     /// Sends the state of the app after the first INFO of a connection,
     /// shows the lamp in the tray, and tells the plugins that read the lamp
     /// of its state and of its presses. False if the lamp is gone.
-    fn follow(&mut self, device: &HidDevice, message: &Message, first_info: bool) -> bool {
+    fn follow(
+        &mut self,
+        link: &mut Link,
+        device: &HidDevice,
+        message: &Message,
+        first_info: bool,
+    ) -> bool {
         match message {
             Message::Info(info) => {
-                self.set_info(Some(info.clone()));
+                self.seen.lock().info = Some(info.clone());
                 if let Some(look) = look_of_info(info) {
                     tray::show(&self.app, look);
                 }
@@ -497,7 +510,7 @@ impl Worker {
                         return true;
                     }
                     for command in commands {
-                        if !self.write(device, &command, true) {
+                        if !self.write(link, device, &command, true) {
                             return false;
                         }
                     }
@@ -505,7 +518,7 @@ impl Worker {
                 }
             }
             Message::State(state) => {
-                self.set_state(Some(state.clone()));
+                self.seen.lock().state = Some(state.clone());
                 // A touch took the lamp off the preview slot: the user chose.
                 if state.source == ChangeSource::Touch {
                     self.app.state::<PreviewState>().forget();
@@ -524,8 +537,9 @@ impl Worker {
     }
 
     fn serve(&mut self, device: &HidDevice) -> Exit {
+        let mut link = Link::new();
         // Learn who is there; the rest waits for its INFO.
-        if !self.write(device, &Command::GetInfo, true) {
+        if !self.write(&mut link, device, &Command::GetInfo, true) {
             return Exit::Disconnected;
         }
         let mut buffer = [0u8; PAYLOAD_SIZE + 1];
@@ -533,23 +547,23 @@ impl Worker {
             loop {
                 match self.receiver.try_recv() {
                     Ok(Request::Command { command, automatic }) => {
-                        if !self.write(device, &command, automatic) {
+                        if !self.write(&mut link, device, &command, automatic) {
                             return Exit::Disconnected;
                         }
                     }
-                    Ok(Request::Heartbeat(on)) => self.heartbeat = on,
-                    Ok(Request::Flush(done)) => self.begin_flush(done),
+                    Ok(Request::Heartbeat(on)) => link.heartbeat = on,
+                    Ok(Request::Flush(done)) => link.begin_flush(done),
                     Err(mpsc::TryRecvError::Empty) => break,
                     Err(mpsc::TryRecvError::Disconnected) => return Exit::AppClosed,
                 }
             }
-            if self.session.drives()
-                && heartbeat_due(self.heartbeat, self.last_write, Instant::now())
+            if link.session.drives()
+                && heartbeat_due(link.heartbeat, self.last_write, Instant::now())
             {
-                if !self.write(device, &heartbeat(), true) {
+                if !self.write(&mut link, device, &heartbeat(), true) {
                     return Exit::Disconnected;
                 }
-                self.heartbeat_seq = self.last_seq;
+                link.heartbeat_seq = link.last_seq;
             }
             let Ok(length) = device.read_timeout(&mut buffer, READ_TIMEOUT_MS) else {
                 return Exit::Disconnected;
@@ -558,14 +572,14 @@ impl Worker {
             let Some(decoded) = protocol::decode_report(&buffer[..length]) else {
                 continue;
             };
-            let first_info = self.session.generation.is_none();
-            match self.session.receive(decoded) {
+            let first_info = link.session.generation.is_none();
+            match link.session.receive(decoded) {
                 Incoming::Forward(frame) => {
-                    let previous = self.state.lock().as_ref().map(|state| state.state_seq);
-                    if !self.follow(device, &frame.message, first_info) {
+                    let previous = self.seen.lock().state.as_ref().map(|state| state.state_seq);
+                    if !self.follow(&mut link, device, &frame.message, first_info) {
                         return Exit::Disconnected;
                     }
-                    if !self.route(&frame, previous) {
+                    if !self.route(&mut link, &frame, previous) {
                         continue;
                     }
                     // Up to 50 samples a second, which only the Diagnostics
@@ -848,6 +862,44 @@ mod tests {
         };
         assert!(!shown(&ack, true, false, None));
         assert!(shown(&ack, false, false, None));
+    }
+
+    #[test]
+    fn the_link_tells_the_replies_to_the_backend_and_ends_a_flush() {
+        let mut link = Link::new();
+        link.session.generation = Some(Generation::V2);
+        // The connection sequence, a command of a window, then a heartbeat.
+        link.wrote(1, true);
+        link.wrote(2, false);
+        link.wrote(3, true);
+        link.heartbeat_seq = Some(3);
+        let ack = Message::Ack {
+            command: Command::GetState.code(),
+        };
+        let (automatic, heartbeat) = link.reply(1);
+        assert!(!shown(&ack, automatic, heartbeat, None), "the backend's");
+        let (automatic, heartbeat) = link.reply(2);
+        assert!(shown(&ack, automatic, heartbeat, None), "the window's");
+        assert_eq!(link.reply(3), (true, true));
+        // A message the lamp sends on its own answers nothing.
+        assert_eq!(link.reply(0), (false, false));
+
+        // A flush ends with the reply to the last command written.
+        let (done, answered) = mpsc::channel();
+        link.begin_flush(done);
+        link.reply(2);
+        assert_eq!(answered.try_recv(), Err(mpsc::TryRecvError::Empty));
+        link.reply(3);
+        assert_eq!(answered.try_recv(), Ok(()));
+        // The disconnect, which drops the link, ends the flush under way.
+        let (done, answered) = mpsc::channel();
+        link.begin_flush(done);
+        drop(link);
+        assert_eq!(answered.try_recv(), Err(mpsc::TryRecvError::Disconnected));
+        // Without a lamp that the app drives, a flush ends at once.
+        let (done, answered) = mpsc::channel();
+        Link::new().begin_flush(done);
+        assert_eq!(answered.try_recv(), Ok(()));
     }
 
     #[test]
