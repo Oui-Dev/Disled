@@ -33,7 +33,6 @@ use std::time::{Duration, Instant};
 use parking_lot::Mutex;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
-use tauri_plugin_clipboard_manager::ClipboardExt;
 
 use crate::colors::{ColorsState, PreviewState};
 use crate::control::{self, ControlState, Input};
@@ -216,14 +215,6 @@ pub fn list(app: &AppHandle) -> Vec<PluginView> {
 /// The block of a note, with the address and the token of the plugin.
 pub fn note(app: &AppHandle, id: &str) -> Option<FilledBlock> {
     read(app, |host| host.note(id)).flatten()
-}
-
-/// "Copy": the backend writes the block in the clipboard.
-pub fn copy_note(app: &AppHandle, id: &str) -> Result<(), String> {
-    let block = note(app, id).ok_or("no note to copy")?;
-    app.clipboard()
-        .write_text(block.text)
-        .map_err(|e| e.to_string())
 }
 
 /// The approval, for the fingerprint that the question showed: the plugin

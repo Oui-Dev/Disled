@@ -5,16 +5,16 @@
   The installation note of a plugin, shown as the plugin wrote it, in plain
   text, where only a passage between backquotes shows as code. Its block
   comes from the backend with the address and the token filled in, which
-  stand out; "Copy" has the backend write the clipboard. Under the block of
-  a plugin with events, the promise of the app that it never changes the
-  settings of the program. A first event folds the note.
+  stand out; "Copy" writes it to the clipboard. Under the block of a plugin
+  with events, the promise of the app that it never changes the settings
+  of the program. A first event folds the note.
 -->
 <script setup lang="ts">
-import { refAutoReset } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { FilledBlock } from '@/bindings/FilledBlock';
 import type { PluginView } from '@/bindings/PluginView';
+import { useCopy } from '@/composables/useCopy';
 import { pluginNote } from '@/ipc/commands';
 import { usePluginsStore } from '@/stores/plugins';
 
@@ -22,6 +22,7 @@ const props = defineProps<{ plugin: PluginView }>();
 
 const { t } = useI18n();
 const plugins = usePluginsStore();
+const { copied, copy } = useCopy();
 
 const unfolded = ref(false);
 const folded = computed(() => props.plugin.installed && !unfolded.value);
@@ -62,15 +63,6 @@ const blockPieces = computed(() => {
     .map((text) => ({ text, marked: marks.includes(text) }))
     .filter((piece) => piece.text);
 });
-
-/** "Copied" shows for two seconds. */
-const copied = refAutoReset(false, 2000);
-
-async function copy(): Promise<void> {
-  if (await plugins.copyNote(props.plugin.id)) {
-    copied.value = true;
-  }
-}
 </script>
 
 <template>
@@ -132,7 +124,7 @@ async function copy(): Promise<void> {
             size="xs"
             class="ms-auto"
             :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
-            @click="copy"
+            @click="block && copy(block.text)"
           >
             {{ copied ? t('common.copied') : t('common.copy') }}
           </UButton>
