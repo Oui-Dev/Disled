@@ -8,7 +8,7 @@ use std::io::{self, BufRead, Write};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use disled_flash::wchisp::{CHIP, Probe, Stage, Wchisp};
+use disled_flash::wchisp::{self, Probe, Stage, Wchisp};
 use disled_protocol::{Command, Info, Message, PROTOCOL_MAJOR, SelfTestResult};
 use hidapi::HidApi;
 use semver::Version;
@@ -19,9 +19,6 @@ use crate::Firmware;
 use crate::lamp::{self, Lamp};
 use crate::report::{Check, Report, Row};
 
-const POLL: Duration = Duration::from_secs(1);
-/// wchisp failures in a row before the board fails.
-const PROBE_FAILURES: u32 = 5;
 /// After the flash the lamp restarts in about 2 s.
 const LAMP_TIMEOUT: Duration = Duration::from_secs(30);
 const REPLY_TIMEOUT: Duration = Duration::from_secs(2);
@@ -71,14 +68,8 @@ impl Station {
             Some(flasher) => {
                 println!("  Plug the board in with BOOT held.");
                 wait_for_bootloader(&mut self.api, flasher)?;
-                // The whole flash first, as the app does: `flash` erases only
-                // the sectors the firmware covers, and would leave the end of
-                // a longer firmware, such as a debug build, behind it.
-                print!("  Flashing: erase all");
-                let _ = io::stdout().flush();
-                let flashed = flasher
-                    .erase()
-                    .and_then(|()| flasher.flash(&self.firmware.path, show_stage));
+                print!("  Flashing: ");
+                let flashed = flasher.flash(&self.firmware.path, show_stage);
                 println!(); // ends the line of the stages, failed or not
                 flashed?;
                 wait_for_lamp(&mut self.api, Some(LAMP_TIMEOUT))?
@@ -115,7 +106,7 @@ impl Station {
             if !bootloader && !lamp::present(&mut self.api) {
                 return;
             }
-            thread::sleep(POLL);
+            thread::sleep(wchisp::POLL);
         }
     }
 }
@@ -130,8 +121,7 @@ fn now() -> String {
 
 fn show_stage(stage: Stage) {
     let text = match stage {
-        // The sectors of the firmware, already empty after `erase`.
-        Stage::Erasing => "",
+        Stage::Erasing => "erase all",
         Stage::Writing => ", write",
         Stage::Verifying => ", verify",
         Stage::Restarting => ", restart",
@@ -141,44 +131,22 @@ fn show_stage(stage: Stage) {
 }
 
 /// Waits for the bootloader of a Disled board, telling the operator what
-/// holds it up. A bootloader that just appeared may not open at once, so a
-/// problem shows only when two probes in a row see it.
+/// holds it up.
 fn wait_for_bootloader(api: &mut HidApi, flasher: &Wchisp) -> Result<(), String> {
-    let mut previous = None;
     let mut shown: Option<String> = None;
-    let mut failures = 0;
-    loop {
-        let probe = match flasher.probe() {
-            Ok(probe) => {
-                failures = 0;
-                probe
-            }
-            Err(error) => {
-                failures += 1;
-                if failures >= PROBE_FAILURES {
-                    return Err(error);
-                }
-                thread::sleep(POLL);
-                continue;
-            }
-        };
-        let hint = match &probe {
-            Probe::Ready(chip) if chip.starts_with(CHIP) => {
-                println!("  [ok]   bootloader {chip}");
-                return Ok(());
-            }
-            Probe::Nothing if lamp::present(api) => Some(
+    let chip = flasher.wait_for_bootloader(|probe, settled| -> Result<(), String> {
+        let hint = match probe.filter(|_| settled) {
+            None => None,
+            Some(Probe::Nothing) => lamp::present(api).then(|| {
                 "This board started its firmware: unplug it, then plug it in again with BOOT held."
-                    .to_owned(),
-            ),
-            Probe::Nothing => None,
-            _ if previous.as_ref() != Some(&probe) => None,
-            Probe::Ready(chip) => Some(format!("{chip} is not a Disled board: unplug it.")),
-            Probe::Several => {
+                    .to_owned()
+            }),
+            Some(Probe::Ready(chip)) => Some(format!("{chip} is not a Disled board: unplug it.")),
+            Some(Probe::Several) => {
                 Some("Several boards are in their bootloader: keep only one plugged in.".to_owned())
             }
-            Probe::DriverMissing => Some(DRIVER_HELP.to_owned()),
-            Probe::NoPermission => Some(
+            Some(Probe::DriverMissing) => Some(DRIVER_HELP.to_owned()),
+            Some(Probe::NoPermission) => Some(
                 "No access to the bootloader: install the udev rule of the app \
                  (app/src-tauri/linux/70-disled.rules)."
                     .to_owned(),
@@ -190,9 +158,10 @@ fn wait_for_bootloader(api: &mut HidApi, flasher: &Wchisp) -> Result<(), String>
             println!("  {hint}");
             shown = Some(hint);
         }
-        previous = Some(probe);
-        thread::sleep(POLL);
-    }
+        Ok(())
+    })?;
+    println!("  [ok]   bootloader {chip}");
+    Ok(())
 }
 
 /// Waits for the lamp to show up on USB.

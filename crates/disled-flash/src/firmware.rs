@@ -5,10 +5,9 @@
 //! signed with the update key, its name and version in the signed comment, since
 //! a replaced firmware could present the lamp to the computer as a keyboard.
 
-use base64::Engine;
-use base64::engine::general_purpose::STANDARD as BASE64;
-use minisign_verify::{PublicKey, Signature};
 use semver::Version;
+
+use crate::signature::{Refusal, verify_signed};
 
 /// Public half of the update key. The app updater reads the same key from
 /// `plugins.updater.pubkey` in `app/src-tauri/tauri.conf.json`; a test
@@ -39,41 +38,22 @@ pub fn verify(data: &[u8], signature: &str, version: &Version) -> Result<(), Str
 }
 
 fn verify_with(key: &str, data: &[u8], signature: &str, version: &Version) -> Result<(), String> {
-    let text = |base64: &str| {
-        BASE64
-            .decode(base64.trim())
-            .ok()
-            .and_then(|bytes| String::from_utf8(bytes).ok())
-    };
-    let key = text(key)
-        .and_then(|key| PublicKey::decode(&key).ok())
-        .ok_or("the update key is unreadable")?;
-    let signature = text(signature)
-        .and_then(|signature| Signature::decode(&signature).ok())
-        .ok_or("the firmware signature is unreadable")?;
-    key.verify(data, &signature, false)
-        .map_err(|_| "the firmware is not signed with the update key")?;
-    let comment: Vec<&str> = signature.trusted_comment().split('\t').collect();
     let file = format!("file:{}", file_name(version));
     let signed_version = format!("version:{version}");
-    if comment.contains(&file.as_str()) && comment.contains(&signed_version.as_str()) {
-        Ok(())
-    } else {
-        Err(format!(
-            "the firmware signature is not for version {version}"
-        ))
-    }
+    verify_signed(key, data, signature, &[&file, &signed_version]).map_err(
+        |refusal| match refusal {
+            Refusal::UnreadableKey => "the update key is unreadable".into(),
+            Refusal::UnreadableSignature => "the firmware signature is unreadable".into(),
+            Refusal::NotSigned => "the firmware is not signed with the update key".into(),
+            Refusal::OtherFile => format!("the firmware signature is not for version {version}"),
+        },
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // `tauri signer sign --app-version 9.8.7 disled-fw-9.8.7.hex`, with a
-    // throwaway key.
-    const TEST_KEY: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEUxM0IzMzY2MjQ4OTA3MTYKUldRV0I0a2taak03NFoydUxWY3JaZzRONWloUTBMVkJQem5XNmErS1dUQTNWUjYwZCtYcDNpeTQK";
-    const TEST_FILE: &[u8] = b":020000040800F2\n:00000001FF\n";
-    const TEST_SIGNATURE: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRV0I0a2taak03NGE0NE80MWlpQ0g4d1Q3MjNQYnJtRnA4dmFHaEMzcXl4K1lQTW04T1J3VWgwdng3SFVGU2o2aUR0TS9PRWtJeUNoYVFESUUwOGRVUVJ3R0RQWjRPUlFNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkyNTUzMTczCWZpbGU6ZGlzbGVkLWZ3LTkuOC43LmhleAl2ZXJzaW9uOjkuOC43CnAzN2RyZ2FZUVE0MXlZS1NRcStxYUFzUzN6WSthQU1GeXhrSlFCOVczUGFkekZkeXhtQ2ZBUVE0K0tjQndFNklNSTJDall0b0hYSlU5VWlQWThldENRPT0K";
+    use crate::signature::tests::{TEST_FILE, TEST_KEY, TEST_SIGNATURE};
 
     #[test]
     fn a_signed_firmware_passes() {
@@ -81,13 +61,6 @@ mod tests {
             verify_with(TEST_KEY, TEST_FILE, TEST_SIGNATURE, &Version::new(9, 8, 7)),
             Ok(())
         );
-    }
-
-    #[test]
-    fn a_changed_firmware_fails() {
-        let mut changed = TEST_FILE.to_vec();
-        changed[1] = b'1';
-        assert!(verify_with(TEST_KEY, &changed, TEST_SIGNATURE, &Version::new(9, 8, 7)).is_err());
     }
 
     #[test]

@@ -116,7 +116,7 @@ To add a language:
 | Path                                | Content                                                                                                        |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `../crates/disled-protocol`         | Protocol codec (shared with the tools), tested against `protocol/vectors/v2.json`                              |
-| `../crates/disled-flash`            | Signed firmware files and wchisp, run as a separate program (shared with the tools)                            |
+| `../crates/disled-flash`            | Signed files (firmware, catalog index) and wchisp, run as a separate program (shared with the tools)           |
 | `src-tauri/src/device.rs`           | USB worker thread: discovery, reconnection, settings applied on INFO, heartbeat                                |
 | `src-tauri/src/control.rs`          | What the app sets on the lamp: the source it follows, calls, alerts, Quit                                      |
 | `src-tauri/src/colors.rs`           | Color names, custom colors, touch cycle, deletion fallbacks, share codes                                       |

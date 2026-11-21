@@ -41,12 +41,6 @@ const LINE: u64 = 2;
 /// The line of Disled v1, whose last version is offered to go back to it.
 const V1_LINE: u64 = 1;
 
-/// How often the app looks for the bootloader.
-const POLL: Duration = Duration::from_secs(1);
-/// wchisp failures in a row before the update gives up.
-const PROBE_FAILURES: u32 = 5;
-/// After the flash the lamp restarts through its bootloader, which takes
-/// several seconds.
 const LAMP_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// A firmware the app can install.
@@ -493,15 +487,6 @@ fn update(app: &AppHandle, release: &Release) -> Result<(), Stop> {
     let file = tauri::async_runtime::block_on(download(app, release))?;
 
     wait_for_bootloader(app, &flasher)?;
-    // All of it, so that nothing of the firmware before stays behind a
-    // shorter one, 1.0.0 included.
-    show(
-        app,
-        Flash::Flashing {
-            stage: Stage::Erasing,
-        },
-    );
-    flasher.erase()?;
     flasher.flash(&file, |stage| show(app, Flash::Flashing { stage }))?;
 
     show(app, Flash::WaitingForLamp);
@@ -530,47 +515,35 @@ fn update(app: &AppHandle, release: &Release) -> Result<(), Stop> {
 }
 
 /// Waits until the lamp's bootloader can be flashed, showing what holds it
-/// up.
+/// up, unless the user cancels.
 fn wait_for_bootloader(app: &AppHandle, flasher: &Wchisp) -> Result<(), Stop> {
     let state = app.state::<FirmwareState>();
     show(app, Flash::WaitingForBootloader);
-    let mut previous = None;
-    let mut failures = 0;
-    loop {
+    flasher.wait_for_bootloader(|probe, settled| {
         if state.cancel.load(Ordering::SeqCst) {
             return Err(Stop::Cancelled);
         }
-        let probe = match flasher.probe() {
-            Ok(probe) => {
-                failures = 0;
-                probe
-            }
-            Err(error) => {
-                failures += 1;
-                if failures >= PROBE_FAILURES {
-                    return Err(Stop::Failed(error));
-                }
-                thread::sleep(POLL);
-                continue;
-            }
-        };
-        let flash = match &probe {
-            Probe::Ready(chip) if chip.starts_with(wchisp::CHIP) => return Ok(()),
-            Probe::Nothing => Some(Flash::WaitingForBootloader),
-            // A bootloader that just appeared may not open at once, so a
-            // problem shows only when two probes in a row see it.
-            _ if previous.as_ref() != Some(&probe) => None,
-            Probe::Ready(chip) => Some(Flash::OtherChip { chip: chip.clone() }),
-            Probe::Several => Some(Flash::SeveralBootloaders),
-            Probe::DriverMissing => Some(Flash::DriverMissing),
-            Probe::NoPermission => Some(Flash::NoPermission),
-        };
-        if let Some(flash) = flash {
+        if let Some(flash) = probe.and_then(|probe| flash_of(probe, settled)) {
             show(app, flash);
         }
-        previous = Some(probe);
-        thread::sleep(POLL);
+        Ok(())
+    })?;
+    Ok(())
+}
+
+/// What the update windows show of a probe that did not find the lamp's
+/// bootloader, once it counts.
+fn flash_of(probe: &Probe, settled: bool) -> Option<Flash> {
+    if !settled {
+        return None;
     }
+    Some(match probe {
+        Probe::Nothing => Flash::WaitingForBootloader,
+        Probe::Ready(chip) => Flash::OtherChip { chip: chip.clone() },
+        Probe::Several => Flash::SeveralBootloaders,
+        Probe::DriverMissing => Flash::DriverMissing,
+        Probe::NoPermission => Flash::NoPermission,
+    })
 }
 
 #[cfg(test)]
@@ -722,6 +695,21 @@ mod tests {
         assert_eq!(
             next_page(r#"<https://example.com/releases?page=2>; rel="next""#),
             None
+        );
+    }
+
+    #[test]
+    fn a_probe_shows_once_it_counts() {
+        assert_eq!(flash_of(&Probe::DriverMissing, false), None);
+        assert_eq!(
+            flash_of(&Probe::DriverMissing, true),
+            Some(Flash::DriverMissing)
+        );
+        assert_eq!(
+            flash_of(&Probe::Ready("CH32V003".into()), true),
+            Some(Flash::OtherChip {
+                chip: "CH32V003".into()
+            })
         );
     }
 
