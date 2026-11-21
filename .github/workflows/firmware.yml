@@ -70,7 +70,7 @@ jobs:
       # Any defect fails the job; without the option, only a failure of
       # cppcheck itself would.
       - name: Static analysis
-        run: uv run pio check -e debug --fail-on-defect low --fail-on-defect medium --fail-on-defect high
+        run: uv run pio check -e debug -e release --fail-on-defect low --fail-on-defect medium --fail-on-defect high
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

@@ -15,7 +15,8 @@ pio run -e debug                     # build (debug: HID + CDC console)
 pio run -e debug -t upload           # flash through the ROM bootloader
 pio device monitor                   # debug console, type "help"
 pio test -e native                   # unit tests on the build machine
-pio check -e debug                   # static analysis (cppcheck)
+# static analysis (cppcheck) of both builds, failing on any defect as CI does
+pio check -e debug -e release --fail-on-defect low --fail-on-defect medium --fail-on-defect high
 ```
 
 The unit tests need a host C compiler (`gcc`). On Windows, a MinGW-w64 build

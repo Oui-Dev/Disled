@@ -145,12 +145,14 @@ static bool send_state(uint8_t seq)
 
 static uint32_t capabilities(void)
 {
-    /* No ENTER_BOOTLOADER: the CH32V203 cannot start its ROM bootloader
-     * from software. */
-    return PROTO_CAP_TELEMETRY | PROTO_CAP_AUTO_BIAS | PROTO_CAP_DIAGNOSTICS | PROTO_CAP_SELF_TEST |
-           PROTO_CAP_CUSTOM_COLORS | PROTO_CAP_TOUCH_CYCLE | PROTO_CAP_TOUCH_MODE |
-           PROTO_CAP_ALERT | PROTO_CAP_TOUCH_SENSITIVITY | PROTO_CAP_PRESSES |
-           (DISLED_DEBUG ? PROTO_CAP_DEBUG_CONSOLE : 0u);
+    uint32_t caps = PROTO_CAP_TELEMETRY | PROTO_CAP_AUTO_BIAS | PROTO_CAP_DIAGNOSTICS |
+                    PROTO_CAP_SELF_TEST | PROTO_CAP_CUSTOM_COLORS | PROTO_CAP_TOUCH_CYCLE |
+                    PROTO_CAP_TOUCH_MODE | PROTO_CAP_ALERT | PROTO_CAP_TOUCH_SENSITIVITY |
+                    PROTO_CAP_PRESSES;
+#if DISLED_DEBUG
+    caps |= PROTO_CAP_DEBUG_CONSOLE;
+#endif
+    return caps;
 }
 
 static void send_info(uint8_t seq)
@@ -162,12 +164,14 @@ static void send_info(uint8_t seq)
         .board_revision = BOARD_REVISION,
         .capabilities = capabilities(),
         .reset_cause = bsp_reset_cause(),
-        .flags = (uint8_t)((DISLED_DEBUG ? PROTO_INFO_FLAG_DEBUG_BUILD : 0u) |
-                           (app.fault.valid ? PROTO_INFO_FLAG_FAULT : 0u)),
+        .flags = (uint8_t)(app.fault.valid ? PROTO_INFO_FLAG_FAULT : 0u),
         .fault_mcause = app.fault.mcause,
         .fault_mepc = app.fault.mepc,
         .fw_version = DISLED_FW_VERSION_STRING,
     };
+#if DISLED_DEBUG
+    info.flags |= PROTO_INFO_FLAG_DEBUG_BUILD;
+#endif
     bsp_uid_read(info.uid);
     uint8_t payload[PROTO_REPORT_SIZE];
     proto_encode_info(payload, seq, &info);
