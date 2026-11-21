@@ -23,7 +23,7 @@ use serde_json::Value;
 use subtle::ConstantTimeEq;
 use tokio::sync::mpsc;
 
-pub const PORT: u16 = 47831;
+pub(super) const PORT: u16 = 47831;
 /// The path of the events, before the id of the plugin.
 const ROUTE: &str = "/v1/hooks/";
 const TOKEN_HEADER: &str = "x-disled-token";

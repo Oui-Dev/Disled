@@ -128,9 +128,9 @@ impl Unpacked {
         &self.id
     }
 
-    /// The fingerprint of its files, which the approval would compute.
-    pub fn fingerprint(&self) -> Result<String, Reason> {
-        fingerprint(&self.folder, &mut Cache::default())
+    /// Holds the plugin `id`, with files whose fingerprint is `expected`.
+    pub fn matches(&self, id: &str, expected: &str) -> bool {
+        self.id == id && fingerprint(&self.folder, &mut Cache::default()).as_deref() == Ok(expected)
     }
 
     /// Drops it, leaving the plugins as they were.
@@ -256,8 +256,9 @@ fn extract<R: Read + Seek>(
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use super::*;
+    use std::io::Cursor;
     use zip::write::SimpleFileOptions;
 
     const MANIFEST: &str = r#"{
@@ -266,12 +267,8 @@ mod tests {
         "run": { "default": ["demo"] }
     }"#;
 
-    /// Imports a zip file into `plugins/<id>`, as the host does.
-    fn import(zip: &Path, plugins: &Path) -> Result<String, Reason> {
-        unpack(File::open(zip).expect("zip"), plugins)?.install()
-    }
-
-    fn write(path: &Path, text: &str) {
+    /// Writes a file, and its folders.
+    pub(in crate::plugins) fn write(path: &Path, text: &str) {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).expect("folder");
         }
@@ -347,15 +344,21 @@ mod tests {
         );
     }
 
-    fn zip(path: &Path, files: &[(&str, &str)]) {
-        let mut writer = zip::ZipWriter::new(File::create(path).expect("zip"));
+    /// A zip file of these files.
+    pub(in crate::plugins) fn zip(files: &[(&str, &str)]) -> Vec<u8> {
+        let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
         for (name, text) in files {
             writer
                 .start_file(*name, SimpleFileOptions::default())
                 .expect("entry");
             writer.write_all(text.as_bytes()).expect("content");
         }
-        writer.finish().expect("finish");
+        writer.finish().expect("finish").into_inner()
+    }
+
+    /// Imports a zip file into `plugins/<id>`, as the host does.
+    fn import(zip: Vec<u8>, plugins: &Path) -> Result<String, Reason> {
+        unpack(Cursor::new(zip), plugins)?.install()
     }
 
     #[test]
@@ -363,22 +366,15 @@ mod tests {
         let folder = tempfile::tempdir().expect("folder");
         let plugins = folder.path().join("plugins");
         fs::create_dir(&plugins).expect("plugins");
-        let archive = folder.path().join("demo.zip");
-        zip(
-            &archive,
-            &[("plugin.json", MANIFEST), ("lib/index.js", "1")],
-        );
-        assert_eq!(import(&archive, &plugins), Ok("demo".into()));
+        let root = zip(&[("plugin.json", MANIFEST), ("lib/index.js", "1")]);
+        assert_eq!(import(root, &plugins), Ok("demo".into()));
         assert!(plugins.join("demo/lib/index.js").is_file());
 
-        zip(
-            &archive,
-            &[
-                ("demo-1.0.0/plugin.json", MANIFEST),
-                ("demo-1.0.0/index.js", "2"),
-            ],
-        );
-        assert_eq!(import(&archive, &plugins), Ok("demo".into()));
+        let one_folder = zip(&[
+            ("demo-1.0.0/plugin.json", MANIFEST),
+            ("demo-1.0.0/index.js", "2"),
+        ]);
+        assert_eq!(import(one_folder, &plugins), Ok("demo".into()));
         // The new version took the place of the old one.
         assert!(plugins.join("demo/index.js").is_file());
         assert!(!plugins.join("demo/lib").exists());
@@ -395,10 +391,9 @@ mod tests {
         let folder = tempfile::tempdir().expect("folder");
         let plugins = folder.path().join("plugins");
         fs::create_dir(&plugins).expect("plugins");
-        let archive = folder.path().join("evil.zip");
-        zip(&archive, &[("plugin.json", MANIFEST), ("../x", "pwned")]);
+        let evil = zip(&[("plugin.json", MANIFEST), ("../x", "pwned")]);
         assert_eq!(
-            import(&archive, &plugins),
+            import(evil, &plugins),
             Err(Reason::Path {
                 path: "../x".into()
             })
@@ -412,19 +407,31 @@ mod tests {
         let folder = tempfile::tempdir().expect("folder");
         let plugins = folder.path().join("plugins");
         fs::create_dir(&plugins).expect("plugins");
-        let archive = folder.path().join("empty.zip");
-        zip(
-            &archive,
-            &[("a/plugin.json", MANIFEST), ("b/plugin.json", MANIFEST)],
-        );
-        assert_eq!(import(&archive, &plugins), Err(Reason::Missing));
-        fs::write(&archive, "not a zip").expect("write");
-        assert_eq!(import(&archive, &plugins), Err(Reason::Io));
-        zip(&archive, &[("plugin.json", "{ \"api\": 1 }")]);
+        let two_folders = zip(&[("a/plugin.json", MANIFEST), ("b/plugin.json", MANIFEST)]);
+        assert_eq!(import(two_folders, &plugins), Err(Reason::Missing));
+        assert_eq!(import(b"not a zip".to_vec(), &plugins), Err(Reason::Io));
+        let broken = zip(&[("plugin.json", "{ \"api\": 1 }")]);
         assert_eq!(
-            import(&archive, &plugins),
+            import(broken, &plugins),
             Err(Reason::Field { field: "id".into() })
         );
         assert_eq!(fs::read_dir(&plugins).expect("plugins").count(), 0);
+    }
+
+    #[test]
+    fn an_unpacked_plugin_matches_only_its_id_and_its_files() {
+        let folder = tempfile::tempdir().expect("folder");
+        let files = [("plugin.json", MANIFEST), ("index.js", "1")];
+        // The fingerprint of the same files, as the index of the catalog
+        // gives it.
+        let reference = folder.path().join("reference");
+        for (name, text) in files {
+            write(&reference.join(name), text);
+        }
+        let expected = fingerprint(&reference, &mut Cache::default()).expect("fingerprint");
+        let unpacked = unpack(Cursor::new(zip(&files)), folder.path()).expect("unpacked");
+        assert!(unpacked.matches("demo", &expected));
+        assert!(!unpacked.matches("other", &expected));
+        assert!(!unpacked.matches("demo", &"0".repeat(64)));
     }
 }

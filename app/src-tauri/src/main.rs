@@ -95,14 +95,14 @@ fn control_set_mode(app: AppHandle, mode: Option<String>) -> Result<(), String> 
 /// Async, as are the commands of the plugins that may stop a program, which
 /// can take two seconds.
 #[tauri::command]
-async fn plugins_list(app: AppHandle) -> Vec<plugins::PluginView> {
+async fn plugins_list(app: AppHandle) -> Vec<plugins::view::PluginView> {
     plugins::list(&app)
 }
 
 /// The block of the installation note, with the address and the token,
 /// for the integrations window only: no event carries a token.
 #[tauri::command]
-async fn plugin_note(app: AppHandle, id: String) -> Option<plugins::FilledBlock> {
+async fn plugin_note(app: AppHandle, id: String) -> Option<plugins::view::FilledBlock> {
     plugins::note(&app, &id)
 }
 
