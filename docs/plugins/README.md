@@ -131,7 +131,8 @@ A plugin arrives disabled. Turning it on asks a question that lists what it
 will be able to do, taken from its manifest only
 ([capabilities](manifest.md#capabilities)). Disled keeps the fingerprint of
 the files the user approved: if any file changes, the plugin turns off and
-asks again.
+asks again. It turns back on by itself once its files are again the ones
+approved, as when an edit is undone.
 
 The fingerprint is the SHA-256 of one line per file, sorted by path: the
 path inside the folder with `/`, a NUL byte, the size in decimal, a NUL
