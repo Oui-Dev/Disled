@@ -179,7 +179,9 @@ always starts green.
 </picture>
 
 - **The four colors of the lamp.** Their **⋮** menu has **Edit**, which
-  renames them. Their shade stays: for another one, create a color.
+  renames them. Their shade stays: for another one, create a color. The
+  green, orange and red are the LED's own colors, deeper than a screen can
+  show, so their swatches only come close.
 - **Your colors**, up to five. **New color** adds one, and their **⋮** menu
   has **Edit** and **Delete**.
 - **Touch.** The circles on the right say which colors a short touch steps
@@ -190,18 +192,13 @@ always starts green.
 
 **The editor.** A name of up to 16 characters, then the color: a few
 suggestions, or a square with the hues from left to right, vivid at the
-top and paler down to white at the bottom. A click or a drag in the square
-picks the color, and so do the arrow keys. The lamp always makes a color
-at its fullest, and the **Brightness** slider of the popup sets how bright
-it shines, so the square holds only such colors, and the lamp shows each
-as it is. A color that an earlier version of the app saved darker was
-brightened once, to the color that the lamp already showed. With
+top and paler down to white at the bottom. A click, a drag or the arrow
+keys pick the color. The square holds only full colors: the **Brightness**
+slider of the popup sets how bright the lamp shines. With
 **Preview on the lamp**, the lamp shows the color while you change it, and
-goes back to its own color when you leave the editor.
-**Save** keeps it. The lamp is calibrated so that your colors look like
-their swatch on a screen that shows colors faithfully, white included. The
-built-in green, orange and red are the LED's own colors, deeper than a
-screen can show, so their swatches only come close.
+goes back to its own color when you leave the editor. **Save** keeps it.
+The lamp is calibrated so that your colors look like their swatch on a
+screen that shows colors faithfully, white included.
 
 **Delete** acts at once, without asking for confirmation. Wherever the
 color was in use, another one takes its place: the first color of the touch

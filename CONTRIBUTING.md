@@ -144,8 +144,8 @@ the version of `WCHISP_VERSION` (`.github/workflows/release.yml`). wchisp
 has no machine interface, so the app and the production tool read its log
 lines (`crates/disled-flash/src/wchisp.rs`). Before a new version, check
 those lines against it. Then change `WCHISP_VERSION` in `release.yml` and
-`app.yml`, and every `wchisp@X.Y.Z` that `git grep -n "wchisp@"` lists, the
-hint of the production tool included.
+`app.yml`, and every version that `git grep -n -E "wchisp[@ -][0-9]"`
+lists, the hint of the production tool included.
 
 ## Releases
 
