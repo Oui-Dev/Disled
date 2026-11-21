@@ -26,12 +26,25 @@
   }
 }
 
-/*
- * The "Off" tile, in the tiles and in the row of an integration: an unlit
- * grey square, struck through, light grey in light mode and dark grey in
- * dark mode.
- */
 @layer components {
+  /*
+   * A color swatch: a square a fifth of whose side is rounded, with a
+   * border that sets a pale color off the page.
+   */
+  .swatch {
+    @apply rounded-[20%] border border-accented;
+  }
+
+  /* The ring of a swatch whose radio is checked, within a `group`. */
+  .swatch-ring {
+    @apply ring-2 ring-transparent ring-offset-2 ring-offset-bg transition-shadow group-has-data-[state=checked]:ring-inverted;
+  }
+
+  /*
+   * The "Off" tile, in the tiles and in the row of an integration: an unlit
+   * grey square, struck through, light grey in light mode and dark grey in
+   * dark mode.
+   */
   .swatch-off {
     --off-fill: var(--ui-color-neutral-200);
     --off-line: var(--ui-color-neutral-400);

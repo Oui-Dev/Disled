@@ -106,7 +106,7 @@ const groups = computed(() => [colors.builtIn, colors.custom].filter((group) => 
           <li v-for="color in group" :key="color.slot" class="flex h-8 items-center gap-2.5">
             <span
               aria-hidden="true"
-              class="size-5 shrink-0 rounded-[20%] border border-accented"
+              class="swatch size-5 shrink-0"
               :style="{ background: color.hex }"
             />
             <span class="min-w-0 flex-1 truncate text-sm text-default" :title="color.name">

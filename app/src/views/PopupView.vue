@@ -138,92 +138,103 @@ const back = computed<Page | null>(() => {
 
 <template>
   <main class="flex min-h-screen flex-col">
-    <div ref="body" class="flex flex-col gap-4 p-4 pb-3">
-      <header class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <h1 class="text-base font-bold tracking-wide text-highlighted">Disled</h1>
-          <p role="status" class="text-xs text-muted">{{ status }}</p>
-        </div>
-        <LampModeMenu v-if="page === 'lamp'" />
-      </header>
+    <!-- Compact alerts, as the popup is narrow, with their buttons under the text. -->
+    <UTheme
+      :ui="{
+        alert: {
+          root: 'gap-2 p-3',
+          icon: 'size-4',
+          description: 'text-xs wrap-break-word',
+          actions: 'mt-2',
+        },
+      }"
+    >
+      <div ref="body" class="flex flex-col gap-4 p-4 pb-3">
+        <header class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h1 class="text-base font-bold tracking-wide text-highlighted">Disled</h1>
+            <p role="status" class="text-xs text-muted">{{ status }}</p>
+          </div>
+          <LampModeMenu v-if="page === 'lamp'" />
+        </header>
 
-      <section v-if="page === 'lamp'" class="flex flex-col gap-4">
-        <h2 data-page-heading tabindex="-1" class="sr-only">{{ t('popup.lampPage') }}</h2>
-        <p v-if="!lamp.connection.connected" class="text-xs text-muted">
-          {{ t('lamp.unplugged') }}
-        </p>
-        <LampLockAlert />
-        <!-- An integration picks the color: only the switch and its card stay. -->
-        <LampIntegrationRow v-if="control.status.mode" />
-        <div v-else class="flex flex-col gap-2">
-          <LampColorPicker @manage="show('colors')" @create="edit(null, 'lamp')" />
-          <LampCallLine />
-        </div>
-        <LampBrightness />
-      </section>
+        <section v-if="page === 'lamp'" class="flex flex-col gap-4">
+          <h2 data-page-heading tabindex="-1" class="sr-only">{{ t('popup.lampPage') }}</h2>
+          <p v-if="!lamp.connection.connected" class="text-xs text-muted">
+            {{ t('lamp.unplugged') }}
+          </p>
+          <LampLockAlert />
+          <!-- An integration picks the color: only the switch and its card stay. -->
+          <LampIntegrationRow v-if="control.status.mode" />
+          <div v-else class="flex flex-col gap-2">
+            <LampColorPicker @manage="show('colors')" @create="edit(null, 'lamp')" />
+            <LampCallLine />
+          </div>
+          <LampBrightness />
+        </section>
 
-      <section v-else-if="page === 'settings'" class="flex flex-col gap-3">
-        <div class="flex items-center justify-between gap-2">
-          <h2
-            data-page-heading
-            tabindex="-1"
-            class="text-sm font-semibold text-highlighted focus:outline-none"
-          >
-            {{ t('common.settings') }}
-          </h2>
-          <PopupMenu />
-        </div>
-        <LampLockAlert />
-        <PopupUpdates />
-        <PopupSettings />
-      </section>
+        <section v-else-if="page === 'settings'" class="flex flex-col gap-3">
+          <div class="flex items-center justify-between gap-2">
+            <h2
+              data-page-heading
+              tabindex="-1"
+              class="text-sm font-semibold text-highlighted focus:outline-none"
+            >
+              {{ t('common.settings') }}
+            </h2>
+            <PopupMenu />
+          </div>
+          <LampLockAlert />
+          <PopupUpdates />
+          <PopupSettings />
+        </section>
 
-      <ColorsLibrary
-        v-else-if="page === 'colors'"
-        @edit="(slot: number) => edit(slot, 'colors')"
-        @create="edit(null, 'colors')"
-        @share="show('share')"
-      />
-
-      <template v-else-if="page === 'editor'">
-        <ColorsOriginalEditor
-          v-if="editing.slot !== null && editing.slot < BUILT_IN_COLORS.length"
-          ref="editor"
-          :slot="editing.slot"
-          @done="show(editing.from)"
+        <ColorsLibrary
+          v-else-if="page === 'colors'"
+          @edit="(slot: number) => edit(slot, 'colors')"
+          @create="edit(null, 'colors')"
+          @share="show('share')"
         />
-        <ColorsEditor
-          v-else
-          ref="editor"
-          :slot="editing.slot"
-          :from-popover="editing.from === 'lamp'"
-          @done="show(editing.from)"
+
+        <template v-else-if="page === 'editor'">
+          <ColorsOriginalEditor
+            v-if="editing.slot !== null && editing.slot < BUILT_IN_COLORS.length"
+            ref="editor"
+            :slot="editing.slot"
+            @done="show(editing.from)"
+          />
+          <ColorsEditor
+            v-else
+            ref="editor"
+            :slot="editing.slot"
+            :from-popover="editing.from === 'lamp'"
+            @done="show(editing.from)"
+          />
+        </template>
+
+        <ColorsShare v-else-if="page === 'share'" @received="receive" />
+
+        <ColorsImport
+          v-else-if="page === 'import' && importing"
+          ref="importer"
+          :text="importing.text"
+          :palette="importing.palette"
+          @done="show('colors')"
         />
-      </template>
 
-      <ColorsShare v-else-if="page === 'share'" @received="receive" />
-
-      <ColorsImport
-        v-else-if="page === 'import' && importing"
-        ref="importer"
-        :text="importing.text"
-        :palette="importing.palette"
-        @done="show('colors')"
-      />
-
-      <!-- UAlert has no role of its own, so this one gets alert for screen readers. -->
-      <UAlert
-        v-if="errors.last"
-        role="alert"
-        color="error"
-        variant="subtle"
-        icon="i-lucide-triangle-alert"
-        :description="errorText(errors.last)"
-        :close="{ size: 'sm' }"
-        :ui="{ root: 'gap-2 p-3', icon: 'size-4', description: 'text-xs wrap-break-word' }"
-        @update:open="errors.clear()"
-      />
-    </div>
+        <!-- UAlert has no role of its own, so this one gets alert for screen readers. -->
+        <UAlert
+          v-if="errors.last"
+          role="alert"
+          color="error"
+          variant="subtle"
+          icon="i-lucide-triangle-alert"
+          :description="errorText(errors.last)"
+          :close="{ size: 'sm' }"
+          @update:open="errors.clear()"
+        />
+      </div>
+    </UTheme>
 
     <footer ref="footer" class="mt-auto flex items-center justify-between gap-2 px-4 pb-3">
       <template v-if="page === 'editor'">

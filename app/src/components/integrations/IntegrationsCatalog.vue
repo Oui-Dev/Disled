@@ -94,13 +94,11 @@ async function install(entry: CatalogView): Promise<void> {
       ]"
     />
 
-    <p
+    <WaitingLine
       v-if="plugins.catalogLoading && !plugins.catalog"
-      class="flex items-center gap-2 text-sm text-muted"
-    >
-      <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin" />
-      {{ t('integrations.catalog.loading') }}
-    </p>
+      :text="t('integrations.catalog.loading')"
+      class="text-sm"
+    />
     <UEmpty
       v-else-if="plugins.catalog && !plugins.catalog.length"
       variant="naked"

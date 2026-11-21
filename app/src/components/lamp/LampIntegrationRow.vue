@@ -78,7 +78,7 @@ function turnOn(): void {
         <span
           aria-hidden="true"
           :data-state="off ? 'checked' : 'unchecked'"
-          class="swatch-off block size-9 rounded-[20%] border border-accented ring-2 ring-transparent ring-offset-2 ring-offset-bg transition-shadow group-has-data-[state=checked]:ring-inverted"
+          class="swatch swatch-ring swatch-off block size-9"
         />
         <LampTileName :name="t('lamp.colors.off')" />
       </UButton>
@@ -101,7 +101,7 @@ function turnOn(): void {
         >
           <span
             aria-hidden="true"
-            class="relative block size-9 shrink-0 rounded-[20%] border border-accented ring-2 ring-offset-2 ring-offset-bg"
+            class="swatch relative block size-9 shrink-0 ring-2 ring-offset-2 ring-offset-bg transition-shadow"
             :class="off ? 'ring-transparent' : 'ring-inverted'"
           >
             <span
