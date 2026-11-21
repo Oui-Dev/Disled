@@ -14,33 +14,26 @@ import type { LampChoice } from '@/bindings/LampChoice';
 import type { LampState } from '@/bindings/LampState';
 import { deviceConnection, deviceSend, lampChoose } from '@/ipc/commands';
 import { follow, on } from '@/ipc/events';
-import { PROTOCOL_MAJOR } from '@/utils/lamp';
 import { useErrorStore } from './errors';
-
-/**
- * What the protocol of a lamp lets the app do: a version 1 lamp and a lamp
- * newer than the app are locked, a version 2 lamp is driven.
- */
-export type Generation = 'v1' | 'v2' | 'newer';
 
 export const useLampStore = defineStore('lamp', () => {
   const errors = useErrorStore();
 
-  const connection = ref<Connection>({ connected: false, debug_build: false, serial: null });
+  const connection = ref<Connection>({
+    connected: false,
+    debug_build: false,
+    serial: null,
+    generation: null,
+  });
   const info = ref<Info | null>(null);
   const state = ref<LampState | null>(null);
 
-  /** Read in the INFO of the lamp, null until it answers. */
-  const generation = computed<Generation | null>(() => {
-    const major = info.value?.protocol[0];
-    if (major === undefined) {
-      return null;
-    }
-    if (major === PROTOCOL_MAJOR) {
-      return 'v2';
-    }
-    return major < PROTOCOL_MAJOR ? 'v1' : 'newer';
-  });
+  /**
+   * What the protocol of the lamp lets the app do, null until it answers: a
+   * version 1 lamp and a lamp newer than the app are locked, a version 2
+   * lamp is driven.
+   */
+  const generation = computed(() => connection.value.generation);
   /** A lamp the app does not drive: its controls stay greyed. */
   const locked = computed(() => generation.value === 'v1' || generation.value === 'newer');
   /** A version 2 lamp whose state is known, which the controls drive. */
