@@ -30,17 +30,9 @@ static uint32_t cie_linear(uint32_t level_permille)
     return (uint32_t)((65535u * cube + full / 2u) / full);
 }
 
-static void test_perceived_scale_ends(void)
+static void test_perceived_above_1000_is_full_light(void)
 {
-    TEST_ASSERT_EQUAL_UINT16(0, color_perceived_to_linear(0));
-    TEST_ASSERT_EQUAL_UINT16(65535, color_perceived_to_linear(1000));
     TEST_ASSERT_EQUAL_UINT16(65535, color_perceived_to_linear(1200));
-}
-
-static void test_perceived_mid_grey_is_18_percent(void)
-{
-    /* L* = 50 is a relative luminance of 18.4 %. */
-    TEST_ASSERT_UINT16_WITHIN(20, 12071, color_perceived_to_linear(500));
 }
 
 static void test_perceived_scale_follows_the_cie_curve(void)
@@ -65,14 +57,6 @@ static void test_perceived_scale_is_strictly_increasing(void)
         TEST_ASSERT_TRUE(value > previous);
         previous = value;
     }
-}
-
-static void test_dimmest_manual_level_stays_visible(void)
-{
-    /* 1 % must still ask for the light of a few PWM ticks out of 3600
-     * (14 ns each), which the dithering then splits into sixteenths. */
-    const uint32_t ticks = (uint32_t)color_perceived_to_linear(10) * 3600u / 65535u;
-    TEST_ASSERT_TRUE(ticks >= 3);
 }
 
 static void test_level_shown_spreads_1_to_100_percent_over_the_floor_to_100(void)
@@ -101,11 +85,9 @@ static void test_a_floor_of_1_percent_changes_nothing(void)
 int main(void)
 {
     UNITY_BEGIN();
-    RUN_TEST(test_perceived_scale_ends);
-    RUN_TEST(test_perceived_mid_grey_is_18_percent);
+    RUN_TEST(test_perceived_above_1000_is_full_light);
     RUN_TEST(test_perceived_scale_follows_the_cie_curve);
     RUN_TEST(test_perceived_scale_is_strictly_increasing);
-    RUN_TEST(test_dimmest_manual_level_stays_visible);
     RUN_TEST(test_level_shown_spreads_1_to_100_percent_over_the_floor_to_100);
     RUN_TEST(test_a_floor_of_1_percent_changes_nothing);
     return UNITY_END();

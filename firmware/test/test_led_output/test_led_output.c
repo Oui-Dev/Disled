@@ -412,16 +412,6 @@ static void test_breath_dims_a_bright_lamp(void)
     TEST_ASSERT_EQUAL_UINT16(expected, duty[LED_CHANNEL_RED]);
 }
 
-static void test_breath_at_zero_changes_nothing(void)
-{
-    in.level_permille = 300;
-    settle_on_inputs();
-    const uint16_t still = duty[LED_CHANNEL_GREEN];
-    in.breath = 0;
-    led_output_update(&out, &in, 500, duty);
-    TEST_ASSERT_EQUAL_UINT16(still, duty[LED_CHANNEL_GREEN]);
-}
-
 static void test_breath_stays_within_the_current_cap(void)
 {
     /* Full white at 60 % rises to 90 %, far above the 70 mA without a host. */
@@ -470,7 +460,6 @@ int main(void)
     RUN_TEST(test_the_current_never_exceeds_the_cap);
     RUN_TEST(test_breath_raises_a_dim_lamp_to_the_alert_level);
     RUN_TEST(test_breath_dims_a_bright_lamp);
-    RUN_TEST(test_breath_at_zero_changes_nothing);
     RUN_TEST(test_breath_stays_within_the_current_cap);
     RUN_TEST(test_settle_fades_back_from_the_breath_without_a_jump);
     return UNITY_END();

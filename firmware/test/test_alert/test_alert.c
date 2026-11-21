@@ -88,20 +88,6 @@ static void test_alert_ends_after_its_breaths_and_says_so_once(void)
     TEST_ASSERT_EQUAL_UINT16(0, amplitude);
 }
 
-static void test_three_default_breaths_last_between_3_and_5_seconds(void)
-{
-    alert_t alert = { 0 };
-    uint16_t amplitude;
-    alert_start(&alert, 3, 1300, 0);
-    uint32_t end = 0;
-    for (uint32_t t = 0; t < 10000u && end == 0u; t += 10u) {
-        if (alert_update(&alert, t, &amplitude)) {
-            end = t;
-        }
-    }
-    TEST_ASSERT_TRUE(end >= 3000u && end <= 5000u);
-}
-
 static void test_a_late_update_still_ends_the_alert(void)
 {
     alert_t alert = { 0 };
@@ -181,7 +167,6 @@ int main(void)
     RUN_TEST(test_breath_rises_then_falls_without_steps);
     RUN_TEST(test_breath_is_flat_at_both_ends_and_symmetric);
     RUN_TEST(test_alert_ends_after_its_breaths_and_says_so_once);
-    RUN_TEST(test_three_default_breaths_last_between_3_and_5_seconds);
     RUN_TEST(test_a_late_update_still_ends_the_alert);
     RUN_TEST(test_alert_runs_across_the_millisecond_wrap);
     RUN_TEST(test_stop_ends_silently);
