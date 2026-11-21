@@ -11,7 +11,7 @@ import { computed, ref } from 'vue';
 import type { FirmwareStatus } from '@/bindings/FirmwareStatus';
 import type { Flash } from '@/bindings/Flash';
 import { firmwareCancel, firmwareCheck, firmwareInstall, firmwareStatus } from '@/ipc/commands';
-import { follow } from '@/ipc/events';
+import { mirror } from '@/ipc/events';
 import { useLampStore } from './lamp';
 
 /** Compares an "X.Y.Z" version with the version a lamp reports. */
@@ -77,13 +77,7 @@ export const useFirmwareStore = defineStore('firmware', () => {
 
   /** Follows the backend events. Call once, in the popup or an update window. */
   async function start(): Promise<void> {
-    await follow(
-      'firmware-status',
-      (next) => {
-        status.value = next;
-      },
-      firmwareStatus,
-    );
+    await mirror(status, 'firmware-status', firmwareStatus);
     loaded.value = true;
   }
 

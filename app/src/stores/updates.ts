@@ -8,7 +8,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import type { UpdateStatus } from '@/bindings/UpdateStatus';
 import { updateCheck, updateInstall, updateStatus } from '@/ipc/commands';
-import { follow } from '@/ipc/events';
+import { mirror } from '@/ipc/events';
 
 export const useUpdatesStore = defineStore('updates', () => {
   const status = ref<UpdateStatus>({
@@ -29,14 +29,8 @@ export const useUpdatesStore = defineStore('updates', () => {
   }
 
   /** Follows the backend events. Call once, in the popup. */
-  async function start(): Promise<void> {
-    await follow(
-      'update-status',
-      (next) => {
-        status.value = next;
-      },
-      updateStatus,
-    );
+  function start(): Promise<void> {
+    return mirror(status, 'update-status', updateStatus);
   }
 
   return {

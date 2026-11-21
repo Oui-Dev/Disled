@@ -17,7 +17,7 @@ import {
   colorsSaveCustom,
   colorsSetCycle,
 } from '@/ipc/commands';
-import { follow } from '@/ipc/events';
+import { mirror } from '@/ipc/events';
 import { BUILT_IN_COLORS } from '@/utils/lamp';
 import { useErrorStore } from './errors';
 
@@ -69,18 +69,6 @@ export const useColorsStore = defineStore('colors', () => {
     return builtIn.value[slot] ?? custom.value.find((shown) => shown.slot === slot);
   }
 
-  /** Runs a change; a failure becomes the last error, a success clears it. */
-  async function change<T>(action: () => Promise<T>): Promise<T | undefined> {
-    try {
-      const result = await action();
-      errors.clear();
-      return result;
-    } catch (error) {
-      errors.reportFailure(error);
-      return undefined;
-    }
-  }
-
   return {
     palette,
     builtIn,
@@ -89,20 +77,13 @@ export const useColorsStore = defineStore('colors', () => {
     full,
     color,
     saveCustom: (color: Parameters<typeof colorsSaveCustom>[0]) =>
-      change(() => colorsSaveCustom(color)),
+      errors.attempt(colorsSaveCustom(color)),
     renameOriginal: (slot: number, name: string | null) =>
-      change(() => colorsRenameOriginal(slot, name)),
-    setCycle: (slots: number[]) => change(() => colorsSetCycle(slots)),
-    remove: (slot: number) => change(() => colorsDelete(slot)),
-    importCode: (text: string) => change(() => colorsImport(text)),
+      errors.attempt(colorsRenameOriginal(slot, name)),
+    setCycle: (slots: number[]) => errors.attempt(colorsSetCycle(slots)),
+    remove: (slot: number) => errors.attempt(colorsDelete(slot)),
+    importCode: (text: string) => errors.attempt(colorsImport(text)),
     /** Follows the backend events. Call once per window. */
-    start: () =>
-      follow(
-        'colors-changed',
-        (next) => {
-          palette.value = next;
-        },
-        colorsGet,
-      ),
+    start: () => mirror(palette, 'colors-changed', colorsGet),
   };
 });

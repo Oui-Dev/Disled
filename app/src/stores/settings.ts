@@ -11,7 +11,7 @@ import type { Locale } from '@/bindings/Locale';
 import type { Settings } from '@/bindings/Settings';
 import type { SettingsPatch } from '@/bindings/SettingsPatch';
 import { autostartGet, autostartSet, localeGet, settingsGet, settingsSet } from '@/ipc/commands';
-import { follow } from '@/ipc/events';
+import { follow, mirror } from '@/ipc/events';
 import { useErrorStore } from './errors';
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -26,17 +26,12 @@ export const useSettingsStore = defineStore('settings', () => {
   let changes = 0;
 
   async function update(patch: SettingsPatch): Promise<void> {
-    try {
-      const before = changes;
-      const next = await settingsSet(patch);
-      // An event heard meanwhile may come from a later update, and the
-      // events keep the settings current anyway.
-      if (changes === before) {
-        settings.value = next;
-      }
-      errors.clear();
-    } catch (error) {
-      errors.reportFailure(error);
+    const before = changes;
+    const next = await errors.attempt(settingsSet(patch));
+    // An event heard meanwhile may come from a later update, and the
+    // events keep the settings current anyway.
+    if (next && changes === before) {
+      settings.value = next;
     }
   }
 
@@ -60,13 +55,7 @@ export const useSettingsStore = defineStore('settings', () => {
         },
         settingsGet,
       ),
-      follow(
-        'locale-changed',
-        (next) => {
-          locale.value = next;
-        },
-        localeGet,
-      ),
+      mirror(locale, 'locale-changed', localeGet),
       autostartGet().then((enabled) => {
         autostart.value = enabled;
       }),
