@@ -19,11 +19,6 @@ export const useUpdatesStore = defineStore('updates', () => {
     checked_at: null,
   });
 
-  /** The status events bring the result, in order with the other changes. */
-  async function check(): Promise<void> {
-    await updateCheck();
-  }
-
   /** Downloads and installs the update; the app restarts once it is done. */
   async function install(): Promise<void> {
     try {
@@ -44,5 +39,11 @@ export const useUpdatesStore = defineStore('updates', () => {
     );
   }
 
-  return { status, check, install, start };
+  return {
+    status,
+    // The status events bring the result, in order with the other changes.
+    check: updateCheck,
+    install,
+    start,
+  };
 });

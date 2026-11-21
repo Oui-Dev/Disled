@@ -484,17 +484,12 @@ async fn firmware_check(app: AppHandle) {
     firmware::check(&app).await;
 }
 
-/// Starts the update to the newest firmware 2.x, from the guided window;
+/// Starts the update to a version of the list: the newest from the guided
+/// window, the one the user picks from the reinstall window.
 /// `firmware-status` events follow it.
 #[tauri::command]
-fn firmware_install(app: AppHandle) -> Result<(), String> {
-    firmware::install(&app)
-}
-
-/// Starts the update to a version of the list, from the reinstall window.
-#[tauri::command]
-fn firmware_install_manual(app: AppHandle, version: String) -> Result<(), String> {
-    firmware::install_manual(&app, &version)
+fn firmware_install(app: AppHandle, version: String) -> Result<(), String> {
+    firmware::install(&app, &version)
 }
 
 #[tauri::command]
@@ -705,7 +700,6 @@ fn main() {
             firmware_status,
             firmware_check,
             firmware_install,
-            firmware_install_manual,
             firmware_cancel,
             open_diagnostics,
             open_lamp_update,
