@@ -38,9 +38,9 @@ struct Args {
     /// CSV log, appended.
     #[arg(long, default_value = "disled-production.csv")]
     log: PathBuf,
-    /// wchisp program [default: the one on the PATH, else PlatformIO's].
-    #[arg(long)]
-    wchisp: Option<PathBuf>,
+    /// wchisp program, a path or a name that the PATH resolves.
+    #[arg(long, default_value = wchisp::PROGRAM)]
+    wchisp: PathBuf,
 }
 
 /// The firmware of the session.
@@ -81,54 +81,19 @@ fn load_firmware(path: &Path, unsigned: bool) -> Result<Firmware, String> {
     })
 }
 
-/// The wchisp to use: the one given, else the one next to this program or
-/// on the PATH, else the one PlatformIO installs for the firmware. Returns
-/// it with its version.
-fn find_wchisp(given: Option<PathBuf>) -> Result<(Wchisp, String), String> {
-    let candidates = match given {
-        Some(path) => vec![path],
-        None => [on_path(wchisp::PROGRAM), platformio_wchisp()]
-            .into_iter()
-            .flatten()
-            .collect(),
-    };
-    candidates
-        .into_iter()
-        .map(Wchisp::new)
-        .find_map(|flasher| flasher.version().ok().map(|version| (flasher, version)))
-        .ok_or_else(|| {
-            "wchisp not found: install it (cargo install wchisp@0.3.0 --locked), \
-             or give its path with --wchisp"
-                .into()
-        })
-}
-
-/// Finds a program next to this one, else on the PATH, and returns its full
-/// path to show which one runs.
-fn on_path(name: &str) -> Option<PathBuf> {
-    let beside = std::env::current_exe()
-        .ok()
-        .map(|exe| exe.with_file_name(name));
-    let path = std::env::var_os("PATH").unwrap_or_default();
-    beside
-        .into_iter()
-        .chain(std::env::split_paths(&path).map(|dir| dir.join(name)))
-        .find(|candidate| candidate.is_file())
-}
-
-fn platformio_wchisp() -> Option<PathBuf> {
-    let core = std::env::var_os("PLATFORMIO_CORE_DIR")
-        .map(PathBuf::from)
-        .or_else(|| std::env::home_dir().map(|home| home.join(".platformio")))?;
-    Some(core.join("packages/tool-wchisp").join(wchisp::PROGRAM))
-}
-
 fn run(args: Args) -> Result<(), String> {
     let firmware = load_firmware(&args.firmware, args.unsigned)?;
     let flasher = if args.no_flash {
         None
     } else {
-        Some(find_wchisp(args.wchisp)?)
+        let flasher = Wchisp::new(args.wchisp);
+        // Its version also shows that it runs.
+        let version = flasher.version().map_err(|_| {
+            "wchisp not found: install it (cargo install wchisp@0.3.0 --locked), \
+             or give its path with --wchisp"
+                .to_owned()
+        })?;
+        Some((flasher, version))
     };
     let report = Report::open(&args.log)?;
     let api = HidApi::new().map_err(|e| format!("cannot use USB HID: {e}"))?;
