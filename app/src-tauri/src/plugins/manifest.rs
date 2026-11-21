@@ -39,7 +39,7 @@ const ICONS: [&str; 14] = [
     "zap",
     "puzzle",
 ];
-pub const DEFAULT_ICON: &str = "puzzle";
+pub(super) const DEFAULT_ICON: &str = "puzzle";
 
 const MAX_STATES: usize = 8;
 const MAX_DESCRIPTION: usize = 300;
@@ -280,7 +280,7 @@ pub fn read(folder: &Path) -> Result<Manifest, Reason> {
 }
 
 /// The `plugin.json` of `folder` as JSON, before the check of its fields.
-pub fn read_json(folder: &Path) -> Result<Value, Reason> {
+pub(super) fn read_json(folder: &Path) -> Result<Value, Reason> {
     let text = match std::fs::read_to_string(folder.join(FILE)) {
         Ok(text) => text,
         Err(error) if error.kind() == ErrorKind::NotFound => return Err(Reason::Missing),

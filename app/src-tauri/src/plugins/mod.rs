@@ -9,8 +9,11 @@
 //! on the local server, and tells the control which integrations the lamp
 //! can follow, their states and their alerts. The programs of the plugins
 //! with the `lamp` capability get the state of the lamp and its presses.
+//! This module ties the host to the app: its lock, the settings, the
+//! control and the windows.
 
 pub mod catalog;
+mod host;
 pub mod http;
 pub mod lamp;
 pub mod manifest;
@@ -19,242 +22,32 @@ pub mod rules;
 pub mod scan;
 pub mod states;
 pub mod tokens;
+pub mod view;
 
-use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::{Read, Seek};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
 use parking_lot::Mutex;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
-use crate::colors::{ColorsState, Palette, PreviewState};
-use crate::control::{self, ControlState, Input, Integration, IntegrationState};
+use crate::colors::{ColorsState, PreviewState};
+use crate::control::{self, ControlState, Input};
 use crate::device::DeviceHandle;
 use crate::i18n::{Locale, LocaleState};
-use crate::{settings, updates};
-use manifest::{Capabilities, Manifest, Reason};
-use process::{Feed, Notification, Program, ProgramStatus, Spec, Timing};
-use rules::Action;
-use states::Keys;
+use crate::settings;
+use host::{Host, Outbox};
+use manifest::Reason;
+use process::{Notification, Program, ProgramStatus, Timing};
+use view::{FilledBlock, PluginView};
 
 const EVENT_PLUGINS: &str = "plugins-changed";
 /// How often the states whose time runs out leave.
 const TICK: Duration = Duration::from_secs(1);
-
-/// What the app keeps of a plugin.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-struct Entry {
-    /// The fingerprint that the user approved.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    approved: Option<String>,
-    #[serde(default)]
-    enabled: bool,
-    /// The slot that the user picked for each state.
-    #[serde(default)]
-    colors: BTreeMap<String, u8>,
-    /// The installation note folded after a first event, until the token
-    /// changes.
-    #[serde(default)]
-    installed: bool,
-}
-
-/// The key `integrations` of the settings.
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Stored {
-    /// The integration the lamp follows, none in manual mode.
-    mode: Option<String>,
-    plugins: BTreeMap<String, Entry>,
-}
-
-impl Stored {
-    /// Reads the key field by field: a damaged entry leaves alone.
-    fn from_value(value: &Value) -> Self {
-        let mode = value
-            .get("mode")
-            .and_then(Value::as_str)
-            .filter(|mode| manifest::valid_id(mode))
-            .map(str::to_owned);
-        let plugins = value
-            .get("plugins")
-            .and_then(Value::as_object)
-            .map(|plugins| {
-                plugins
-                    .iter()
-                    .filter(|(id, _)| manifest::valid_id(id))
-                    .filter_map(|(id, entry)| {
-                        Some((id.clone(), serde_json::from_value(entry.clone()).ok()?))
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-        Self { mode, plugins }
-    }
-
-    /// The key to save. Manual mode saves as null, which leaves every id to
-    /// the plugins.
-    fn to_value(&self) -> Value {
-        serde_json::json!({
-            "mode": self.mode,
-            "plugins": self.plugins,
-        })
-    }
-}
-
-/// The last event of a plugin, for its details.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[cfg_attr(test, derive(ts_rs::TS), ts(export))]
-pub struct LastEvent {
-    /// Seconds since 1970-01-01 UTC.
-    pub at: u64,
-    /// The label of the state it gave, none when it gave none.
-    pub state: Option<String>,
-}
-
-/// A state of a plugin, with its color.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[cfg_attr(test, derive(ts_rs::TS), ts(export))]
-pub struct StateView {
-    pub id: String,
-    pub label: String,
-    /// The color that the user picked, or the default one.
-    pub slot: u8,
-}
-
-/// The installation note, without its block, which `plugin_note` fills.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[cfg_attr(test, derive(ts_rs::TS), ts(export))]
-pub struct NoteView {
-    pub paragraphs: Vec<String>,
-    pub file: Option<String>,
-    pub block: bool,
-}
-
-/// A plugin as the integrations window shows it, with no token.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[cfg_attr(test, derive(ts_rs::TS), ts(export))]
-pub struct PluginView {
-    pub id: String,
-    /// The name of its folder while it is unreadable.
-    pub name: String,
-    pub icon: String,
-    pub version: Option<String>,
-    pub author: Option<String>,
-    pub description: Option<String>,
-    pub unreadable: Option<Reason>,
-    /// The user approved it once.
-    pub approved: bool,
-    /// Its files changed since.
-    pub modified: bool,
-    pub enabled: bool,
-    pub capabilities: Capabilities,
-    /// The command of its program, as the approval shows it.
-    pub command: Option<String>,
-    /// Who sends its events, such as "Claude Code".
-    pub from: Option<String>,
-    pub states: Vec<StateView>,
-    pub note: Option<NoteView>,
-    /// A first event folded its note.
-    pub installed: bool,
-    pub last_event: Option<LastEvent>,
-    pub program: Option<ProgramStatus>,
-    /// The port of the events, while another program holds it.
-    pub port_taken: Option<u16>,
-    /// Its fingerprint now, which the approval sends back.
-    pub fingerprint: Option<String>,
-}
-
-/// The block of a note, filled in, with what the window highlights.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[cfg_attr(test, derive(ts_rs::TS), ts(export))]
-pub struct FilledBlock {
-    pub text: String,
-    pub url: String,
-    pub token: Option<String>,
-}
-
-/// A command as the approval shows it: its arguments with spaces between
-/// them, in straight quotes when they hold one.
-fn shown_command(arguments: &[String]) -> String {
-    arguments
-        .iter()
-        .map(|argument| {
-            if argument.contains(' ') {
-                format!("\"{argument}\"")
-            } else {
-                argument.clone()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-/// A plugin as the host knows it.
-struct Plugin {
-    manifest: Result<Manifest, Reason>,
-    fingerprint: Option<String>,
-    keys: Keys,
-    /// The state on show, and since when.
-    shown: Option<(String, u64)>,
-    /// When the last event came, and the state it gave.
-    heard: Option<(u64, Option<String>)>,
-    program: Option<ProgramStatus>,
-}
-
-impl Plugin {
-    fn read(folder: &Path, cache: &mut scan::Cache) -> Self {
-        let manifest = manifest::read(folder);
-        let fingerprint = match &manifest {
-            Ok(_) => scan::fingerprint(folder, cache),
-            Err(reason) => Err(reason.clone()),
-        };
-        let (manifest, fingerprint) = match fingerprint {
-            Ok(fingerprint) => (manifest, Some(fingerprint)),
-            Err(reason) => (Err(reason), None),
-        };
-        Self {
-            manifest,
-            fingerprint,
-            keys: Keys::default(),
-            shown: None,
-            heard: None,
-            program: None,
-        }
-    }
-}
-
-/// What a change leaves to do once the host is free again.
-#[derive(Default)]
-struct Outbox {
-    control: Vec<Input>,
-    stop: Vec<Program>,
-    save: Option<Value>,
-    views: Option<Vec<PluginView>>,
-}
-
-pub struct Host {
-    folder: PathBuf,
-    data: PathBuf,
-    logs: PathBuf,
-    cache: scan::Cache,
-    stored: Stored,
-    tokens: tokens::Tokens,
-    plugins: BTreeMap<String, Plugin>,
-    programs: HashMap<String, Program>,
-    hooks: http::Hooks,
-    events: tokio::sync::mpsc::Sender<http::Event>,
-    server: Option<tauri::async_runtime::JoinHandle<()>>,
-    port_taken: Arc<std::sync::atomic::AtomicBool>,
-    /// The `lamp` notification that the programs last got, which a program
-    /// that starts gets first.
-    lamp: String,
-}
 
 /// The host, once the app started it.
 #[derive(Default)]
@@ -269,415 +62,6 @@ fn language(app: &AppHandle) -> &'static str {
     match app.state::<LocaleState>().get() {
         Locale::Fr => "fr",
         Locale::En => "en",
-    }
-}
-
-impl Host {
-    fn entry(&mut self, id: &str) -> &mut Entry {
-        self.stored.plugins.entry(id.to_owned()).or_default()
-    }
-
-    /// A plugin the user approved as it is now.
-    fn approved(&self, id: &str) -> bool {
-        let fingerprint = self
-            .plugins
-            .get(id)
-            .and_then(|plugin| plugin.fingerprint.as_ref());
-        fingerprint.is_some()
-            && self
-                .stored
-                .plugins
-                .get(id)
-                .and_then(|entry| entry.approved.as_ref())
-                == fingerprint
-    }
-
-    fn active(&self, id: &str) -> bool {
-        self.approved(id)
-            && self
-                .stored
-                .plugins
-                .get(id)
-                .is_some_and(|entry| entry.enabled)
-    }
-
-    fn manifest(&self, id: &str) -> Option<&Manifest> {
-        self.plugins
-            .get(id)
-            .and_then(|plugin| plugin.manifest.as_ref().ok())
-    }
-
-    /// The color of a state: the one the user picked while it exists, the
-    /// default one otherwise.
-    fn slot(&self, id: &str, state: &str, palette: &Palette) -> Option<u8> {
-        let default = self.manifest(id)?.state(state)?.color;
-        let picked = self
-            .stored
-            .plugins
-            .get(id)
-            .and_then(|entry| entry.colors.get(state))
-            .copied()
-            .filter(|slot| palette.defines(*slot));
-        Some(picked.unwrap_or(default))
-    }
-
-    /// Reads the folder again: new plugins, changed ones, gone ones.
-    fn rescan(&mut self, app: &AppHandle, outbox: &mut Outbox) {
-        let _ = std::fs::create_dir_all(&self.folder);
-        let mut found = BTreeMap::new();
-        if let Ok(entries) = std::fs::read_dir(&self.folder) {
-            for entry in entries.flatten() {
-                let name = entry.file_name().to_string_lossy().into_owned();
-                // Imports under way start with a dot.
-                if name.starts_with('.') || !entry.path().is_dir() {
-                    continue;
-                }
-                found.insert(name, entry.path());
-            }
-        }
-        let gone: Vec<String> = self
-            .plugins
-            .keys()
-            .filter(|id| !found.contains_key(*id))
-            .cloned()
-            .collect();
-        for id in gone {
-            self.forget(&id, outbox);
-        }
-        for (id, folder) in found {
-            let mut plugin = Plugin::read(&folder, &mut self.cache);
-            if let Some(known) = self.plugins.remove(&id)
-                && known.fingerprint == plugin.fingerprint
-            {
-                plugin.keys = known.keys;
-                plugin.shown = known.shown;
-                plugin.heard = known.heard;
-                // A program not found is looked for again, as it may be
-                // installed since.
-                plugin.program = known
-                    .program
-                    .filter(|status| !matches!(status, ProgramStatus::NotFound { .. }));
-            } else if let Some(program) = self.programs.remove(&id) {
-                // Changed files: the program of the old files stops.
-                outbox.stop.push(program);
-            }
-            self.plugins.insert(id, plugin);
-        }
-        self.run_programs(app);
-    }
-
-    /// A plugin that left: its program stops, its states go.
-    fn forget(&mut self, id: &str, outbox: &mut Outbox) {
-        self.plugins.remove(id);
-        if let Some(program) = self.programs.remove(id) {
-            outbox.stop.push(program);
-        }
-    }
-
-    /// Starts the programs of the active plugins that run one, and stops
-    /// the others.
-    fn run_programs(&mut self, app: &AppHandle) {
-        let wanted: Vec<String> = self
-            .plugins
-            .keys()
-            .filter(|id| self.active(id))
-            .filter(|id| {
-                self.manifest(id)
-                    .is_some_and(|manifest| manifest.capabilities.run)
-            })
-            .cloned()
-            .collect();
-        for id in wanted {
-            if self.programs.contains_key(&id)
-                || matches!(
-                    self.plugins
-                        .get(&id)
-                        .and_then(|plugin| plugin.program.as_ref()),
-                    Some(ProgramStatus::Failed | ProgramStatus::NotFound { .. })
-                )
-            {
-                continue;
-            }
-            let Some(command) = self
-                .manifest(&id)
-                .and_then(|manifest| manifest.run.as_ref())
-                .and_then(manifest::Run::command)
-                .map(<[String]>::to_vec)
-            else {
-                continue;
-            };
-            let folder = self.folder.join(&id);
-            let home = app.path().home_dir().ok();
-            let Some(program) =
-                process::resolve(&command[0], &folder, std::env::var_os("PATH"), home)
-            else {
-                if let Some(plugin) = self.plugins.get_mut(&id) {
-                    plugin.program = Some(ProgramStatus::NotFound {
-                        program: command[0].clone(),
-                    });
-                }
-                continue;
-            };
-            let spec = Spec {
-                id: id.clone(),
-                program,
-                arguments: command[1..].to_vec(),
-                folder,
-                data: self.data.join(&id),
-                language: language(app).into(),
-                log: self.logs.join(format!("{id}.log")),
-            };
-            let feed = self
-                .manifest(&id)
-                .is_some_and(|manifest| manifest.capabilities.lamp)
-                .then(|| Feed::new(self.lamp.clone()));
-            let (notes, statuses) = (app.clone(), app.clone());
-            let (note_id, status_id) = (id.clone(), id.clone());
-            let program = Program::start(
-                spec,
-                Timing::default(),
-                feed,
-                move |note| on_note(&notes, &note_id, note),
-                move |status| on_program(&statuses, &status_id, status),
-            );
-            self.programs.insert(id, program);
-        }
-    }
-
-    /// The approved plugins with events, for the local server, which runs
-    /// only while there is one.
-    fn serve(&mut self, app: &AppHandle) {
-        let hooks: HashMap<String, http::Hook> = self
-            .plugins
-            .iter()
-            .filter(|(id, plugin)| {
-                self.approved(id)
-                    && plugin
-                        .manifest
-                        .as_ref()
-                        .is_ok_and(|manifest| manifest.capabilities.events)
-            })
-            .filter_map(|(id, _)| {
-                Some((
-                    id.clone(),
-                    http::Hook {
-                        token: self.tokens.get(id)?.to_owned(),
-                        enabled: self.active(id),
-                    },
-                ))
-            })
-            .collect();
-        let wanted = !hooks.is_empty();
-        *self.hooks.write() = hooks;
-        match (&self.server, wanted) {
-            (None, true) => {
-                let router = http::router(Arc::clone(&self.hooks), self.events.clone());
-                let taken = Arc::clone(&self.port_taken);
-                let owner = app.clone();
-                self.server = Some(tauri::async_runtime::spawn(http::serve(
-                    router,
-                    move |now| {
-                        // The windows hear of a change, which no change of
-                        // the plugins brings.
-                        if taken.swap(now, std::sync::atomic::Ordering::SeqCst) != now {
-                            with(&owner, |_, _| {});
-                        }
-                    },
-                )));
-            }
-            (Some(_), false) => {
-                if let Some(server) = self.server.take() {
-                    server.abort();
-                }
-                self.port_taken
-                    .store(false, std::sync::atomic::Ordering::SeqCst);
-            }
-            _ => {}
-        }
-    }
-
-    fn save(&self, outbox: &mut Outbox) {
-        outbox.save = Some(self.stored.to_value());
-    }
-
-    /// Brings the control and the windows in line with the plugins. The
-    /// control gets every input at each sync: one that changes nothing does
-    /// nothing.
-    fn sync(&mut self, app: &AppHandle, palette: &Palette, language: &str, outbox: &mut Outbox) {
-        self.serve(app);
-        let integrations: Vec<Integration> = self
-            .plugins
-            .iter()
-            .filter(|(id, _)| self.active(id))
-            .filter_map(|(id, plugin)| {
-                let manifest = plugin.manifest.as_ref().ok()?;
-                manifest.capabilities.color.then(|| Integration {
-                    id: id.clone(),
-                    name: manifest.name.clone(),
-                    icon: manifest.icon.clone(),
-                })
-            })
-            .collect();
-        // The lamp cannot follow a plugin that left.
-        if self
-            .stored
-            .mode
-            .as_ref()
-            .is_some_and(|mode| !integrations.iter().any(|known| &known.id == mode))
-        {
-            self.stored.mode = None;
-            self.save(outbox);
-        }
-        let announces: Vec<Input> = integrations
-            .iter()
-            .map(|integration| Input::Announce {
-                id: integration.id.clone(),
-                state: self.integration_state(&integration.id, palette, language),
-            })
-            .collect();
-        outbox.control.push(Input::Integrations(integrations));
-        outbox.control.extend(announces);
-        outbox.views = Some(self.views(palette, language));
-    }
-
-    fn integration_state(
-        &self,
-        id: &str,
-        palette: &Palette,
-        language: &str,
-    ) -> Option<IntegrationState> {
-        let plugin = self.plugins.get(id)?;
-        let (state, since) = plugin.shown.as_ref()?;
-        let manifest = plugin.manifest.as_ref().ok()?;
-        Some(IntegrationState {
-            label: manifest.state(state)?.label.get(language).clone(),
-            slot: self.slot(id, state, palette)?,
-            since: *since,
-        })
-    }
-
-    /// Updates the state on show of a plugin, after its keys changed.
-    fn refresh(&mut self, id: &str) {
-        let Some(plugin) = self.plugins.get_mut(id) else {
-            return;
-        };
-        let Ok(manifest) = plugin.manifest.as_ref() else {
-            return;
-        };
-        let current = plugin.keys.current(manifest).map(str::to_owned);
-        let same = plugin.shown.as_ref().map(|(state, _)| state) == current.as_ref();
-        if !same {
-            plugin.shown = current.map(|state| (state, updates::now()));
-        }
-    }
-
-    fn views(&self, palette: &Palette, language: &str) -> Vec<PluginView> {
-        let port_taken = self.port_taken.load(std::sync::atomic::Ordering::SeqCst);
-        self.plugins
-            .iter()
-            .map(|(id, plugin)| {
-                let entry = self.stored.plugins.get(id);
-                let manifest = plugin.manifest.as_ref().ok();
-                PluginView {
-                    id: id.clone(),
-                    name: manifest.map_or_else(|| id.clone(), |manifest| manifest.name.clone()),
-                    icon: manifest.map_or_else(
-                        || manifest::DEFAULT_ICON.into(),
-                        |manifest| manifest.icon.clone(),
-                    ),
-                    version: manifest.map(|manifest| manifest.version.to_string()),
-                    author: manifest.map(|manifest| manifest.author.clone()),
-                    description: manifest
-                        .map(|manifest| manifest.description.get(language).clone()),
-                    unreadable: plugin.manifest.as_ref().err().cloned(),
-                    approved: entry.is_some_and(|entry| entry.approved.is_some()),
-                    modified: entry.is_some_and(|entry| entry.approved.is_some())
-                        && !self.approved(id),
-                    enabled: self.active(id),
-                    capabilities: manifest
-                        .map(|manifest| manifest.capabilities)
-                        .unwrap_or_default(),
-                    command: manifest
-                        .and_then(|manifest| manifest.run.as_ref())
-                        .and_then(manifest::Run::command)
-                        .map(shown_command),
-                    from: manifest
-                        .and_then(|manifest| manifest.events.as_ref())
-                        .map(|events| events.from.get(language).clone()),
-                    states: manifest
-                        .map(|manifest| {
-                            manifest
-                                .states
-                                .iter()
-                                .map(|state| StateView {
-                                    id: state.id.clone(),
-                                    label: state.label.get(language).clone(),
-                                    slot: self.slot(id, &state.id, palette).unwrap_or(state.color),
-                                })
-                                .collect()
-                        })
-                        .unwrap_or_default(),
-                    note: manifest
-                        .and_then(|manifest| manifest.note.as_ref())
-                        .map(|note| NoteView {
-                            paragraphs: note
-                                .text
-                                .as_ref()
-                                .map(|text| text.get(language).clone())
-                                .unwrap_or_default(),
-                            file: note.file.clone(),
-                            block: note.block.is_some(),
-                        }),
-                    installed: entry.is_some_and(|entry| entry.installed),
-                    last_event: plugin.heard.as_ref().map(|(at, state)| LastEvent {
-                        at: *at,
-                        state: state.as_ref().and_then(|state| {
-                            Some(manifest?.state(state)?.label.get(language).clone())
-                        }),
-                    }),
-                    program: plugin.program.clone(),
-                    port_taken: (port_taken
-                        && manifest.is_some_and(|manifest| manifest.capabilities.events))
-                    .then_some(http::PORT),
-                    fingerprint: plugin.fingerprint.clone(),
-                }
-            })
-            .collect()
-    }
-
-    /// An action of a rule or of a program, on a key.
-    fn act(&mut self, id: &str, key: &str, action: &Action, outbox: &mut Outbox) {
-        let now = Instant::now();
-        let Some(plugin) = self.plugins.get_mut(id) else {
-            return;
-        };
-        let Ok(manifest) = plugin.manifest.as_ref() else {
-            return;
-        };
-        let mut alert = false;
-        let mut given = None;
-        match action {
-            Action::State {
-                state,
-                alert: wanted,
-            } => {
-                let ttl = manifest.state(state).and_then(|state| state.ttl);
-                let changed = plugin.keys.set(key, state, ttl, now);
-                alert = *wanted && changed;
-                given = Some(state.clone());
-            }
-            Action::Alert => alert = true,
-            Action::Clear => plugin.keys.clear(Some(key)),
-            Action::Ignore => return,
-        }
-        let alert = alert && manifest.capabilities.alert;
-        plugin.heard = Some((updates::now(), given));
-        self.refresh(id);
-        if alert {
-            outbox.control.push(Input::Alert {
-                plugin: id.to_owned(),
-            });
-        }
     }
 }
 
@@ -698,7 +82,8 @@ fn with<T>(app: &AppHandle, change: impl FnOnce(&mut Host, &mut Outbox) -> T) ->
         let mut host = state.host.lock();
         let host = host.as_mut()?;
         let result = change(host, &mut outbox);
-        host.sync(app, &palette, language, &mut outbox);
+        serve(app, host);
+        host.sync(&palette, language, &mut outbox);
         result
     };
     for program in outbox.stop {
@@ -716,12 +101,46 @@ fn with<T>(app: &AppHandle, change: impl FnOnce(&mut Host, &mut Outbox) -> T) ->
     Some(result)
 }
 
+/// Serves the events of the approved plugins. The windows redraw when
+/// another program takes the port, or leaves it. Not in `with` itself,
+/// where the closure would make each instance of `with` need another one,
+/// without end.
+fn serve(app: &AppHandle, host: &mut Host) {
+    let owner = app.clone();
+    host.serve(move || {
+        with(&owner, |_, _| {});
+    });
+}
+
 /// A change asked by a window, which fails while the host has not started.
 fn change<T>(
     app: &AppHandle,
     edit: impl FnOnce(&mut Host, &mut Outbox) -> Result<T, String>,
 ) -> Result<T, String> {
     with(app, edit).unwrap_or_else(|| Err("the plugins are not ready".into()))
+}
+
+/// Starts the programs that the active plugins want, with the home folder
+/// and the language of the app, and its callbacks.
+fn run_programs(app: &AppHandle, host: &mut Host) {
+    let home = app.path().home_dir().ok();
+    host.run_programs(home, language(app), |spec, feed| {
+        let (notes, statuses) = (app.clone(), app.clone());
+        let (note_id, status_id) = (spec.id.clone(), spec.id.clone());
+        Program::start(
+            spec,
+            Timing::default(),
+            feed,
+            move |note| on_note(&notes, &note_id, note),
+            move |status| on_program(&statuses, &status_id, status),
+        )
+    });
+}
+
+/// Reads the folder again, then starts the programs that it allows.
+fn rescan(app: &AppHandle, host: &mut Host, outbox: &mut Outbox) {
+    host.rescan(outbox);
+    run_programs(app, host);
 }
 
 /// Starts the host: reads the plugins, runs the programs of the active
@@ -735,24 +154,11 @@ pub fn start(app: &AppHandle) {
     let logs = paths.app_log_dir().unwrap_or_else(|_| local.join("logs"));
     let (events, mut received) = tokio::sync::mpsc::channel(http::QUEUE);
     let lamp = lamp::line(&lamp_now(app));
-    let host = Host {
-        folder: config.join("plugins"),
-        data: local.join("plugin-data"),
-        logs: logs.join("plugins"),
-        cache: scan::Cache::default(),
-        stored: Stored::from_value(&settings::load_integrations(app)),
-        tokens: tokens::Tokens::load(local.join("plugin-tokens.json")),
-        plugins: BTreeMap::new(),
-        programs: HashMap::new(),
-        hooks: Arc::default(),
-        events,
-        server: None,
-        port_taken: Arc::default(),
-        lamp,
-    };
+    let saved = settings::load_integrations(app);
+    let host = Host::new(&config, &local, &logs, &saved, events, lamp);
     let mode = host.stored.mode.clone();
     *app.state::<PluginsState>().host.lock() = Some(host);
-    with(app, |host, outbox| host.rescan(app, outbox));
+    with(app, |host, outbox| rescan(app, host, outbox));
     // The lamp follows again the integration it followed, if still on offer.
     if mode.is_some() {
         let _ = control::input(app, Input::Follow(mode));
@@ -776,105 +182,24 @@ pub fn start(app: &AppHandle) {
 /// The states whose time ran out leave.
 fn tick(app: &AppHandle) {
     let now = Instant::now();
-    let due = read(app, |host| {
-        host.plugins
-            .values()
-            .any(|plugin| plugin.keys.next_expiry().is_some_and(|until| until <= now))
-    });
-    if due == Some(true) {
-        with(app, |host, _| {
-            let ids: Vec<String> = host.plugins.keys().cloned().collect();
-            for id in ids {
-                let expired = host
-                    .plugins
-                    .get_mut(&id)
-                    .is_some_and(|plugin| plugin.keys.expire(now));
-                if expired {
-                    host.refresh(&id);
-                }
-            }
-        });
+    if read(app, |host| host.due(now)) == Some(true) {
+        with(app, |host, _| host.expire(now));
     }
 }
 
 /// An event of the local server, for a plugin that may take it.
 fn on_event(app: &AppHandle, id: &str, event: &Value) {
-    with(app, |host, outbox| {
-        if !host.active(id) {
-            return;
-        }
-        let Some((key, action)) = host.manifest(id).and_then(|manifest| {
-            let events = manifest.events.as_ref()?;
-            let key = rules::key_of(event, events.key.as_deref());
-            Some((key, rules::action_for(&events.rules, event).cloned()))
-        }) else {
-            return;
-        };
-        // The first event folds the installation note.
-        if !host.entry(id).installed {
-            host.entry(id).installed = true;
-            host.save(outbox);
-        }
-        match action {
-            Some(action) => host.act(id, &key, &action, outbox),
-            None => {
-                if let Some(plugin) = host.plugins.get_mut(id) {
-                    plugin.heard = Some((updates::now(), None));
-                }
-            }
-        }
-    });
+    with(app, |host, outbox| host.on_event(id, event, outbox));
 }
 
 /// A notification of a program.
 fn on_note(app: &AppHandle, id: &str, note: Notification) {
-    with(app, |host, outbox| {
-        if !host.active(id) {
-            return;
-        }
-        let (key, action) = match note {
-            Notification::State { state, key } => {
-                if host
-                    .manifest(id)
-                    .and_then(|manifest| manifest.state(&state))
-                    .is_none()
-                {
-                    return;
-                }
-                (
-                    key,
-                    Action::State {
-                        state,
-                        alert: false,
-                    },
-                )
-            }
-            Notification::Clear { key: None } => {
-                if let Some(plugin) = host.plugins.get_mut(id) {
-                    plugin.keys.clear(None);
-                }
-                host.refresh(id);
-                return;
-            }
-            Notification::Clear { key } => (key, Action::Clear),
-            Notification::Alert => (None, Action::Alert),
-        };
-        let key = key.unwrap_or_else(|| rules::DEFAULT_KEY.into());
-        host.act(id, &key, &action, outbox);
-    });
+    with(app, |host, outbox| host.on_note(id, note, outbox));
 }
 
-/// How a program fares. One that stopped loses its states.
+/// How a program fares.
 fn on_program(app: &AppHandle, id: &str, status: ProgramStatus) {
-    with(app, |host, _| {
-        if let Some(plugin) = host.plugins.get_mut(id) {
-            if status != ProgramStatus::Running {
-                plugin.keys.reset();
-            }
-            plugin.program = Some(status);
-        }
-        host.refresh(id);
-    });
+    with(app, |host, _| host.on_program(id, status));
 }
 
 /// The plugins, read again, for the integrations window.
@@ -882,7 +207,7 @@ pub fn list(app: &AppHandle) -> Vec<PluginView> {
     let palette = app.state::<ColorsState>().get();
     let language = language(app);
     with(app, |host, outbox| {
-        host.rescan(app, outbox);
+        rescan(app, host, outbox);
         host.views(&palette, language)
     })
     .unwrap_or_default()
@@ -890,16 +215,7 @@ pub fn list(app: &AppHandle) -> Vec<PluginView> {
 
 /// The block of a note, with the address and the token of the plugin.
 pub fn note(app: &AppHandle, id: &str) -> Option<FilledBlock> {
-    read(app, |host| {
-        let block = host.manifest(id)?.note.as_ref()?.block.as_ref()?.text();
-        let url = http::hook_url(id);
-        let token = host.tokens.get(id).map(str::to_owned);
-        let text = block
-            .replace("{{url}}", &url)
-            .replace("{{token}}", token.as_deref().unwrap_or("{{token}}"));
-        Some(FilledBlock { text, url, token })
-    })
-    .flatten()
+    read(app, |host| host.note(id)).flatten()
 }
 
 /// "Copy": the backend writes the block in the clipboard.
@@ -914,73 +230,26 @@ pub fn copy_note(app: &AppHandle, id: &str) -> Result<(), String> {
 /// turns on, with its token and its program.
 pub fn approve(app: &AppHandle, id: &str, fingerprint: &str) -> Result<(), String> {
     change(app, |host, outbox| {
-        host.rescan(app, outbox);
-        let current = host
-            .plugins
-            .get(id)
-            .and_then(|plugin| plugin.fingerprint.clone());
-        if current.as_deref() != Some(fingerprint) {
-            return Err("the files of the plugin changed: read the question again".into());
-        }
-        if host
-            .manifest(id)
-            .is_some_and(|manifest| manifest.capabilities.events)
-        {
-            host.tokens.ensure(id).map_err(|e| e.to_string())?;
-        }
-        let entry = host.entry(id);
-        entry.approved = Some(fingerprint.to_owned());
-        entry.enabled = true;
-        if let Some(plugin) = host.plugins.get_mut(id) {
-            plugin.program = None;
-        }
-        host.run_programs(app);
-        host.save(outbox);
-        Ok(())
+        let approved = host.approve(id, fingerprint, outbox);
+        run_programs(app, host);
+        approved
     })
 }
 
-/// Turns a plugin on or off. On wants the approval of its files as they
-/// are; off stops its program and forgets its states, and the lamp it
-/// drove goes back to the user.
+/// Turns a plugin on or off.
 pub fn set_enabled(app: &AppHandle, id: &str, enabled: bool) -> Result<(), String> {
     change(app, |host, outbox| {
-        host.rescan(app, outbox);
-        if enabled && !host.approved(id) {
-            return Err("the plugin needs an approval".into());
-        }
-        host.entry(id).enabled = enabled;
-        if let Some(plugin) = host.plugins.get_mut(id) {
-            plugin.keys.reset();
-            plugin.shown = None;
-            plugin.program = None;
-        }
-        if !enabled && let Some(program) = host.programs.remove(id) {
-            outbox.stop.push(program);
-        }
-        host.run_programs(app);
-        host.save(outbox);
-        Ok(())
+        let set = host.set_enabled(id, enabled, outbox);
+        run_programs(app, host);
+        set
     })
 }
 
 /// The color of a state of a plugin.
 pub fn set_color(app: &AppHandle, id: &str, state: &str, slot: u8) -> Result<(), String> {
     let palette = app.state::<ColorsState>().get();
-    if !palette.defines(slot) {
-        return Err("no such color".into());
-    }
     change(app, |host, outbox| {
-        if host
-            .manifest(id)
-            .and_then(|manifest| manifest.state(state))
-            .is_none()
-        {
-            return Err("no such state".into());
-        }
-        host.entry(id).colors.insert(state.to_owned(), slot);
-        host.save(outbox);
-        Ok(())
+        host.set_color(id, state, slot, &palette, outbox)
     })
 }
 
@@ -997,23 +266,11 @@ pub fn regenerate_token(app: &AppHandle, id: &str) -> Result<(), String> {
 /// Removes a plugin: its program, its folder, its token, its data, and what
 /// the app kept of it.
 pub fn remove(app: &AppHandle, id: &str) -> Result<(), String> {
-    change(app, |host, outbox| {
-        // A folder the scan found, unreadable ones too: a plain name, never
-        // a path, since the scan takes the names of the folder's entries.
-        if !host.plugins.contains_key(id) {
-            return Err("no such plugin".into());
-        }
-        host.forget(id, outbox);
-        host.stored.plugins.remove(id);
-        host.tokens.remove(id).map_err(|e| e.to_string())?;
-        host.save(outbox);
-        Ok((host.folder.join(id), host.data.join(id)))
-    })
-    .and_then(|(folder, data)| {
+    change(app, |host, outbox| host.remove(id, outbox)).and_then(|(folder, data)| {
         // Once the program stopped, its files can go.
         std::fs::remove_dir_all(&folder).map_err(|e| e.to_string())?;
         let _ = std::fs::remove_dir_all(data);
-        with(app, |host, outbox| host.rescan(app, outbox));
+        with(app, |host, outbox| rescan(app, host, outbox));
         Ok(())
     })
 }
@@ -1035,7 +292,7 @@ fn import_reviewed(
 ) -> Result<String, catalog::CatalogError> {
     let unreadable = |reason| catalog::CatalogError::Unreadable { reason };
     let unpacked = unpack(app, zip).map_err(unreadable)?;
-    if unpacked.id() != id || unpacked.fingerprint().as_deref() != Ok(fingerprint) {
+    if !unpacked.matches(id, fingerprint) {
         unpacked.discard();
         return Err(catalog::CatalogError::Mismatch);
     }
@@ -1060,25 +317,15 @@ fn put_in_place(app: &AppHandle, unpacked: scan::Unpacked) -> Result<String, Rea
         }
     });
     let result = unpacked.install();
-    with(app, |host, outbox| host.rescan(app, outbox));
+    with(app, |host, outbox| rescan(app, host, outbox));
     result
 }
 
 /// The plugins of the folder, read again, for the catalog.
 fn installed(app: &AppHandle) -> catalog::Installed {
     with(app, |host, outbox| {
-        host.rescan(app, outbox);
-        host.plugins
-            .iter()
-            .map(|(id, plugin)| {
-                let version = plugin
-                    .manifest
-                    .as_ref()
-                    .ok()
-                    .map(|manifest| manifest.version.clone());
-                (id.clone(), version.zip(plugin.fingerprint.clone()))
-            })
-            .collect()
+        rescan(app, host, outbox);
+        host.installed()
     })
     .unwrap_or_default()
 }
@@ -1099,7 +346,7 @@ pub fn remember_mode(app: &AppHandle, mode: Option<String>) {
 /// The color that takes the place of a deleted one on a lamp that follows a
 /// plugin: the default color of its state.
 pub fn fallback_color(app: &AppHandle) -> Option<u8> {
-    let mode = app.state::<crate::control::ControlState>().status().mode?;
+    let mode = app.state::<ControlState>().status().mode?;
     read(app, |host| {
         let (state, _) = host.plugins.get(&mode)?.shown.as_ref()?;
         Some(host.manifest(&mode)?.state(state)?.color)
@@ -1198,53 +445,5 @@ pub fn shutdown(app: &AppHandle) {
         .collect();
     for stopper in stoppers {
         let _ = stopper.join();
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn the_saved_key_reads_field_by_field() {
-        let stored = Stored::from_value(&json!({
-            "schema": 1,
-            "mode": "claude-code",
-            "plugins": {
-                "claude-code": { "approved": "9f2c", "enabled": true, "colors": { "working": 2 }, "installed": true },
-                "broken": { "enabled": "yes" },
-                "../evil": { "enabled": true }
-            }
-        }));
-        assert_eq!(stored.mode.as_deref(), Some("claude-code"));
-        assert_eq!(stored.plugins.len(), 1);
-        let entry = &stored.plugins["claude-code"];
-        assert_eq!(entry.approved.as_deref(), Some("9f2c"));
-        assert_eq!(entry.colors.get("working"), Some(&2));
-        // Written back, it reads the same, even for a plugin named "manual".
-        assert_eq!(Stored::from_value(&stored.to_value()), stored);
-        let manual = Stored {
-            mode: Some("manual".into()),
-            plugins: BTreeMap::new(),
-        };
-        assert_eq!(Stored::from_value(&manual.to_value()), manual);
-        // As after app 1.1.2: manual mode, no plugin.
-        let fresh = Stored::from_value(&Value::Null);
-        assert_eq!(fresh.mode, None);
-        assert!(fresh.plugins.is_empty());
-        assert_eq!(fresh.to_value()["mode"], Value::Null);
-    }
-
-    #[test]
-    fn a_command_shows_as_the_approval_writes_it() {
-        assert_eq!(
-            shown_command(&["node".into(), "index.js".into()]),
-            "node index.js"
-        );
-        assert_eq!(
-            shown_command(&["python".into(), "my script.py".into()]),
-            "python \"my script.py\""
-        );
     }
 }

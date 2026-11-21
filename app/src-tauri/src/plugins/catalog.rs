@@ -158,6 +158,18 @@ fn parse(index: &[u8]) -> Result<Vec<Published>, CatalogError> {
     Ok(published)
 }
 
+/// Checks that a download is the zip of the index: its size and its
+/// SHA-256.
+fn check_zip(zip: &[u8], published: &Published) -> Result<(), CatalogError> {
+    if u64::try_from(zip.len()).ok() == Some(published.size)
+        && scan::hex(&Sha256::digest(zip)) == published.sha256
+    {
+        Ok(())
+    } else {
+        Err(CatalogError::Mismatch)
+    }
+}
+
 /// Where the zip of a plugin is: the catalog names it by id and version.
 fn zip_url(manifest: &Manifest) -> String {
     format!("{BASE_URL}/zips/{}-{}.zip", manifest.id, manifest.version)
@@ -243,11 +255,7 @@ pub async fn install(app: &AppHandle, id: &str) -> Result<String, CatalogError> 
     let zip = net::get_at_most(app, &zip_url(&published.manifest), max)
         .await
         .map_err(network)?;
-    if u64::try_from(zip.len()).ok() != Some(published.size)
-        || scan::hex(&Sha256::digest(&zip)) != published.sha256
-    {
-        return Err(CatalogError::Mismatch);
-    }
+    check_zip(&zip, &published)?;
     super::import_reviewed(app, Cursor::new(zip), id, &published.fingerprint)
 }
 
@@ -378,6 +386,24 @@ mod tests {
         assert_eq!(
             source_url("pomodoro"),
             "https://github.com/Oui-Dev/Disled-plugins/tree/main/plugins/pomodoro"
+        );
+    }
+
+    #[test]
+    fn a_download_is_the_zip_of_the_index_or_nothing() {
+        let zip = crate::plugins::scan::tests::zip(&[("plugin.json", "{}")]);
+        let mut published = parse(&index(vec![entry(pomodoro("1.2.0", 1), 'f')]))
+            .expect("index")
+            .remove(0);
+        published.size = u64::try_from(zip.len()).expect("size");
+        published.sha256 = scan::hex(&Sha256::digest(&zip));
+        assert_eq!(check_zip(&zip, &published), Ok(()));
+        let mut changed = zip.clone();
+        changed[0] ^= 1;
+        assert_eq!(check_zip(&changed, &published), Err(CatalogError::Mismatch));
+        assert_eq!(
+            check_zip(&zip[1..], &published),
+            Err(CatalogError::Mismatch)
         );
     }
 
