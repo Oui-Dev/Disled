@@ -376,22 +376,6 @@ static scheduler_task_t tasks[] = {
 
 static led_output_config_t output_config; /* led_output keeps a pointer to it */
 
-/* The self-test as configured, its white step being the warm white of the
- * palette at the brightness of the other steps. */
-static self_test_config_t self_test_config;
-
-static void set_self_test_config(void)
-{
-    self_test_config = app_self_test_config;
-    const rgb16_t white = app_color_config.palette[LAMP_COLOR_WARM_WHITE];
-    const uint32_t level = app_self_test_config.color_linear;
-    self_test_config.white = (rgb16_t){
-        .r = (uint16_t)(((uint32_t)white.r * level + 32767u) / 65535u),
-        .g = (uint16_t)(((uint32_t)white.g * level + 32767u) / 65535u),
-        .b = (uint16_t)(((uint32_t)white.b * level + 32767u) / 65535u),
-    };
-}
-
 void app_init(const fault_record_t *fault)
 {
     app.fault = *fault;
@@ -415,11 +399,10 @@ void app_init(const fault_record_t *fault)
 
     lamp_fsm_init(&app.lamp);
     app.source = CHANGE_SOURCE_BOOT;
-    palette_init(&app.palette, app_color_config.palette);
+    palette_init(&app.palette, app_builtin_colors);
     touch_cycle_init(&app.cycle);
     brightness_init(&app.brightness, &app_brightness_config);
-    set_self_test_config();
-    self_test_init(&app.self_test, &self_test_config);
+    self_test_init(&app.self_test, &app_self_test_config);
 
     i2c_bus_init(APP_I2C_SPEED_HZ);
     als_probe(&app.als, bsp_time_ms(), APP_ALS_FIRST_RETRY_MS);

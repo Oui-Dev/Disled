@@ -53,8 +53,8 @@ Equipment:
 
 - [ ] `set color 0` to `3` show green, orange, red and warm white, without
       flicker and with smooth 300 ms fades. Judge the colors through the
-      closed enclosure, because the PLA shifts them. The palette is
-      `app_color_config`; the self-test shows its warm white too.
+      closed enclosure, because the PLA shifts them. The built-in colors
+      are `app_builtin_colors`; the self-test shows its warm white too.
 - [ ] Warm white and a custom white, `#FFFFFF` from the app, keep the same
       hue at 1, 3, 10, 30 and 100 % (`set level`). If a low level drifts,
       yellow-green when red is missing, yellow when blue is or pink when

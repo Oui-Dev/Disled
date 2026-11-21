@@ -82,29 +82,25 @@ const brightness_config_t app_brightness_config = {
  * primaries, more saturated than any sRGB color and kept so; their app
  * swatches are the nearest sRGB colors (#00FFA2, #FF6F00, #FF001C). The warm
  * white is 2700 K (#FFAD59) through the color calibration below. */
-/* clang-format off: keep the tables readable */
-const color_config_t app_color_config = {
-    .palette = {
-        [LAMP_COLOR_GREEN] = {     0, 65535,     0 }, /* the green LED alone */
-        [LAMP_COLOR_ORANGE] = { 65535, 29000,     0 }, /* red and green LEDs */
-        [LAMP_COLOR_RED] = { 65535,     0,     0 }, /* the red LED alone */
-        [LAMP_COLOR_WARM_WHITE] = { 65535, 62887,  3435 }, /* 2700 K, #FFAD59 */
-    },
+/* clang-format off */
+const rgb16_t app_builtin_colors[LAMP_COLOR_COUNT] = {
+    [LAMP_COLOR_GREEN] = {     0, 65535,     0 }, /* the green LED alone */
+    [LAMP_COLOR_ORANGE] = { 65535, 29000,     0 }, /* red and green LEDs */
+    [LAMP_COLOR_RED] = { 65535,     0,     0 }, /* the red LED alone */
+    [LAMP_COLOR_WARM_WHITE] = { 65535, 62887,  3435 }, /* 2700 K, #FFAD59 */
 };
 
 /* Linear sRGB to LED drive, with the D65 white of #FFFFFF. The primaries
  * were matched by eye, by A/B choices, against the screen of a Galaxy S23 in
  * its Natural (sRGB) mode, the only calibrated reference at hand: no camera
  * sees narrow LED primaries as the eye does. Their dominant wavelengths are
- * 619, 521 and 458 nm as the matches see them, and the white needs drives
- * 0.564, 1 and 0.214. */
+ * 619, 521 and 458 nm as the matches see them. */
 const led_color_cal_t app_led_color_cal = {
     .matrix = {
         {  11785,   6713,     -3 },
         {   1466,  29585,   1714 },
         {     95,    -66,   6982 },
     },
-    .white = { 36993, 65535, 14023 },
 };
 
 /* Light of a pulse of each length in whole ticks, measured with a camera
@@ -188,16 +184,15 @@ const power_config_t app_power_config = {
 };
 
 /* Self-test: colors at 50 % and the blue glow at 20 % of perceived
- * brightness, in LED light (the CIE table of color.c). The white step, set at
- * start-up, is the warm white of the palette at 50 % (app.c), since equal
- * channels look violet. The idle TouchKey reading is about 2100 counts, and
- * 4095 when saturated. */
+ * brightness. The white step is the warm white, since equal channels look
+ * violet. The idle TouchKey reading is about 2100 counts, and 4095 when
+ * saturated. */
 const self_test_config_t app_self_test_config = {
     .color_ms = 1500,
     .touch_wait_ms = 10000,
-    .color_linear = 12071,
-    .white = { 0, 0, 0 },
-    .wait_linear = 1959,
+    .color_permille = 500,
+    .white = &app_builtin_colors[LAMP_COLOR_WARM_WHITE],
+    .wait_permille = 200,
     .touch_idle_min = 1000,
     .touch_idle_max = 3800,
 };

@@ -5,6 +5,7 @@
  */
 #include "self_test.h"
 
+#include "color.h"
 #include "disled_assert.h"
 #include "time_utils.h"
 
@@ -81,14 +82,25 @@ void self_test_abort(self_test_t *t)
     t->phase = SELF_TEST_IDLE;
 }
 
+/* `drive` at `light` (0 to 65535) of its full light. */
+static rgb16_t scaled(rgb16_t drive, uint16_t light)
+{
+    const rgb16_t color = {
+        .r = (uint16_t)(((uint32_t)drive.r * light + 32767u) / 65535u),
+        .g = (uint16_t)(((uint32_t)drive.g * light + 32767u) / 65535u),
+        .b = (uint16_t)(((uint32_t)drive.b * light + 32767u) / 65535u),
+    };
+    return color;
+}
+
 rgb16_t self_test_color(const self_test_t *t, uint32_t now_ms)
 {
     const self_test_config_t *cfg = t->config;
-    const uint16_t on = cfg->color_linear;
+    const uint16_t on = color_perceived_to_linear(cfg->color_permille);
     rgb16_t color = { 0, 0, 0 };
 
     if (t->phase == SELF_TEST_TOUCH) {
-        color.b = cfg->wait_linear;
+        color.b = color_perceived_to_linear(cfg->wait_permille);
     } else if (t->phase == SELF_TEST_COLORS) {
         const uint32_t step = time_elapsed_ms(now_ms, t->phase_start_ms) / cfg->color_ms;
         switch (step) {
@@ -102,7 +114,7 @@ rgb16_t self_test_color(const self_test_t *t, uint32_t now_ms)
                 color.b = on;
                 break;
             default:
-                color = cfg->white;
+                color = scaled(*cfg->white, on);
                 break;
         }
     }
