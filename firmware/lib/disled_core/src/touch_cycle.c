@@ -46,15 +46,15 @@ bool touch_cycle_set(touch_cycle_t *cycle, const uint8_t *slots, uint32_t count,
     return true;
 }
 
-lamp_color_t touch_cycle_next(const touch_cycle_t *cycle, lamp_color_t color)
+uint8_t touch_cycle_next(const touch_cycle_t *cycle, uint8_t color)
 {
     for (uint32_t i = 0; i < cycle->count; i++) {
-        if (cycle->slots[i] == (uint32_t)color) {
+        if (cycle->slots[i] == color) {
             const uint32_t next = (i + 1u < cycle->count) ? i + 1u : 0u;
-            return (lamp_color_t)cycle->slots[next];
+            return cycle->slots[next];
         }
     }
-    return (lamp_color_t)cycle->slots[0];
+    return cycle->slots[0];
 }
 
 void touch_cycle_remove(touch_cycle_t *cycle, uint32_t slot)

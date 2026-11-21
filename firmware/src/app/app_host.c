@@ -46,7 +46,7 @@ static bool same_rgb(rgb16_t a, rgb16_t b)
 
 static uint16_t subticks_to_ticks(uint16_t subticks)
 {
-    return (uint16_t)((subticks + LED_DUTY_SUBTICKS / 2u) / LED_DUTY_SUBTICKS);
+    return (uint16_t)((subticks + PWM_DITHER_SUBTICKS / 2u) / PWM_DITHER_SUBTICKS);
 }
 
 static state_content_t observe(void)
@@ -190,18 +190,6 @@ static void send_diagnostics(uint8_t seq)
     proto_encode_diagnostics(payload, seq, &diagnostics);
     (void)usb_hid_send(payload);
 }
-
-_Static_assert(SELF_TEST_LIGHT_OK == PROTO_SELF_TEST_LIGHT_OK &&
-                   SELF_TEST_TOUCH_IDLE_OK == PROTO_SELF_TEST_TOUCH_IDLE_OK &&
-                   SELF_TEST_TOUCH_PRESSED == PROTO_SELF_TEST_TOUCH_PRESSED &&
-                   SELF_TEST_COMPLETED == PROTO_SELF_TEST_COMPLETED,
-               "self-test result bits are part of the protocol");
-_Static_assert(BRIGHTNESS_BIAS_MIN == PROTO_AUTO_BIAS_MIN &&
-                   BRIGHTNESS_BIAS_MAX == PROTO_AUTO_BIAS_MAX,
-               "the bias limits are part of the protocol");
-_Static_assert(TOUCH_SENSITIVITY_MIN == PROTO_TOUCH_SENSITIVITY_MIN &&
-                   TOUCH_SENSITIVITY_MAX == PROTO_TOUCH_SENSITIVITY_MAX,
-               "the touch sensitivity limits are part of the protocol");
 
 static void send_self_test_result(void)
 {

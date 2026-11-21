@@ -7,6 +7,7 @@
 #include <unity.h>
 
 #include "protocol.h"
+#include "self_test.h"
 
 /* protocol/vectors/v2.json, turned into C by scripts/gen_vectors.py. */
 #include "protocol_vectors.h"
@@ -302,12 +303,12 @@ static void test_encode_diagnostics_layout(void)
 
 static void test_encode_self_test_result_signed_peak(void)
 {
-    const proto_self_test_result_t result = { .results = PROTO_SELF_TEST_COMPLETED,
+    const proto_self_test_result_t result = { .results = SELF_TEST_COMPLETED,
                                               .touch_peak_permille = -3 };
     proto_encode_self_test_result(payload, 8, &result);
     TEST_ASSERT_EQUAL_HEX8(PROTO_MSG_SELF_TEST_RESULT, payload[0]);
     TEST_ASSERT_EQUAL_UINT8(PROTO_SELF_TEST_RESULT_SIZE, payload[2]);
-    TEST_ASSERT_EQUAL_HEX8(PROTO_SELF_TEST_COMPLETED, payload[3]);
+    TEST_ASSERT_EQUAL_HEX8(SELF_TEST_COMPLETED, payload[3]);
     TEST_ASSERT_EQUAL_HEX8(0xFD, payload[3 + 7]);
     TEST_ASSERT_EQUAL_HEX8(0xFF, payload[3 + 8]);
 }

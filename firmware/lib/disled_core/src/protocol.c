@@ -7,6 +7,9 @@
 
 #include <string.h>
 
+#include "brightness.h"
+#include "touch_detector.h"
+
 _Static_assert(PROTO_INFO_SIZE <= PROTO_MAX_BODY_SIZE, "INFO fits one report");
 _Static_assert(PROTO_TELEMETRY_SIZE <= PROTO_MAX_BODY_SIZE, "TELEMETRY fits one report");
 _Static_assert(PROTO_DIAGNOSTICS_SIZE <= PROTO_MAX_BODY_SIZE, "DIAGNOSTICS fits one report");
@@ -92,7 +95,7 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
             lamp_request_t *request = &command->body.set_state;
             request->fields = body[0];
             request->on = body[1] != 0u;
-            request->color = (lamp_color_t)body[2];
+            request->color = body[2];
             request->brightness_mode = (brightness_mode_t)body[3];
             request->manual_level = body[4];
             request->touch_mode = (touch_mode_t)body[5];
@@ -116,7 +119,7 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
                 return PROTO_ERR_BAD_LENGTH;
             }
             const int32_t bias = get_i8(body);
-            if (bias < PROTO_AUTO_BIAS_MIN || bias > PROTO_AUTO_BIAS_MAX) {
+            if (bias < BRIGHTNESS_BIAS_MIN || bias > BRIGHTNESS_BIAS_MAX) {
                 return PROTO_ERR_BAD_VALUE;
             }
             command->body.auto_bias = (int8_t)bias;
@@ -129,7 +132,7 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
             }
             const rgb16_t color = { get_u16(&body[1]), get_u16(&body[3]), get_u16(&body[5]) };
             /* The built-in colors never change. */
-            if (body[0] < PALETTE_FIXED_SLOTS || body[0] >= PALETTE_SLOTS ||
+            if (body[0] < LAMP_COLOR_COUNT || body[0] >= LAMP_SLOT_COUNT ||
                 !palette_color_is_valid(color)) {
                 return PROTO_ERR_BAD_VALUE;
             }
@@ -142,7 +145,7 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
             if (length < PROTO_GET_COLOR_SIZE) {
                 return PROTO_ERR_BAD_LENGTH;
             }
-            if (body[0] >= PALETTE_SLOTS) {
+            if (body[0] >= LAMP_SLOT_COUNT) {
                 return PROTO_ERR_BAD_VALUE;
             }
             command->body.color_slot = body[0];
@@ -187,7 +190,7 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
                 return PROTO_ERR_BAD_LENGTH;
             }
             const int32_t percent = get_i8(body);
-            if (percent < PROTO_TOUCH_SENSITIVITY_MIN || percent > PROTO_TOUCH_SENSITIVITY_MAX) {
+            if (percent < TOUCH_SENSITIVITY_MIN || percent > TOUCH_SENSITIVITY_MAX) {
                 return PROTO_ERR_BAD_VALUE;
             }
             command->body.touch_sensitivity = (int8_t)percent;
@@ -229,7 +232,7 @@ void proto_encode_state(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, const p
     writer_t w = begin_message(payload, PROTO_MSG_STATE, seq);
     put_u16(&w, state->state_seq);
     put_u8(&w, state->lamp.on ? 1u : 0u);
-    put_u8(&w, (uint8_t)state->lamp.color);
+    put_u8(&w, state->lamp.color);
     put_u8(&w, (uint8_t)state->lamp.brightness_mode);
     put_u8(&w, state->lamp.manual_level);
     put_u8(&w, state->applied_percent);

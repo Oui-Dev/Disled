@@ -76,7 +76,7 @@ void app_apply_request(const lamp_request_t *request);
 static inline bool app_request_allowed(const lamp_request_t *request)
 {
     return (request->fields & LAMP_FIELD_COLOR) == 0u ||
-           palette_defined(&app.palette, (uint32_t)request->color);
+           palette_defined(&app.palette, request->color);
 }
 
 /* The lamp color at full brightness, linear (STATE). */
