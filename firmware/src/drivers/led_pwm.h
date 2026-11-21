@@ -29,11 +29,16 @@ uint16_t led_pwm_period(void);
 #include <stddef.h>
 
 /* LED calibration only (docs/bringup.md): up to LED_PWM_PATTERN_MAX periods
- * of whole ticks, cycled in place of the duties while `length` is not 0. No
- * current cap applies: the caller checks it. */
+ * of whole ticks, cycled in place of the duties while `length` is not 0. The
+ * caller checks the current cap and the arguments: an index below
+ * LED_PWM_PATTERN_MAX, ticks up to the period, a length up to
+ * LED_PWM_PATTERN_MAX. */
 #define LED_PWM_PATTERN_MAX 32u
 void led_pwm_set_pattern(size_t index, const uint16_t ticks[LED_CHANNEL_COUNT]);
 void led_pwm_run_pattern(uint8_t length);
+const uint16_t *led_pwm_pattern_entry(size_t index);
+/* The length running: 0 when off, and after led_pwm_stop(). */
+uint8_t led_pwm_pattern_length(void);
 #endif
 
 /* New duties in sub-ticks (red, green, blue), applied from the next

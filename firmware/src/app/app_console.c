@@ -231,19 +231,14 @@ static void cmd_raw(int argc, char **argv)
                    (unsigned long)value[2]);
 }
 
-/* Pattern entries as set, kept to check the current of the whole pattern,
- * and the length running, 0 when off. */
-static uint16_t s_pattern_ticks[LED_PWM_PATTERN_MAX][LED_CHANNEL_COUNT];
-static uint32_t s_pattern_running;
-
-/* The mean current of the first `length` entries, in tenths of mA, rounded
- * up, with `ticks` in place of entry `at`. */
+/* The mean current of the first `length` entries of the pattern, in tenths
+ * of mA, rounded up, with `ticks` in place of entry `at`. */
 static uint32_t pattern_ma_x10(uint32_t length, size_t at, const uint16_t ticks[LED_CHANNEL_COUNT])
 {
     const uint32_t period = led_pwm_period();
     uint32_t sum = 0; /* 32 x 3 x 4095 x 1000 x 10 < 2^32 */
     for (size_t n = 0; n < length; n++) {
-        const uint16_t *entry = (n == at) ? ticks : s_pattern_ticks[n];
+        const uint16_t *entry = (n == at) ? ticks : led_pwm_pattern_entry(n);
         for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
             sum += (uint32_t)entry[i] * app_power_config.full_scale_ma[i] * 10u;
         }
@@ -271,7 +266,6 @@ static void cmd_pat(int argc, char **argv)
     uint32_t value[1 + LED_CHANNEL_COUNT] = { 0 };
     if (argc == 2 && strcmp(argv[1], "off") == 0) {
         led_pwm_run_pattern(0);
-        s_pattern_running = 0;
         console_printf("pattern off\r\n");
         return;
     }
@@ -281,7 +275,6 @@ static void cmd_pat(int argc, char **argv)
             return;
         }
         led_pwm_run_pattern((uint8_t)value[0]);
-        s_pattern_running = value[0];
         console_printf("pattern on %lu\r\n", (unsigned long)value[0]);
         return;
     }
@@ -300,11 +293,9 @@ static void cmd_pat(int argc, char **argv)
         ticks[i] = (uint16_t)value[1 + i];
     }
     /* An entry of the running pattern changes at once: check it first. */
-    if (value[0] < s_pattern_running && !pattern_fits(s_pattern_running, value[0], ticks)) {
+    const uint8_t running = led_pwm_pattern_length();
+    if (value[0] < running && !pattern_fits(running, value[0], ticks)) {
         return;
-    }
-    for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
-        s_pattern_ticks[value[0]][i] = ticks[i];
     }
     led_pwm_set_pattern(value[0], ticks);
     console_printf("pat %lu\r\n", (unsigned long)value[0]);
