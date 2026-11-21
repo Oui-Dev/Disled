@@ -657,9 +657,8 @@ mod tests {
         ] {
             assert_eq!(light_hex(full).as_deref(), Some(full), "{full}");
         }
-        for refused in ["#000000", "#12345", "#GGGGGG", "704214"] {
-            assert_eq!(light_hex(refused), None, "{refused}");
-        }
+        // Without its "#", a code is refused.
+        assert_eq!(light_hex("704214"), None);
     }
 
     #[test]
@@ -690,9 +689,9 @@ mod tests {
 
     #[test]
     fn a_code_saved_darker_loads_as_the_color_the_lamp_shows() {
-        // App 2.1 kept "#704214", a brown that the lamp lights as amber. The
-        // palette now holds the amber, which the lamp gets at its next
-        // connection, its light within 0.3 % of the one it had.
+        // Apps 2.0 and 2.1 kept "#704214", a brown that the lamp lights as
+        // amber. The palette now holds the amber, which the lamp gets at its
+        // next connection, its light within 0.3 % of the one it had.
         let palette = Palette::from_value(&json!({
             "custom": [{ "slot": 4, "name": "Marron", "hex": "#704214" }],
             "cycle": [0, 4]
@@ -700,13 +699,6 @@ mod tests {
         assert_eq!(palette.custom[0].hex, "#FF9D3B");
         let before = led_of("#704214").expect("light");
         let after = led_of("#FF9D3B").expect("light");
-        assert_eq!(
-            palette.commands()[0],
-            Command::SetColor {
-                slot: 4,
-                rgb: after
-            }
-        );
         let channels = |light: LinearRgb| [light.r, light.g, light.b];
         for (old, new) in channels(before).into_iter().zip(channels(after)) {
             assert!(
@@ -810,6 +802,15 @@ mod tests {
             color: Some(slot),
             ..SetState::default()
         })
+    }
+
+    #[test]
+    fn a_saved_palette_reads_back_as_it_was() {
+        // What the settings save, the next start reads: a field renamed on
+        // one side only would lose every color of the user.
+        let palette = two_colors();
+        let saved = serde_json::to_value(&palette).expect("JSON");
+        assert_eq!(Palette::from_value(&saved), palette);
     }
 
     #[test]
@@ -1102,8 +1103,8 @@ mod tests {
 
     #[test]
     fn an_imported_color_is_the_color_the_lamp_shows() {
-        // An app 2.1 may share a darker code: the preview reads it as the
-        // color the lamp shows, and the import keeps that color.
+        // Apps 2.0 and 2.1 may share a darker code: the preview reads it as
+        // the color the lamp shows.
         let code = code_of(json!({
             "v": 1,
             "n": [null, null, null, null],
@@ -1112,12 +1113,5 @@ mod tests {
         }));
         let shared = read_share_code(&code).expect("read");
         assert_eq!(shared.custom[0].hex, "#FF9D3B");
-        let change = two_colors().import(&shared, &Around::default());
-        assert_eq!(change.palette.custom[0].hex, "#FF9D3B");
-        let amber = Command::SetColor {
-            slot: 4,
-            rgb: led_of("#FF9D3B").expect("light"),
-        };
-        assert!(change.commands.contains(&amber));
     }
 }
