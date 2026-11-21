@@ -190,6 +190,10 @@ but passes no gesture, nor the release of a press that outlived the alert.
   LED calibration (color matrix, gamut, light tables), power cap, output
   fades, PWM dithering, self-test, scheduler, formatter and the protocol
   codec.
+- `test_app_config` checks the shipped configuration (`app_config.c`) the
+  same way: the light tables and the color matrix pass the boot checks,
+  the dimmest level lights every channel of a built-in color, the colors
+  keep to the cap, and the touch settings behave on the measured board.
 - The protocol tests check the codec byte for byte against
   `protocol/vectors/v2.json`, the same file the app tests use.
 - `pio check` runs cppcheck on `src/` and the core, in both builds, at every
