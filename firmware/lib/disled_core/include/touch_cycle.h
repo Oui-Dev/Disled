@@ -4,7 +4,7 @@
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
  * The colors a short press steps through, in an order set by the host. The
- * default is the cycle of version 1: green, orange, red.
+ * default: green, orange, red.
  */
 #ifndef DISLED_TOUCH_CYCLE_H
 #define DISLED_TOUCH_CYCLE_H

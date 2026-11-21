@@ -54,7 +54,7 @@ uint16_t app_level_permille(void)
                                      app.lamp.manual_level);
 }
 
-/* --- Colors and touch cycle (version 2) ------------------------------ */
+/* --- Colors and touch cycle ------------------------------------------ */
 
 bool app_set_touch_cycle(const touch_cycle_t *cycle)
 {
@@ -77,7 +77,7 @@ bool app_set_color(uint32_t slot, rgb16_t color)
     return true;
 }
 
-/* --- Alert (version 2) ----------------------------------------------- */
+/* --- Alert ----------------------------------------------------------- */
 
 static void report_alert_end(uint8_t reason)
 {
@@ -378,9 +378,9 @@ void app_init(const fault_record_t *fault)
     /* LED first, dark: from here on only led_output drives it, apart from
      * the calibration commands of the debug console. */
     led_pwm_init(APP_PWM_FREQUENCY_HZ);
+    DISLED_ASSERT(led_cal_color_valid(&app_led_color_cal));
     /* The light tables hold only for the period they were measured at: on
      * the slower clock of a failed crystal, the duty follows the light. */
-    DISLED_ASSERT(led_cal_color_valid(&app_led_color_cal));
     output_config = (led_output_config_t){
         .power = &app_power_config,
         .light = (led_pwm_period() == APP_LED_CAL_PERIOD) ? app_led_light_cal : NULL,

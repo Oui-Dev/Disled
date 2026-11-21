@@ -11,8 +11,8 @@
 
 #include <stdint.h>
 
-/* The four built-in colors. With custom colors, a color is a palette slot:
- * these four, then the custom ones up to LAMP_SLOT_COUNT - 1. */
+/* The four built-in colors, slots 0 to 3; custom colors use slots 4 to
+ * LAMP_SLOT_COUNT - 1. */
 enum {
     LAMP_COLOR_GREEN = 0,
     LAMP_COLOR_ORANGE = 1,
@@ -76,7 +76,8 @@ enum {
 
 #define LED_CHANNEL_COUNT 3u
 
-/* Linear light intensity per channel, 0 to 65535. */
+/* A color, 0 to 65535 per channel: linear sRGB as a host sends it, or an LED
+ * drive (led_cal.h). */
 typedef struct {
     uint16_t r;
     uint16_t g;
