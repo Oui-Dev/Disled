@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Disled contributors
+name: repository
+
+# Checks of the whole repository, for every pull request into main that is
+# ready for review, drafts aside, whatever files it changes.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+# A new push to the pull request cancels the checks of the previous one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  name:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The project is Disled. "DISLED" stays only in capital identifiers
+      # (DISLED_...), in the DISLED2- prefix of the share codes, in the past
+      # entries of the changelogs, and in this file.
+      - name: The name Disled
+        run: |
+          found=$(git grep -n -I DISLED -- ':!*CHANGELOG.md' ':!.github/workflows/repository.yml' |
+            grep -v -E 'DISLED_[A-Z0-9_]|DISLED2-' || true)
+          if [ -n "$found" ]; then
+            echo "$found"
+            echo "::error::the name is Disled"
+            exit 1
+          fi
