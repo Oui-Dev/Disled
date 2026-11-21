@@ -7,25 +7,20 @@
   the clipboard. A code that reads opens the preview of the import.
 -->
 <script setup lang="ts">
-import { refAutoReset } from '@vueuse/core';
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { Palette } from '@/bindings/Palette';
-import { colorsCopyCode, colorsReadCode, colorsShareCode } from '@/ipc/commands';
+import { useCopy } from '@/composables/useCopy';
+import { colorsReadCode, colorsShareCode } from '@/ipc/commands';
 import { useColorsStore } from '@/stores/colors';
-import { useErrorStore } from '@/stores/errors';
 
 const emit = defineEmits<{ received: [text: string, palette: Palette] }>();
 
-/** How long "Copied" shows. */
-const COPIED_MS = 2000;
-
 const { t } = useI18n();
 const colors = useColorsStore();
-const errors = useErrorStore();
+const { copied, copy } = useCopy();
 
 const code = ref('');
-const copied = refAutoReset(false, COPIED_MS);
 const received = ref('');
 const unreadable = ref(false);
 
@@ -35,15 +30,6 @@ async function loadCode(): Promise<void> {
 // The code follows the colors, changed here or in another window, which
 // the store replaces whole.
 watch(() => colors.palette, loadCode, { immediate: true });
-
-async function copy(): Promise<void> {
-  try {
-    await colorsCopyCode();
-    copied.value = true;
-  } catch (error) {
-    errors.reportFailure(error);
-  }
-}
 
 /** The field is read at every change; an empty one says nothing. */
 async function read(text: string): Promise<void> {
@@ -81,7 +67,13 @@ async function read(text: string): Promise<void> {
         {{ code }}
       </p>
       <div class="flex items-center gap-3">
-        <UButton color="neutral" variant="outline" size="sm" icon="i-lucide-copy" @click="copy">
+        <UButton
+          color="neutral"
+          variant="outline"
+          size="sm"
+          icon="i-lucide-copy"
+          @click="copy(code)"
+        >
           {{ t('colors.share.copy') }}
         </UButton>
         <span role="status" class="flex items-center gap-1 text-xs text-muted">

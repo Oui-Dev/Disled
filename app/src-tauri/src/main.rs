@@ -35,7 +35,6 @@ use serde::Deserialize;
 use settings::{Language, Settings, SettingsPatch, SettingsState};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, State};
 use tauri_plugin_autostart::ManagerExt;
-use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_opener::OpenerExt;
 use tray::TrayState;
 use updates::{UpdateState, UpdateStatus};
@@ -104,12 +103,6 @@ async fn plugins_list(app: AppHandle) -> Vec<plugins::view::PluginView> {
 #[tauri::command]
 async fn plugin_note(app: AppHandle, id: String) -> Option<plugins::view::FilledBlock> {
     plugins::note(&app, &id)
-}
-
-/// "Copy": the backend writes the block in the clipboard.
-#[tauri::command]
-async fn plugin_copy_note(app: AppHandle, id: String) -> Result<(), String> {
-    plugins::copy_note(&app, &id)
 }
 
 /// "Enable" in the question, for the fingerprint it showed.
@@ -305,13 +298,6 @@ fn colors_delete(app: AppHandle, slot: u8) -> Result<(), String> {
 #[tauri::command]
 fn colors_share_code(colors: State<'_, ColorsState>) -> String {
     colors.get().share_code()
-}
-
-/// "Copy the code": the backend writes the clipboard, which no window reads.
-#[tauri::command]
-fn colors_copy_code(app: AppHandle) -> Result<(), String> {
-    let code = app.state::<ColorsState>().get().share_code();
-    app.clipboard().write_text(code).map_err(|e| e.to_string())
 }
 
 /// The colors of a pasted code, for the import preview; `null` when the
@@ -603,9 +589,6 @@ fn main() {
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
-        // From Rust only, for the Copy buttons of the share code and of the
-        // plugin notes: no window has its permission.
-        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         // From Rust only, for the links, the sources of a catalog plugin and
         // the plugins folder: no window has its permission.
@@ -663,7 +646,6 @@ fn main() {
             control_set_mode,
             plugins_list,
             plugin_note,
-            plugin_copy_note,
             plugin_approve,
             plugin_set_enabled,
             plugin_set_color,
@@ -681,7 +663,6 @@ fn main() {
             colors_set_cycle,
             colors_delete,
             colors_share_code,
-            colors_copy_code,
             colors_read_code,
             colors_import,
             colors_preview,
