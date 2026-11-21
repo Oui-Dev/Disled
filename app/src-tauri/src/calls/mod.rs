@@ -28,10 +28,11 @@ use self::macos as platform;
 #[cfg(windows)]
 use self::windows as platform;
 
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
+use parking_lot::{Condvar, Mutex};
 use tauri::AppHandle;
 
 use crate::control::{self, Input};
@@ -116,28 +117,22 @@ pub struct Stop {
 impl Stop {
     /// Waits at most `timeout`: true when asked to stop.
     pub fn wait(&self, timeout: Duration) -> bool {
-        let Ok(asked) = self.asked.lock() else {
-            return true;
-        };
+        let mut asked = self.asked.lock();
         self.woken
-            .wait_timeout_while(asked, timeout, |asked| !*asked)
-            .map_or(true, |(asked, _)| *asked)
+            .wait_while_for(&mut asked, |asked| !*asked, timeout);
+        *asked
     }
 
     #[cfg(any(test, target_os = "linux"))]
     pub fn asked(&self) -> bool {
-        self.asked.lock().map_or(true, |asked| *asked)
+        *self.asked.lock()
     }
 
     fn ask(&self) {
-        if let Ok(mut asked) = self.asked.lock() {
-            *asked = true;
-        }
+        *self.asked.lock() = true;
         self.woken.notify_all();
         #[cfg(target_os = "linux")]
-        if let Ok(waker) = self.waker.lock()
-            && let Some(wake) = waker.as_ref()
-        {
+        if let Some(wake) = self.waker.lock().as_ref() {
             wake();
         }
     }
@@ -145,9 +140,7 @@ impl Stop {
     /// Sets what wakes the thread, or none before what it wakes goes.
     #[cfg(target_os = "linux")]
     pub fn wake_with(&self, waker: Option<Box<dyn Fn() + Send>>) {
-        if let Ok(mut current) = self.waker.lock() {
-            *current = waker;
-        }
+        *self.waker.lock() = waker;
     }
 }
 

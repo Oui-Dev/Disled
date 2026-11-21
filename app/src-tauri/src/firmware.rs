@@ -7,13 +7,13 @@
 //! check of the new version.
 
 use std::path::PathBuf;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use disled_flash::firmware::{self as files, file_name, signature_name};
 use disled_flash::wchisp::{self, Probe, Stage, Wchisp};
+use parking_lot::Mutex;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
@@ -198,18 +198,17 @@ pub struct FirmwareState {
 
 impl FirmwareState {
     pub fn status(&self) -> FirmwareStatus {
-        self.status.lock().map(|s| s.clone()).unwrap_or_default()
+        self.status.lock().clone()
     }
 }
 
 /// Changes the status and tells every window.
 fn change(app: &AppHandle, edit: impl FnOnce(&mut FirmwareStatus)) {
-    let status = match app.state::<FirmwareState>().status.lock() {
-        Ok(mut status) => {
-            edit(&mut status);
-            status.clone()
-        }
-        Err(_) => return,
+    let state = app.state::<FirmwareState>();
+    let status = {
+        let mut status = state.status.lock();
+        edit(&mut status);
+        status.clone()
     };
     let _ = app.emit(EVENT_STATUS, status);
 }
@@ -295,9 +294,7 @@ pub async fn check(app: &AppHandle) {
                 .iter()
                 .map(|release| release.version.to_string())
                 .collect();
-            if let Ok(mut kept) = state.releases.lock() {
-                *kept = releases;
-            }
+            *state.releases.lock() = releases;
             change(app, |s| {
                 s.checking = false;
                 s.versions = versions;
@@ -367,13 +364,9 @@ pub fn install_manual(app: &AppHandle, version: &str) -> Result<(), String> {
     let release = state
         .releases
         .lock()
-        .ok()
-        .and_then(|releases| {
-            releases
-                .iter()
-                .find(|release| release.version == wanted)
-                .cloned()
-        })
+        .iter()
+        .find(|release| release.version == wanted)
+        .cloned()
         .ok_or_else(|| format!("firmware {wanted} is not on offer: check for updates first"))?;
     // A second click goes to the update already running, which the window
     // follows; an error would show it as failed.

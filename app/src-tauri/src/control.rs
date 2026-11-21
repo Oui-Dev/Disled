@@ -12,13 +12,13 @@
 //! it carry out what it decides, the microphone monitor included.
 
 use std::collections::HashMap;
-use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use disled_protocol::{
     ChangeSource, Command, FIRST_CUSTOM_SLOT, LinearRgb, ProtocolError, SLOT_COUNT, SetState,
     State, TouchMode,
 };
+use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -561,29 +561,19 @@ impl ControlState {
     }
 
     pub fn status(&self) -> ControlStatus {
-        self.core
-            .lock()
-            .map(|core| core.status())
-            .unwrap_or_default()
-    }
-
-    fn read<T: Default>(&self, read: impl FnOnce(&Control) -> T) -> T {
-        self.core.lock().map(|core| read(&core)).unwrap_or_default()
+        self.core.lock().status()
     }
 
     pub fn on_connect(&self) -> (TouchMode, Option<u8>) {
-        self.core
-            .lock()
-            .map(|core| core.on_connect())
-            .unwrap_or((TouchMode::Normal, None))
+        self.core.lock().on_connect()
     }
 
     pub fn call_back(&self) -> Option<u8> {
-        self.read(Control::call_back)
+        self.core.lock().call_back()
     }
 
     pub fn integration_slot(&self) -> Option<u8> {
-        self.read(Control::integration_slot)
+        self.core.lock().integration_slot()
     }
 }
 
@@ -591,7 +581,8 @@ impl ControlState {
 /// status. Fails when the lamp refuses to take a choice of the user.
 pub fn input(app: &AppHandle, input: Input) -> Result<(), String> {
     let control = app.state::<ControlState>();
-    let Ok((effects, status, stopped)) = control.core.lock().map(|mut core| {
+    let (effects, status, stopped) = {
+        let mut core = control.core.lock();
         let effects = core.step(Instant::now(), input);
         // In the order of the core, under its lock: a monitor asked to stop
         // here never outlives the start of the next one.
@@ -603,21 +594,20 @@ pub fn input(app: &AppHandle, input: Input) -> Result<(), String> {
             })
             .and_then(|run| switch_monitor(app, &control, run));
         (effects, core.status(), stopped)
-    }) else {
-        return Ok(());
     };
     // Out of the lock, which its last call may be waiting for.
     if let Some(monitor) = stopped {
         monitor.join();
     }
     let result = carry_out(app, effects);
-    let changed = control.shown.lock().is_ok_and(|mut shown| {
+    let changed = {
+        let mut shown = control.shown.lock();
         let changed = *shown != status;
         if changed {
             shown.clone_from(&status);
         }
         changed
-    });
+    };
     if changed {
         let _ = app.emit(EVENT_CONTROL, status);
         // The plugins that read the lamp also read the integration it follows.
@@ -629,7 +619,7 @@ pub fn input(app: &AppHandle, input: Input) -> Result<(), String> {
 /// Asks the monitor that runs to stop, and starts the run `run` if any.
 /// Returns the monitor stopped, to wait for.
 fn switch_monitor(app: &AppHandle, control: &ControlState, run: Option<u64>) -> Option<Monitor> {
-    let mut current = control.monitor.lock().ok()?;
+    let mut current = control.monitor.lock();
     let stopped = current.take();
     if let Some(monitor) = &stopped {
         monitor.ask();
@@ -675,7 +665,7 @@ fn carry_out(app: &AppHandle, effects: Vec<Effect>) -> Result<(), String> {
 /// couleurs et le cycle d’origine." Every way out but the restart of an
 /// update goes through here.
 pub fn release(app: &AppHandle) {
-    let effects = app.state::<ControlState>().read(|core| core.quit());
+    let effects = app.state::<ControlState>().core.lock().quit();
     if effects.is_empty() {
         return;
     }

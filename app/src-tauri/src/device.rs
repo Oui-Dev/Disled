@@ -14,11 +14,12 @@
 //! the backend: a window would show their refusal, during a self-test for
 //! instance, as an error of the user.
 
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{Arc, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use hidapi::{HidApi, HidDevice};
+use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -259,12 +260,12 @@ impl DeviceHandle {
 
     /// The INFO message of the connected lamp, once it answered.
     pub fn info(&self) -> Option<Info> {
-        self.info.lock().ok().and_then(|info| info.clone())
+        self.info.lock().clone()
     }
 
     /// The last STATE of a version 2 lamp, which the app drives.
     pub fn state(&self) -> Option<State> {
-        self.state.lock().ok().and_then(|state| state.clone())
+        self.state.lock().clone()
     }
 
     /// Queues a command of a window, whose replies the windows get. A lamp
@@ -305,10 +306,7 @@ impl DeviceHandle {
     }
 
     pub fn connection(&self) -> Connection {
-        self.connection
-            .lock()
-            .map(|c| c.clone())
-            .unwrap_or_default()
+        self.connection.lock().clone()
     }
 }
 
@@ -403,22 +401,16 @@ impl Worker {
     }
 
     fn set_connection(&self, connection: Connection) {
-        if let Ok(mut shared) = self.connection.lock() {
-            *shared = connection.clone();
-        }
+        *self.connection.lock() = connection.clone();
         let _ = self.app.emit(EVENT_CONNECTION, connection);
     }
 
     fn set_info(&self, info: Option<Info>) {
-        if let Ok(mut shared) = self.info.lock() {
-            *shared = info;
-        }
+        *self.info.lock() = info;
     }
 
     fn set_state(&self, state: Option<State>) {
-        if let Ok(mut shared) = self.state.lock() {
-            *shared = state;
-        }
+        *self.state.lock() = state;
     }
 
     /// Writes a command the session allows, and drops the others. False if
@@ -569,11 +561,7 @@ impl Worker {
             let first_info = self.session.generation.is_none();
             match self.session.receive(decoded) {
                 Incoming::Forward(frame) => {
-                    let previous = self
-                        .state
-                        .lock()
-                        .ok()
-                        .and_then(|state| state.as_ref().map(|state| state.state_seq));
+                    let previous = self.state.lock().as_ref().map(|state| state.state_seq);
                     if !self.follow(device, &frame.message, first_info) {
                         return Exit::Disconnected;
                     }

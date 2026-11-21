@@ -94,19 +94,6 @@ pub fn processes(processes: &[Process], own: i32) -> Reading {
     }
 }
 
-/// The process objects came with macOS 14.2: "14.2.1" has them, "14.1"
-/// not. A missing or unreadable part counts as 0.
-#[cfg(any(test, target_os = "macos"))]
-pub fn supported(version: &str) -> bool {
-    let mut parts = version
-        .trim()
-        .split('.')
-        .map(|part| part.parse::<u32>().unwrap_or(0));
-    let major = parts.next().unwrap_or(0);
-    let minor = parts.next().unwrap_or(0);
-    (major, minor) >= (14, 2)
-}
-
 /// The level meters of the desktops: they capture only to draw a meter.
 /// GNOME skips the first two, the sound applet of KDE all four. Compared
 /// in lower case, since pavucontrol names itself both ways.
@@ -271,16 +258,6 @@ mod tests {
             processes(&[process(Err(0x7768_6174), Ok(true))], own),
             Reading::Busy
         );
-    }
-
-    #[test]
-    fn the_calls_need_macos_14_2() {
-        for version in ["14.2", "14.2.1", "15.0", "26.1", "27"] {
-            assert!(supported(version), "{version}");
-        }
-        for version in ["14.1", "14.1.2", "13.6.9", "11.0", "", "garbage"] {
-            assert!(!supported(version), "{version}");
-        }
     }
 
     const PIPEWIRE_USB: u32 = 56;

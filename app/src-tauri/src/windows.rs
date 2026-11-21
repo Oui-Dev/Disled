@@ -4,10 +4,10 @@
 //! The windows: the popup under the tray icon for daily use, and four that
 //! open on demand: Diagnostics, the integrations and the two lamp updates.
 
-use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use disled_protocol::Command;
+use parking_lot::Mutex;
 use tauri::{
     AppHandle, LogicalSize, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
     Wry,
@@ -89,9 +89,7 @@ pub fn show_popup(app: &AppHandle) {
 pub fn hide_popup(app: &AppHandle) {
     if let Some(window) = popup(app) {
         let _ = window.hide();
-        if let Ok(mut hidden_at) = app.state::<PopupState>().hidden_at.lock() {
-            *hidden_at = Some(Instant::now());
-        }
+        *app.state::<PopupState>().hidden_at.lock() = Some(Instant::now());
     }
 }
 
@@ -160,8 +158,7 @@ pub fn toggle_popup(app: &AppHandle) {
         .state::<PopupState>()
         .hidden_at
         .lock()
-        .map(|t| t.is_some_and(|t| t.elapsed() < REOPEN_GUARD))
-        .unwrap_or(false);
+        .is_some_and(|hidden_at| hidden_at.elapsed() < REOPEN_GUARD);
     if !just_hidden {
         show_popup(app);
     }

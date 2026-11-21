@@ -8,13 +8,14 @@
 //! `settings` key: its file reads as it is, the new fields taking their
 //! defaults, and it keeps the other keys if the user goes back to it.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 
 use disled_protocol::{
     AUTO_BIAS_MAX, AUTO_BIAS_MIN, BrightnessMode, SLOT_RED, TOUCH_SENSITIVITY_MAX,
     TOUCH_SENSITIVITY_MIN,
 };
+use parking_lot::Mutex;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -233,7 +234,7 @@ pub struct SettingsState(Mutex<Settings>);
 
 impl SettingsState {
     pub fn get(&self) -> Settings {
-        self.0.lock().map(|s| *s).unwrap_or_default()
+        *self.0.lock()
     }
 }
 
@@ -267,9 +268,7 @@ fn store(app: &AppHandle) -> tauri_plugin_store::Result<Arc<Store<Wry>>> {
 /// Updates the shared copy and the store, which writes them to its file a
 /// moment later.
 pub fn save(app: &AppHandle, settings: Settings) -> Result<(), String> {
-    if let Ok(mut shared) = app.state::<SettingsState>().0.lock() {
-        *shared = settings;
-    }
+    *app.state::<SettingsState>().0.lock() = settings;
     let store = store(app).map_err(|e| e.to_string())?;
     store.set(
         KEY,
