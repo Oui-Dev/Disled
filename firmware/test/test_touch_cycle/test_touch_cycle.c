@@ -62,13 +62,13 @@ static void test_custom_cycle_in_its_order(void)
 static void test_one_to_nine_colors(void)
 {
     const uint8_t ten[] = { 0, 1, 2, 3, 4, 9, 12, 5, 6, 7 };
-    TEST_ASSERT_FALSE(touch_cycle_is_valid(ten, 0, DEFINED));
-    TEST_ASSERT_TRUE(touch_cycle_is_valid(ten, 1, DEFINED));
-    TEST_ASSERT_TRUE(touch_cycle_is_valid(ten, 7, DEFINED));
-    TEST_ASSERT_FALSE(touch_cycle_is_valid(ten, 8, DEFINED)); /* slot 5 holds no color */
-    TEST_ASSERT_TRUE(touch_cycle_is_valid(ten, 8, DEFINED | (1u << 5)));
-    TEST_ASSERT_TRUE(touch_cycle_is_valid(ten, 9, DEFINED | (1u << 5) | (1u << 6)));
-    TEST_ASSERT_FALSE(touch_cycle_is_valid(ten, 10, 0xFFFFu));
+    TEST_ASSERT_FALSE(touch_cycle_set(&cycle, ten, 0, DEFINED));
+    TEST_ASSERT_TRUE(touch_cycle_set(&cycle, ten, 1, DEFINED));
+    TEST_ASSERT_TRUE(touch_cycle_set(&cycle, ten, 7, DEFINED));
+    TEST_ASSERT_FALSE(touch_cycle_set(&cycle, ten, 8, DEFINED)); /* slot 5 holds no color */
+    TEST_ASSERT_TRUE(touch_cycle_set(&cycle, ten, 8, DEFINED | (1u << 5)));
+    TEST_ASSERT_TRUE(touch_cycle_set(&cycle, ten, 9, DEFINED | (1u << 5) | (1u << 6)));
+    TEST_ASSERT_FALSE(touch_cycle_set(&cycle, ten, 10, 0xFFFFu));
 }
 
 /* The 4 built-in colors and the 5 custom ones the app allows, all in the
@@ -88,13 +88,13 @@ static void test_a_cycle_of_nine_colors(void)
 static void test_only_defined_colors_none_twice_none_out_of_range(void)
 {
     const uint8_t undefined[] = { LAMP_COLOR_GREEN, 7 };
-    TEST_ASSERT_FALSE(touch_cycle_is_valid(undefined, 2, DEFINED));
+    TEST_ASSERT_FALSE(touch_cycle_set(&cycle, undefined, 2, DEFINED));
     const uint8_t twice[] = { LAMP_COLOR_GREEN, LAMP_COLOR_RED, LAMP_COLOR_GREEN };
-    TEST_ASSERT_FALSE(touch_cycle_is_valid(twice, 3, DEFINED));
+    TEST_ASSERT_FALSE(touch_cycle_set(&cycle, twice, 3, DEFINED));
     const uint8_t too_far[] = { LAMP_SLOT_COUNT };
-    TEST_ASSERT_FALSE(touch_cycle_is_valid(too_far, 1, 0xFFFFFFFFu));
+    TEST_ASSERT_FALSE(touch_cycle_set(&cycle, too_far, 1, 0xFFFFFFFFu));
     const uint8_t far_beyond[] = { 255 };
-    TEST_ASSERT_FALSE(touch_cycle_is_valid(far_beyond, 1, 0xFFFFFFFFu));
+    TEST_ASSERT_FALSE(touch_cycle_set(&cycle, far_beyond, 1, 0xFFFFFFFFu));
 }
 
 static void test_an_invalid_cycle_changes_nothing(void)

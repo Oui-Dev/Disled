@@ -77,7 +77,7 @@ uint16_t brightness_level_permille(const brightness_t *b);
 /* The same in percent, rounded. */
 uint8_t brightness_level_percent(const brightness_t *b);
 
-/* Curve lookup without filtering. Exposed for tests. */
+/* The curve of the automatic level, without the filter. */
 uint16_t brightness_curve_permille(const brightness_config_t *config, uint32_t lux_milli);
 
 #endif /* DISLED_BRIGHTNESS_H */

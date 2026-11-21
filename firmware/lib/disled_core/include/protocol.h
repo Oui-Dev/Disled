@@ -82,11 +82,8 @@
 #define PROTO_SELF_TEST_RESULT_SIZE      9u
 #define PROTO_SET_COLOR_SIZE             7u
 #define PROTO_GET_COLOR_SIZE             1u
-#define PROTO_COLOR_SIZE                 7u
 #define PROTO_TOUCH_CYCLE_SIZE           10u
 #define PROTO_ALERT_SIZE                 3u
-#define PROTO_ALERT_DONE_SIZE            1u
-#define PROTO_TOUCH_SIZE                 1u
 
 /* INFO capabilities. */
 #define PROTO_CAP_TELEMETRY     (1u << 0)
