@@ -8,6 +8,7 @@
 -->
 <script setup lang="ts">
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { whenever } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useFirmwareStore } from '@/stores/firmware';
@@ -84,11 +85,7 @@ function lookForVersions(): void {
     void firmware.check();
   }
 }
-if (firmware.loaded) {
-  lookForVersions();
-} else {
-  watch(() => firmware.loaded, lookForVersions, { once: true });
-}
+whenever(() => firmware.loaded, lookForVersions, { immediate: true, once: true });
 
 function install(): void {
   if (version.value) {
