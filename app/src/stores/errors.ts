@@ -3,14 +3,14 @@
 
 // The last thing that failed, shown until something the user asked for
 // succeeds, the lamp comes back, or the user closes it. The window words
-// the cause; the backend's own message stays as it came.
+// the cause; the failure's own message stays as it came.
 
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import type { ProtocolError } from '@/bindings/ProtocolError';
 
 export type AppError =
-  /** A backend command failed; `detail` is its message. */
+  /** A backend command or a clipboard write failed; `detail` is its message. */
   | { kind: 'backend'; detail: string }
   /** The lamp answered a command with ERROR. */
   | { kind: 'rejected'; command: number; error: ProtocolError }
@@ -24,7 +24,7 @@ export const useErrorStore = defineStore('errors', () => {
     last.value = error;
   }
 
-  /** Reports a rejected backend command. */
+  /** Reports a backend command or a clipboard write that failed. */
   function reportFailure(error: unknown): void {
     report({ kind: 'backend', detail: String(error) });
   }
