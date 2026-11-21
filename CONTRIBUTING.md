@@ -123,6 +123,10 @@ sensor, USB sleep. [docs/bringup.md](docs/bringup.md) lists the checks.
 - Code, comments, documentation and commit messages are in English. The
   app speaks English and French, so every new message goes into both
   `app/src/locales/en.json` and `fr.json` ([app/README.md](app/README.md#translations)).
+- Comments say why, not what, in plain English and short sentences. No
+  commented-out code and no TODO: open an issue.
+- Each fact lives in one place. A doc or a comment links to it rather than
+  copying it, so that a change edits one file.
 - The firmware follows its own rules, listed in
   [firmware/README.md](firmware/README.md#conventions).
 - A protocol change updates the specification, the shared test vectors

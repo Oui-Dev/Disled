@@ -29,7 +29,7 @@ call, the app chooses its color.
 | USB | `src/usb/` | bsp, TinyUSB, core | descriptors, link state, HID queues, CDC stream |
 | Drivers | `src/drivers/` | bsp, SDK | LED PWM, TouchKey, I2C, VEML7700 |
 | Board support | `src/bsp/` | SDK | pin map, clocks, time base, watchdog, unique ID, faults |
-| Core | `lib/disled_core/` | C library only | all decisions: state machine, palette and touch cycle, touch detection and its gate during an alert, alert breathing, brightness, color, power cap, PWM dithering, self-test, protocol codec, STATE notifications and telemetry pace, scheduler, formatter, assertions |
+| Core | `lib/disled_core/` | C library only | every decision, without I/O, unit tested: lamp state machine, touch, brightness, color and LED output, protocol codec and the messages the lamp sends on its own, self-test, scheduler, formatter, assertions |
 
 Only `src/bsp/ch32.h` includes the vendor device header. The core never
 includes an SDK header, so it builds natively and runs under Unity in CI.
@@ -50,7 +50,7 @@ main loop ── touch task ─> touch_gate (closed during an alert) ─> touch_
           ── host task ─> commands, STATE notifications, telemetry, end of an
                           alert, normal touch again after 10 s without a command
           ── console task (debug) ─> text commands, watch
-          └─ watchdog feed, then the next round at once (no WFI: it hangs on this chip)
+          └─ watchdog feed, then the next round at once (see Power)
 
 TIM3 update interrupt (20 kHz, every PWM period) ─> dithers the duties
                                      into whole ticks for the next period
@@ -104,8 +104,8 @@ nests.
   USB off, since the clock would be out of tolerance, and still runs the
   lamp locally.
 - **The host may vanish.** HID does not tell the lamp when a host stops.
-  A lamp left in power-only mode goes back to normal touch after 10 s
-  without a command, so that the lid always changes the color again.
+  A lamp left in power-only mode falls back to normal touch on its own
+  ([behavior.md](behavior.md#touch)).
 
 ### Power
 
@@ -150,15 +150,13 @@ channels alike, from a bound that the duties cannot exceed.
 
 The palette (`palette`) holds the four built-in colors and the custom ones
 that the host sets, all at full brightness; the level then scales their
-light, level 1 % showing 3 % of perceived brightness
-(`color_level_shown`). The built-in colors are LED drives: green, orange and red are the
-LED's own primaries, more saturated than any sRGB color, and warm white is
-2700 K. A custom color comes as linear sRGB, as a screen shows it, and a
-3x3 matrix (`led_cal_drive`) turns it into the light of the three LEDs that
-shows that color, the white of `#FFFFFF` being D65. A color outside the
-LED gamut first takes the least white that brings it inside, which keeps
-its hue; the largest channel then goes back to full light. The matrix and
-the tables come from a measured calibration
+light, level 1 % showing 3 % of perceived brightness (`color_level_shown`).
+The built-in colors are LED drives. A custom color comes as linear sRGB, as
+a screen shows it, and a 3x3 matrix (`led_cal_drive`) turns it into the
+light of the three LEDs that shows that color, the white of `#FFFFFF` being
+D65. A color outside the LED gamut first takes the least white that brings
+it inside, which keeps its hue; the largest channel then goes back to full
+light. The matrix and the tables come from a measured calibration
 ([bringup.md](bringup.md#led-calibration)). An alert (`alert`) moves the
 perceived brightness of the lamp color along a smoothstep, after the fade,
 up from a dim lamp and down from a bright one.
@@ -181,14 +179,10 @@ but passes no gesture, nor the release of a press that outlived the alert.
 
 ### Testing
 
-- `pio test -e native` runs the core on the build machine (Unity): lamp
-  rules, palette, touch cycle and touch modes, touch detection on synthetic
-  signals (mains hum, drift, objects, finger at power-up, hand resting near
-  the lid, sensitivity), the touch gate, alerts, brightness, color, the
-  LED calibration (color matrix, gamut, light tables), power cap, output
-  fades, PWM dithering, self-test, the STATE notifications (state_seq,
-  causes, the pace of the level changes) and the telemetry pace, scheduler,
-  formatter and the protocol codec.
+- `pio test -e native` runs one Unity suite per core module
+  (`firmware/test/test_<module>`), the touch detector on synthetic signals
+  (mains hum, drift, objects, finger at power-up, hand resting near the
+  lid, sensitivity).
 - `test_app_config` checks the shipped configuration (`app_config.c`) the
   same way: the light tables and the color matrix pass the boot checks,
   the dimmest level lights every channel of a built-in color, the colors
@@ -201,83 +195,68 @@ but passes no gesture, nor the release of a press that outlived the alert.
 
 ## Desktop app
 
-- **Rust backend** (`app/src-tauri`). A worker thread owns the USB
-  connection through `hidapi`. It finds the lamp, reconnects after an
-  unplug, writes commands and decodes messages. The results reach the web
-  view as Tauri events (`device-connection`, `device-message`). The codec
-  lives in its own crate, `crates/disled-protocol`, shared with the
-  production tool and tested against the shared vectors. After each
-  connection the worker sends the settings, the custom colors and the touch
-  cycle again ([protocol/README.md](../protocol/README.md#connection)). A
-  version 1 lamp gets nothing after its `INFO`: the app locks everything
-  that talks to it and offers its update.
-- **Colors** (`colors.rs`). The names of the built-in colors, up to five
-  custom colors, the touch cycle and the share codes. A deletion picks a
-  replacement wherever the color was in use: on the lamp, as the color of
-  the calls, in the states of a plugin.
-- **Control** (`control.rs`). A pure core decides what the app sets on the
-  lamp beyond the choices of the user: the source the lamp follows, the user
-  or one integration; the power-only touch and its heartbeat, a command every
-  3 s while an integration drives the lamp; the color of a call; the guards
-  of the alerts; and the lamp handed back to its own colors, cycle and
-  sensitivity when the app quits.
-- **Plugins** (`plugins/`). The integrations come from plugins in the
-  configuration folder of the app ([plugin API](plugins/README.md)): their
-  manifests, their approval by the fingerprint of their files, the rules
-  that turn their events into states, the local server on
-  `127.0.0.1:47831` with one token per plugin, and the programs some of them
-  run. The programs of the plugins with `lamp` read on their input the state
-  of the lamp and the presses on its lid, which the lamp reports from
-  protocol 2.1 (`plugins/lamp.rs`, the feed of `plugins/process.rs`). The
-  catalog of the [Disled-plugins](https://github.com/Oui-Dev/Disled-plugins)
-  repository comes from the network only when its tab opens, its index
-  signed with a key of its own (`plugins/catalog.rs`, `net.rs`).
-- **Calls** (`calls/`). While "Microphone in use" is on, in manual mode, a
-  thread reads whether an app captures the microphone: the capture sessions
-  of WASAPI on Windows, the process objects of CoreAudio on macOS 14.2 and
-  later, the capture streams of the sound server through libpulse, loaded at
-  run time, on Linux. It only reads what the system shows and never opens a
-  stream. A debounce turns the readings into calls, 2 s of capture to begin
-  one and 5 s without to end it.
-- **Tray and windows.** The app lives in the menu bar or the notification
-  area, and `tray.rs` draws its icon at run time from the lamp state. Five
-  windows share one page, chosen by the window label: the popup for daily
-  use, the Diagnostics window, the lamp update window, the window that
-  reinstalls a chosen firmware, and the integrations window. The Diagnostics
-  window starts the telemetry stream at 250 ms when it opens, and the
-  backend stops it when the window closes.
-- **Settings.** The backend saves the settings with the store plugin and
-  broadcasts them to every window (`settings-changed`). The USB worker
-  applies those of the lamp (brightness mode, fixed level, corrections of the
-  brightness and of the touch) as soon as the lamp answers `INFO`, so they
-  hold across lamp restarts. The backend applies the color mode to the window
-  frames and the language to the tray and the window titles (`i18n.rs`), and
-  tells the windows the language in force (`locale-changed`).
-- **Updates.** A thread checks the `latest.json` of the latest GitHub
-  release at start-up and once a day (`updates.rs`, updater plugin). The
-  popup shows the result (`update-status`) and asks the backend to install
-  it. The first launch of a new version, as after an update, checks at once
-  and opens the popup, so that a lamp update shows right after the app's.
-- **Lamp updates.** The same thread lists the signed firmware releases
-  (`firmware.rs`): every 2.x, newest first. The lamp update window installs
-  the newest version; the reinstall window installs the one the user picks.
-  An install runs on its own thread: download, signature check against the
-  update key, `wchisp probe` every second until the ROM bootloader shows
-  up, `wchisp erase`, which empties the whole flash, `wchisp flash`, then
-  the `INFO` of the restarted lamp. wchisp is a separate program next to
-  the app, driven through its log lines (`crates/disled-flash`, shared with
-  the production tool). Both windows follow `firmware-status`.
-- **Vue front end** (`app/src`, Nuxt UI). Each window runs its own Pinia
-  stores (lamp, settings, colors, control, plugins, telemetry, diagnostics,
-  updates, firmware, errors), fed by the backend events through a typed layer
-  (`ipc/`). The components only render them and send intentions, such as
-  "choose this color" or "follow this integration". ts-rs generates the
-  types they exchange with the backend from the Rust types (`bindings/`),
-  and the messages of both languages live in `locales/`, shared with the
-  backend.
-- USB access stays in Rust because the macOS web view has no WebHID, and
-  because a connection owned by the backend keeps working while every
-  window is hidden.
+The backend, in Rust (`app/src-tauri/src`), owns the lamp, the settings,
+the [plugins](plugins/README.md) and the updates. The windows, in Vue
+(`app/src`), show what it tells them and send what the user asks. USB
+stays in Rust because the macOS web view has no WebHID, and because a
+connection owned by the backend keeps working while every window is
+hidden. [app/README.md](../app/README.md#layout) lists the modules.
+
+### Threads
+
+Tauri runs the windows (`windows.rs`), the tray (`tray.rs`) and the
+commands of the windows (`main.rs`) on its main thread, or on its async
+runtime for the async commands. The app adds:
+
+| Thread | Module | Owns |
+|---|---|---|
+| `disled-usb` | `device.rs` | the lamp through hidapi: discovery, reconnection, a queue of commands, the heartbeat, the messages decoded by `crates/disled-protocol`, and after the INFO of a version 2 lamp its settings, colors and touch cycle again ([connection](../protocol/README.md#connection)) |
+| `disled-mic` | `calls/` | the reading of the microphone in use, while the control wants it |
+| `disled-updates` | `updates.rs` | the checks of the app and of the firmware, at start-up then daily |
+| `disled-firmware` | `firmware.rs` | a lamp install: download, signature check, then wchisp (`crates/disled-flash`) |
+| `disled-plugin-<id>` | `plugins/process.rs` | the program of a plugin, its pipes and its restarts |
+| tasks on the async runtime | `plugins/http.rs`, `plugins/mod.rs` | the local server of the plugins, and the states whose time runs out |
+
+What they share lives in the objects that Tauri manages, each behind a
+lock of its own: the settings, the palette, the control, the host of the
+plugins, the status of the updates. The USB worker takes its commands
+through a queue.
+
+### Events
+
+The backend tells every window of a change through Tauri events:
+`device-connection`, `device-message` (the telemetry to the Diagnostics
+window only), `device-protocol-error`, `settings-changed`,
+`colors-changed`, `locale-changed`, `control-changed`, `plugins-changed`
+(with no token), `update-status` and `firmware-status`. A window that opens
+reads each value once, then follows its event (`follow` in
+`src/ipc/events.ts`), and asks the lamp for its INFO and its STATE.
+
+### Control
+
+`control.rs` decides what the app sets on the lamp beyond the choices of
+the user: the source the lamp follows, the user or one integration; the
+power-only touch while an integration drives the lamp, kept by a command
+every 3 s; the color of a call; the alerts of the plugins; and the lamp
+handed back to its own colors, cycle and sensitivity when the app quits.
+Its core, `Control::step`, is pure: it turns an `Input`, such as a STATE of
+the lamp, a choice in the popup, the state of a plugin or the start of a
+call, into effects. `control::input` runs it under a lock, from whatever
+thread, then carries out the effects: commands for the USB worker, the
+heartbeat, the microphone monitor. The host of the plugins works the same
+way: a change leaves what the app must do in an outbox (`plugins/host.rs`),
+which `plugins/mod.rs` carries out.
+
+### Front end
+
+Every window loads the same page, `src/App.vue`, which picks the view of
+its window label and starts the Pinia stores of that view (`src/stores`).
+The stores reach the backend through `src/ipc`, typed commands and events,
+with the types that ts-rs writes from the Rust ones (`src/bindings`). The
+components only render the stores and send intentions, such as "choose
+this color" or "follow this integration". The messages of both languages
+live in `src/locales`, which the backend also reads for the tray and the
+window titles (`i18n.rs`).
 
 ## Production tool
 

@@ -69,9 +69,6 @@ touch does nothing, as when the computer sleeps. It comes back as soon as
 Disled starts again. The app starts with your session, unless you turned
 that setting off. On a phone charger, the lamp keeps working on its own.
 
-At every power-up the lamp starts green, in automatic brightness. The app
-then sends your colors and settings again ([Settings](#settings)).
-
 ## Install the app
 
 Download the installer for your system from the
@@ -211,9 +208,6 @@ screen can show, so their swatches only come close.
 color was in use, another one takes its place: the first color of the touch
 cycle on the lamp, "Do not disturb" for the calls, and the color an
 integration suggests for its states.
-
-When you quit the app, the lamp goes back to its four colors and its
-original cycle.
 
 ### Share your colors
 
