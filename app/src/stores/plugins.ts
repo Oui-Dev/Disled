@@ -90,7 +90,7 @@ export const usePluginsStore = defineStore('plugins', () => {
     }
   }
 
-  /** Reads the folder again, as when the window gets the focus. */
+  /** Reads the folder again. */
   async function refresh(): Promise<void> {
     plugins.value = await pluginsList();
   }
@@ -126,7 +126,6 @@ export const usePluginsStore = defineStore('plugins', () => {
     catalogError,
     installing,
     tokenChanges,
-    refresh,
     importPlugin,
     loadCatalog,
     install,
