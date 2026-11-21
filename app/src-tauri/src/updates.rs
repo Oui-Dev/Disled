@@ -7,7 +7,7 @@
 
 use std::sync::Mutex;
 use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, UNIX_EPOCH};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
@@ -62,10 +62,7 @@ impl UpdateState {
 
 /// Seconds since 1970-01-01 UTC.
 pub fn now() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0)
+    UNIX_EPOCH.elapsed().map_or(0, |since| since.as_secs())
 }
 
 /// Tells whether no check has succeeded yet or the last one is a day old.

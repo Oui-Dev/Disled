@@ -30,9 +30,9 @@ use crate::settings::CallSettings;
 const EVENT_CONTROL: &str = "control-changed";
 
 /// Breaths of an alert, the same for every plugin.
-pub const ALERT_COUNT: u8 = 3;
+const ALERT_COUNT: u8 = 3;
 /// Length of a breath, chosen by eye on a closed lamp: 4.5 s in all.
-pub const ALERT_PERIOD_MS: u16 = 1500;
+const ALERT_PERIOD_MS: u16 = 1500;
 /// An alert counts as over this long after its breaths, should its
 /// ALERT_DONE never come.
 const ALERT_MARGIN: Duration = Duration::from_secs(2);
@@ -136,7 +136,7 @@ pub enum Input {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Effect {
+enum Effect {
     /// A command for the lamp; `user` when it carries a choice of the user,
     /// whose refusal the windows show.
     Send { command: Command, user: bool },
@@ -169,7 +169,7 @@ struct Call {
 }
 
 #[derive(Debug, Default)]
-pub struct Control {
+struct Control {
     mode: Option<String>,
     integrations: Vec<Integration>,
     states: HashMap<String, IntegrationState>,
@@ -195,14 +195,14 @@ pub struct Control {
 }
 
 impl Control {
-    pub fn new(calls: CallSettings) -> Self {
+    fn new(calls: CallSettings) -> Self {
         Self {
             calls,
             ..Self::default()
         }
     }
 
-    pub fn status(&self) -> ControlStatus {
+    fn status(&self) -> ControlStatus {
         let imposed = self.call.filter(|call| call.imposed);
         ControlStatus {
             mode: self.mode.clone(),
@@ -222,18 +222,18 @@ impl Control {
     }
 
     /// The color of the state of the integration the lamp follows.
-    pub fn integration_slot(&self) -> Option<u8> {
+    fn integration_slot(&self) -> Option<u8> {
         self.integration_state().map(|state| state.slot)
     }
 
     /// While the call color shows: the color the lamp gets back after it.
-    pub fn call_back(&self) -> Option<u8> {
+    fn call_back(&self) -> Option<u8> {
         self.call.filter(|call| call.imposed).map(|call| call.back)
     }
 
     /// The touch mode and the color that end the connection sequence. A
     /// call does not outlive the connection: the monitor hears it again.
-    pub fn on_connect(&self) -> (TouchMode, Option<u8>) {
+    fn on_connect(&self) -> (TouchMode, Option<u8>) {
         match self.mode {
             Some(_) => (TouchMode::PowerOnly, self.integration_slot()),
             None => (TouchMode::Normal, None),
@@ -255,7 +255,7 @@ impl Control {
     /// app quits, the heartbeat off first: normal touch after an
     /// integration, then no sensitivity correction, the touch cycle of
     /// version 1 and no custom color.
-    pub fn quit(&self) -> Vec<Effect> {
+    fn quit(&self) -> Vec<Effect> {
         let mut effects = Vec::new();
         if !self.connected {
             return effects;
@@ -280,7 +280,7 @@ impl Control {
         effects
     }
 
-    pub fn step(&mut self, now: Instant, input: Input) -> Vec<Effect> {
+    fn step(&mut self, now: Instant, input: Input) -> Vec<Effect> {
         let mut effects = Vec::new();
         match input {
             Input::Connected => {
