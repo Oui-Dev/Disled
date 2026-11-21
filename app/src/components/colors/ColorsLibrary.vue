@@ -11,7 +11,7 @@
 import type { DropdownMenuItem } from '@nuxt/ui';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { type ShownColor, useColorsStore } from '@/stores/colors';
+import { cycleWords, type ShownColor, useColorsStore } from '@/stores/colors';
 
 const emit = defineEmits<{ edit: [slot: number]; create: []; share: [] }>();
 
@@ -73,9 +73,8 @@ function menu(color: ShownColor): DropdownMenuItem[] {
   return items;
 }
 
-/** The cycle in words; a name never breaks inside. */
 const cycleText = computed(() =>
-  colors.cycle.map((slot) => colors.color(slot)?.name.replaceAll(' ', '\u00a0') ?? '').join(' › '),
+  cycleWords(colors.cycle.map((slot) => colors.color(slot)?.name ?? '')),
 );
 
 const groups = computed(() => [colors.builtIn, colors.custom].filter((group) => group.length));

@@ -15,12 +15,16 @@
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useArrowChoice } from '@/composables/useArrowChoice';
-import { useColorsStore } from '@/stores/colors';
+import { type ShownColor, useColorsStore } from '@/stores/colors';
 import { useControlStore } from '@/stores/control';
 import { useLampStore } from '@/stores/lamp';
-import { BUILT_IN_COLORS } from '@/utils/lamp';
 
-defineProps<{ standalone?: boolean; narrow?: boolean }>();
+const props = defineProps<{
+  standalone?: boolean;
+  narrow?: boolean;
+  /** The custom color the lamp shows in manual mode, which the tile takes. */
+  current?: ShownColor;
+}>();
 const emit = defineEmits<{ manage: []; create: [] }>();
 
 const { t } = useI18n();
@@ -31,25 +35,15 @@ const control = useControlStore();
 const open = ref(false);
 const { listeners, closes } = useArrowChoice(open);
 
-/** The custom color the lamp shows, which the tile takes, in manual mode. */
-const current = computed(() => {
-  const state = lamp.state;
-  return control.status.mode === null && state?.on && state.color >= BUILT_IN_COLORS.length
-    ? colors.custom.find((color) => color.slot === state.color)
-    : undefined;
-});
-
 const tileLabel = computed(() =>
-  current.value
-    ? t('lamp.colors.moreCurrent', { name: current.value.name })
+  props.current
+    ? t('lamp.colors.moreCurrent', { name: props.current.name })
     : t('lamp.colors.moreLabel'),
 );
 
-const chosen = computed(() => current.value?.slot);
-
 // Null among the values, which the group takes when no color is chosen.
-const items = computed<{ value: number | null; label: string }[]>(() =>
-  colors.custom.map((color) => ({ value: color.slot, label: color.name })),
+const items = computed<{ value: number | null; label: string; hex: string }[]>(() =>
+  colors.custom.map((color) => ({ value: color.slot, label: color.name, hex: color.hex })),
 );
 
 async function choose(slot: number | null): Promise<void> {
@@ -105,12 +99,7 @@ async function choose(slot: number | null): Promise<void> {
     </UButton>
 
     <template #content>
-      <div
-        role="dialog"
-        :aria-label="t('colors.mine.title')"
-        class="flex flex-col gap-3"
-        v-bind="listeners"
-      >
+      <div class="flex flex-col gap-3" v-bind="listeners">
         <div class="flex items-center justify-between gap-2">
           <p class="text-sm font-semibold text-highlighted">{{ t('colors.mine.title') }}</p>
           <UButton
@@ -133,7 +122,7 @@ async function choose(slot: number | null): Promise<void> {
                selection, through Reka's passive v-model. -->
           <URadioGroup
             v-if="colors.custom.length"
-            :model-value="chosen ?? null"
+            :model-value="current?.slot ?? null"
             :items="items"
             :legend="t('colors.mine.title')"
             orientation="horizontal"
@@ -154,7 +143,7 @@ async function choose(slot: number | null): Promise<void> {
               <span
                 aria-hidden="true"
                 class="swatch swatch-ring block size-9"
-                :style="{ background: colors.color(Number(item.value))?.hex }"
+                :style="{ background: item.hex }"
               />
               <LampTileName :name="item.label ?? ''" :named="false" />
             </template>

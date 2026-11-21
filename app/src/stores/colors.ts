@@ -38,30 +38,42 @@ export function defaultName(slot: number): string {
   return color ? i18n.global.t(`lamp.colors.${color.key}`) : '';
 }
 
+/**
+ * The four built-in colors of a palette, under the names the user gave
+ * them, or their default ones.
+ */
+export function builtInColors(palette: Palette | null): ShownColor[] {
+  return BUILT_IN_COLORS.map((color, slot) => ({
+    slot,
+    name: palette?.names[slot] ?? defaultName(slot),
+    hex: color.swatch,
+    builtIn: true,
+  }));
+}
+
+/** The custom colors of a palette, in the order the user made them. */
+export function customColors(palette: Palette | null): ShownColor[] {
+  return (palette?.custom ?? []).map((color) => ({
+    slot: color.slot,
+    name: color.name,
+    hex: color.hex,
+    builtIn: false,
+  }));
+}
+
+/** A cycle in words: "Green › Orange › Red", where a name never breaks inside. */
+export function cycleWords(names: readonly string[]): string {
+  return names.map((name) => name.replaceAll(' ', '\u00a0')).join(' › ');
+}
+
 export const useColorsStore = defineStore('colors', () => {
   const errors = useErrorStore();
 
   /** Null until the backend answers. */
   const palette = ref<Palette | null>(null);
 
-  /** The four built-in colors, under the names the user gave them, or their default ones. */
-  const builtIn = computed<ShownColor[]>(() =>
-    BUILT_IN_COLORS.map((color, slot) => ({
-      slot,
-      name: palette.value?.names[slot] ?? defaultName(slot),
-      hex: color.swatch,
-      builtIn: true,
-    })),
-  );
-  /** In the order the user made them. */
-  const custom = computed<ShownColor[]>(() =>
-    (palette.value?.custom ?? []).map((color) => ({
-      slot: color.slot,
-      name: color.name,
-      hex: color.hex,
-      builtIn: false,
-    })),
-  );
+  const builtIn = computed(() => builtInColors(palette.value));
+  const custom = computed(() => customColors(palette.value));
   const cycle = computed(() => palette.value?.cycle ?? []);
   const full = computed(() => custom.value.length >= CUSTOM_MAX);
 
