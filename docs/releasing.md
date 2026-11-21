@@ -72,7 +72,8 @@ both components release, a failed job of one also holds the other back.
   hand (Actions, release, Run workflow) with the version of the draft. It
   builds the tag again with the workflow of `main`, replaces the files
   already attached and publishes the release as the latest one, so only
-  for the latest app version.
+  for the latest app version. The steps in `.github/actions` come from the
+  tag, not from `main`.
 - If the code must change, fix it on `main`, and the fix goes out with the
   next version. Leave the unpublished draft as it is.
 - Never delete a release or a tag made by release-please. It finds the

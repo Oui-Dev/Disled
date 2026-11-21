@@ -18,6 +18,7 @@ on:
       - "rust-toolchain.toml"
       - ".cargo/**"
       - ".github/workflows/app.yml"
+      - ".github/actions/**"
 
 permissions:
   contents: read
@@ -45,8 +46,8 @@ jobs:
       - name: Tauri and hidapi system libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
-            libayatana-appindicator3-dev librsvg2-dev libudev-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev libudev-dev
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -143,14 +144,10 @@ jobs:
           cargo clippy -p disled-app -p disled-flash --all-targets -- -D warnings
           cargo test -p disled-app -p disled-flash
 
-      # As in the release workflow.
-      - name: wchisp
+      - uses: ./.github/actions/wchisp
         if: runner.os == 'macOS'
-        run: |
-          cargo install "wchisp@$WCHISP_VERSION" --locked --root "$RUNNER_TEMP/wchisp"
-          triple=$(rustc -vV | sed -n 's/^host: //p')
-          mkdir -p src-tauri/binaries
-          cp "$RUNNER_TEMP/wchisp/bin/wchisp" "src-tauri/binaries/wchisp-$triple"
+        with:
+          version: ${{ env.WCHISP_VERSION }}
 
       # Without the updater configuration, so without its signing secrets.
       - name: Build the disk image
@@ -159,32 +156,8 @@ jobs:
           TAURI_BUNDLER_DMG_IGNORE_CI: "true"
         run: npm run tauri build -- --bundles app,dmg --config src-tauri/tauri.wchisp.conf.json
 
-      - name: Check the macOS signature
+      - uses: ./.github/actions/macos-bundle
         if: runner.os == 'macOS'
-        working-directory: target/release/bundle/macos
-        run: codesign --verify --deep --strict --verbose=2 Disled.app
-
-      # The calls come from the microphone without any permission: a bundle
-      # that declared the use of the microphone or of the camera would have
-      # macOS ask the user, and the detection of the calls would be gone.
-      - name: No microphone or camera permission
-        if: runner.os == 'macOS'
-        working-directory: target/release/bundle/macos
-        run: |
-          plist=$(plutil -convert xml1 -o - Disled.app/Contents/Info.plist)
-          if grep -E -q 'NS(Microphone|Camera)UsageDescription' <<< "$plist"; then
-            echo "::error::Info.plist asks for the microphone or the camera"
-            exit 1
-          fi
-
-      - name: Check the disk image layout
-        if: runner.os == 'macOS'
-        working-directory: target/release/bundle/dmg
-        run: |
-          mount=$(mktemp -d)
-          hdiutil attach -readonly -nobrowse -mountpoint "$mount" Disled_*.dmg
-          trap 'hdiutil detach "$mount"' EXIT
-          grep -q backgroundImageAlias "$mount/.DS_Store"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: runner.os == 'macOS'
