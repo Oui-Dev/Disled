@@ -589,12 +589,6 @@ mod tests {
         })
     }
 
-    fn reason(mut value: Value, change: impl FnOnce(&mut Value)) -> Reason {
-        change(&mut value);
-        Manifest::from_value(&value, Some(value["id"].as_str().unwrap_or("claude-code")))
-            .expect_err("refused")
-    }
-
     #[test]
     fn the_manifests_of_annex_d_read() {
         let manifest = Manifest::from_value(&claude_code(), Some("claude-code")).expect("read");
@@ -612,6 +606,11 @@ mod tests {
             manifest.events.as_ref().map(|events| events.rules.len()),
             Some(3)
         );
+        // The id is the name of the folder.
+        assert_eq!(
+            Manifest::from_value(&claude_code(), Some("autre")),
+            Err(Reason::Id)
+        );
 
         let manifest = Manifest::from_value(&pomodoro(), Some("pomodoro")).expect("read");
         assert_eq!(manifest.state("break").map(|state| state.priority), Some(1));
@@ -619,6 +618,10 @@ mod tests {
             manifest.run.as_ref().and_then(Run::command),
             Some(&["node".to_owned(), "index.js".to_owned()][..])
         );
+        let mut value = pomodoro();
+        value["capabilities"] = json!(["run", "color", "lamp"]);
+        let manifest = Manifest::from_value(&value, Some("pomodoro")).expect("read");
+        assert!(manifest.capabilities.lamp && manifest.capabilities.run);
     }
 
     #[test]
@@ -634,65 +637,6 @@ mod tests {
         value["description"] = json!("Partout");
         let manifest = Manifest::from_value(&value, Some("claude-code")).expect("read");
         assert_eq!(manifest.description.get("en"), "Partout");
-    }
-
-    #[test]
-    fn each_refusal_has_its_reason() {
-        let field = |field: &str| Reason::Field {
-            field: field.into(),
-        };
-        assert_eq!(
-            reason(claude_code(), |v| {
-                v.as_object_mut().map(|o| o.remove("name"));
-            }),
-            field("name")
-        );
-        assert_eq!(
-            reason(claude_code(), |v| v["api"] = json!(2)),
-            Reason::Api { api: 2 }
-        );
-        assert_eq!(
-            Manifest::from_value(&claude_code(), Some("autre")),
-            Err(Reason::Id)
-        );
-        assert_eq!(
-            reason(claude_code(), |v| v["name"] = json!("x".repeat(33))),
-            invalid("name")
-        );
-        assert_eq!(
-            reason(claude_code(), |v| v["version"] = json!("1.0")),
-            invalid("version")
-        );
-        // Neither a program nor events.
-        assert_eq!(
-            reason(claude_code(), |v| v["capabilities"] = json!(["color"])),
-            invalid("capabilities")
-        );
-        // A color without states, a state whose color is not built in.
-        assert_eq!(
-            reason(claude_code(), |v| {
-                v.as_object_mut().map(|o| o.remove("states"));
-            }),
-            field("states")
-        );
-        assert_eq!(
-            reason(claude_code(), |v| v["states"][0]["color"] = json!("pink")),
-            invalid("states")
-        );
-        assert_eq!(
-            reason(claude_code(), |v| v["idle"] = json!("asleep")),
-            invalid("idle")
-        );
-        // A rule toward a state that does not exist.
-        assert_eq!(
-            reason(claude_code(), |v| v["events"]["rules"][2]["state"] =
-                json!("asleep")),
-            invalid("events.rules")
-        );
-        assert_eq!(
-            reason(pomodoro(), |v| v["run"] = json!({ "default": [] })),
-            invalid("run")
-        );
     }
 
     #[test]
@@ -716,24 +660,10 @@ mod tests {
         assert_eq!(manifest.icon, "puzzle");
     }
 
-    #[test]
-    fn only_a_program_reads_the_lamp() {
-        let mut value = pomodoro();
-        value["capabilities"] = json!(["run", "color", "lamp"]);
-        let manifest = Manifest::from_value(&value, Some("pomodoro")).expect("read");
-        assert!(manifest.capabilities.lamp && manifest.capabilities.run);
-        // A plugin with events has no program to read it.
-        assert_eq!(
-            reason(claude_code(), |v| v["capabilities"] =
-                json!(["color", "events", "lamp"])),
-            invalid("capabilities")
-        );
-    }
-
     /// docs/plugins/plugin.schema.json and this reader agree, but on two
     /// kinds of manifests: the schema refuses the fields and values that the
     /// reader ignores, and it cannot see the links between fields that the
-    /// reader checks.
+    /// reader checks. The reader also says why it refuses one.
     #[test]
     fn the_schema_says_what_the_reader_says() {
         let path =
@@ -745,23 +675,23 @@ mod tests {
             change(&mut value);
             value
         };
-        // The manifest, whether the schema takes it, whether the reader does.
-        let cases: Vec<(&str, Value, bool, bool)> = vec![
-            ("claude code", claude_code(), true, true),
-            ("pomodoro", pomodoro(), true, true),
+        // The manifest, whether the schema takes it, what the reader says.
+        let cases: Vec<(&str, Value, bool, Result<(), Reason>)> = vec![
+            ("claude code", claude_code(), true, Ok(())),
+            ("pomodoro", pomodoro(), true, Ok(())),
             (
                 "a program that reads the lamp",
                 with(pomodoro(), |v| {
                     v["capabilities"] = json!(["run", "color", "lamp"])
                 }),
                 true,
-                true,
+                Ok(()),
             ),
             (
                 "the address of the schema",
                 with(pomodoro(), |v| v["$schema"] = json!("plugin.schema.json")),
                 true,
-                true,
+                Ok(()),
             ),
             (
                 "a condition on a list",
@@ -769,7 +699,7 @@ mod tests {
                     v["events"]["rules"][0]["when"]["/tools"] = json!({ "nonEmpty": true });
                 }),
                 true,
-                true,
+                Ok(()),
             ),
             (
                 "events that read the lamp",
@@ -777,7 +707,7 @@ mod tests {
                     v["capabilities"] = json!(["color", "events", "lamp"]);
                 }),
                 false,
-                false,
+                Err(invalid("capabilities")),
             ),
             (
                 "no name",
@@ -785,31 +715,31 @@ mod tests {
                     v.as_object_mut().map(|o| o.remove("name"));
                 }),
                 false,
-                false,
+                Err(missing("name")),
             ),
             (
                 "a later API",
                 with(claude_code(), |v| v["api"] = json!(2)),
                 false,
-                false,
+                Err(Reason::Api { api: 2 }),
             ),
             (
                 "a long name",
                 with(claude_code(), |v| v["name"] = json!("x".repeat(33))),
                 false,
-                false,
+                Err(invalid("name")),
             ),
             (
                 "not SemVer",
                 with(claude_code(), |v| v["version"] = json!("1.0")),
                 false,
-                false,
+                Err(invalid("version")),
             ),
             (
                 "neither a program nor events",
                 with(claude_code(), |v| v["capabilities"] = json!(["color"])),
                 false,
-                false,
+                Err(invalid("capabilities")),
             ),
             (
                 "a color without states",
@@ -817,19 +747,19 @@ mod tests {
                     v.as_object_mut().map(|o| o.remove("states"));
                 }),
                 false,
-                false,
+                Err(missing("states")),
             ),
             (
                 "a color that is not built in",
                 with(claude_code(), |v| v["states"][0]["color"] = json!("pink")),
                 false,
-                false,
+                Err(invalid("states")),
             ),
             (
                 "an empty command",
                 with(pomodoro(), |v| v["run"] = json!({ "default": [] })),
                 false,
-                false,
+                Err(invalid("run")),
             ),
             (
                 "events without the capability",
@@ -837,7 +767,7 @@ mod tests {
                     v["events"] = json!({ "from": "x", "rules": [] });
                 }),
                 false,
-                false,
+                Err(invalid("events")),
             ),
             (
                 "a rule without an action",
@@ -845,7 +775,7 @@ mod tests {
                     v["events"]["rules"] = json!([{ "when": {} }])
                 }),
                 false,
-                false,
+                Err(invalid("events.rules")),
             ),
             (
                 "a condition that is not a pointer",
@@ -853,7 +783,7 @@ mod tests {
                     v["events"]["rules"][0]["when"] = json!({ "event": "end" });
                 }),
                 false,
-                false,
+                Err(invalid("events.rules")),
             ),
             // The schema is stricter: these are typos most of the time.
             (
@@ -862,13 +792,13 @@ mod tests {
                     v["homepage"] = json!("https://example.com")
                 }),
                 false,
-                true,
+                Ok(()),
             ),
             (
                 "an unknown icon",
                 with(claude_code(), |v| v["icon"] = json!("skull")),
                 false,
-                true,
+                Ok(()),
             ),
             (
                 "an unknown capability",
@@ -876,20 +806,20 @@ mod tests {
                     v["capabilities"] = json!(["color", "alert", "events", "camera"]);
                 }),
                 false,
-                true,
+                Ok(()),
             ),
             (
                 "states without color",
                 with(pomodoro(), |v| v["capabilities"] = json!(["run", "alert"])),
                 false,
-                true,
+                Ok(()),
             ),
             // The reader is stricter: links between fields.
             (
                 "an idle state that does not exist",
                 with(claude_code(), |v| v["idle"] = json!("asleep")),
                 true,
-                false,
+                Err(invalid("idle")),
             ),
             (
                 "a rule toward a state that does not exist",
@@ -897,16 +827,16 @@ mod tests {
                     v["events"]["rules"][2]["state"] = json!("asleep")
                 }),
                 true,
-                false,
+                Err(invalid("events.rules")),
             ),
             (
                 "two states of the same id",
                 with(pomodoro(), |v| v["states"][1]["id"] = json!("work")),
                 true,
-                false,
+                Err(invalid("states")),
             ),
         ];
-        for (name, manifest, schema_takes, reader_takes) in cases {
+        for (name, manifest, schema_takes, reader_says) in cases {
             let id = manifest["id"].as_str().unwrap_or_default().to_owned();
             assert_eq!(
                 validator.is_valid(&manifest),
@@ -914,8 +844,8 @@ mod tests {
                 "the schema, for {name}"
             );
             assert_eq!(
-                Manifest::from_value(&manifest, Some(&id)).is_ok(),
-                reader_takes,
+                Manifest::from_value(&manifest, Some(&id)).map(|_| ()),
+                reader_says,
                 "the reader, for {name}"
             );
         }
