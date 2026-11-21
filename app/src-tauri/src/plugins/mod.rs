@@ -21,6 +21,8 @@ pub mod states;
 pub mod tokens;
 
 use std::collections::{BTreeMap, HashMap};
+use std::fs::File;
+use std::io::{Read, Seek};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread;
@@ -32,7 +34,7 @@ use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
-use crate::colors::{BUILT_IN, ColorsState, Palette, PreviewState};
+use crate::colors::{ColorsState, Palette, PreviewState};
 use crate::control::{self, ControlState, Input, Integration, IntegrationState};
 use crate::device::DeviceHandle;
 use crate::i18n::{Locale, LocaleState};
@@ -45,8 +47,6 @@ use states::Keys;
 const EVENT_PLUGINS: &str = "plugins-changed";
 const SCHEMA: u64 = 1;
 const MANUAL: &str = "manual";
-/// The address of the events, which the installation notes show.
-const HOOKS_URL: &str = "http://127.0.0.1:47831/v1/hooks/";
 /// How often the states whose time runs out leave.
 const TICK: Duration = Duration::from_secs(1);
 
@@ -165,8 +165,8 @@ pub struct PluginView {
     pub installed: bool,
     pub last_event: Option<LastEvent>,
     pub program: Option<ProgramStatus>,
-    /// Another program holds the port of the events.
-    pub port_taken: bool,
+    /// The port of the events, while another program holds it.
+    pub port_taken: Option<u16>,
     /// Its fingerprint now, which the approval sends back.
     pub fingerprint: Option<String>,
 }
@@ -252,9 +252,6 @@ pub struct Host {
     events: tokio::sync::mpsc::Sender<http::Event>,
     server: Option<tauri::async_runtime::JoinHandle<()>>,
     port_taken: Arc<std::sync::atomic::AtomicBool>,
-    /// What the control last heard.
-    announced: Vec<Integration>,
-    announced_states: HashMap<String, Option<IntegrationState>>,
     /// The `lamp` notification that the programs last got, which a program
     /// that starts gets first.
     lamp: String,
@@ -321,7 +318,7 @@ impl Host {
             .get(id)
             .and_then(|entry| entry.colors.get(state))
             .copied()
-            .filter(|slot| *slot < BUILT_IN || palette.defines(*slot));
+            .filter(|slot| palette.defines(*slot));
         Some(picked.unwrap_or(default))
     }
 
@@ -445,7 +442,7 @@ impl Host {
             let feed = self
                 .manifest(&id)
                 .is_some_and(|manifest| manifest.capabilities.lamp)
-                .then(|| Feed::new(Some(self.lamp.clone())));
+                .then(|| Feed::new(self.lamp.clone()));
             let (notes, statuses) = (app.clone(), app.clone());
             let (note_id, status_id) = (id.clone(), id.clone());
             let program = Program::start(
@@ -515,7 +512,9 @@ impl Host {
         outbox.save = Some(self.stored.to_value());
     }
 
-    /// Brings the control and the windows in line with the plugins.
+    /// Brings the control and the windows in line with the plugins. The
+    /// control gets every input at each sync: one that changes nothing does
+    /// nothing.
     fn sync(&mut self, app: &AppHandle, palette: &Palette, language: &str, outbox: &mut Outbox) {
         self.serve(app);
         let integrations: Vec<Integration> = self
@@ -531,12 +530,6 @@ impl Host {
                 })
             })
             .collect();
-        if integrations != self.announced {
-            outbox
-                .control
-                .push(Input::Integrations(integrations.clone()));
-            self.announced = integrations.clone();
-        }
         // The lamp cannot follow a plugin that left.
         if self
             .stored
@@ -547,18 +540,15 @@ impl Host {
             self.stored.mode = None;
             self.save(outbox);
         }
-        for integration in &integrations {
-            let state = self.integration_state(&integration.id, palette, language);
-            if self.announced_states.get(&integration.id) != Some(&state) {
-                outbox.control.push(Input::Announce {
-                    id: integration.id.clone(),
-                    state: state.clone(),
-                });
-                self.announced_states.insert(integration.id.clone(), state);
-            }
-        }
-        self.announced_states
-            .retain(|id, _| integrations.iter().any(|known| &known.id == id));
+        let announces: Vec<Input> = integrations
+            .iter()
+            .map(|integration| Input::Announce {
+                id: integration.id.clone(),
+                state: self.integration_state(&integration.id, palette, language),
+            })
+            .collect();
+        outbox.control.push(Input::Integrations(integrations));
+        outbox.control.extend(announces);
         outbox.views = Some(self.views(palette, language));
     }
 
@@ -603,8 +593,10 @@ impl Host {
                 PluginView {
                     id: id.clone(),
                     name: manifest.map_or_else(|| id.clone(), |manifest| manifest.name.clone()),
-                    icon: manifest
-                        .map_or_else(|| "puzzle".into(), |manifest| manifest.icon.clone()),
+                    icon: manifest.map_or_else(
+                        || manifest::DEFAULT_ICON.into(),
+                        |manifest| manifest.icon.clone(),
+                    ),
                     version: manifest.map(|manifest| manifest.version.to_string()),
                     author: manifest.map(|manifest| manifest.author.clone()),
                     description: manifest
@@ -656,8 +648,9 @@ impl Host {
                         }),
                     }),
                     program: plugin.program.clone(),
-                    port_taken: port_taken
-                        && manifest.is_some_and(|manifest| manifest.capabilities.events),
+                    port_taken: (port_taken
+                        && manifest.is_some_and(|manifest| manifest.capabilities.events))
+                    .then_some(http::PORT),
                     fingerprint: plugin.fingerprint.clone(),
                 }
             })
@@ -667,10 +660,10 @@ impl Host {
     /// An action of a rule or of a program, on a key.
     fn act(&mut self, id: &str, key: &str, action: &Action, outbox: &mut Outbox) {
         let now = Instant::now();
-        let Some(manifest) = self.manifest(id).cloned() else {
+        let Some(plugin) = self.plugins.get_mut(id) else {
             return;
         };
-        let Some(plugin) = self.plugins.get_mut(id) else {
+        let Ok(manifest) = plugin.manifest.as_ref() else {
             return;
         };
         let mut alert = false;
@@ -689,9 +682,10 @@ impl Host {
             Action::Clear => plugin.keys.clear(Some(key)),
             Action::Ignore => return,
         }
+        let alert = alert && manifest.capabilities.alert;
         plugin.heard = Some((updates::now(), given));
         self.refresh(id);
-        if alert && manifest.capabilities.alert {
+        if alert {
             outbox.control.push(Input::Alert {
                 plugin: id.to_owned(),
             });
@@ -766,8 +760,6 @@ pub fn start(app: &AppHandle) {
         events,
         server: None,
         port_taken: Arc::default(),
-        announced: Vec::new(),
-        announced_states: HashMap::new(),
         lamp,
     };
     let mode = host.stored.mode.clone();
@@ -823,10 +815,11 @@ fn on_event(app: &AppHandle, id: &str, event: &Value) {
         if !host.active(id) {
             return;
         }
-        let Some(events) = host
-            .manifest(id)
-            .and_then(|manifest| manifest.events.clone())
-        else {
+        let Some((key, action)) = host.manifest(id).and_then(|manifest| {
+            let events = manifest.events.as_ref()?;
+            let key = rules::key_of(event, events.key.as_deref());
+            Some((key, rules::action_for(&events.rules, event).cloned()))
+        }) else {
             return;
         };
         // The first event folds the installation note.
@@ -834,9 +827,8 @@ fn on_event(app: &AppHandle, id: &str, event: &Value) {
             host.entry(id).installed = true;
             host.save(outbox);
         }
-        let key = rules::key_of(event, events.key.as_deref());
-        match rules::action_for(&events.rules, event) {
-            Some(action) => host.act(id, &key, action, outbox),
+        match action {
+            Some(action) => host.act(id, &key, &action, outbox),
             None => {
                 if let Some(plugin) = host.plugins.get_mut(id) {
                     plugin.heard = Some((updates::now(), None));
@@ -912,7 +904,7 @@ pub fn list(app: &AppHandle) -> Vec<PluginView> {
 pub fn note(app: &AppHandle, id: &str) -> Option<FilledBlock> {
     read(app, |host| {
         let block = host.manifest(id)?.note.as_ref()?.block.as_ref()?.text();
-        let url = format!("{HOOKS_URL}{id}");
+        let url = http::hook_url(id);
         let token = host.tokens.get(id).map(str::to_owned);
         let text = block
             .replace("{{url}}", &url)
@@ -987,7 +979,7 @@ pub fn set_enabled(app: &AppHandle, id: &str, enabled: bool) -> Result<(), Strin
 /// The color of a state of a plugin.
 pub fn set_color(app: &AppHandle, id: &str, state: &str, slot: u8) -> Result<(), String> {
     let palette = app.state::<ColorsState>().get();
-    if slot >= BUILT_IN && !palette.defines(slot) {
+    if !palette.defines(slot) {
         return Err("no such color".into());
     }
     change(app, |host, outbox| {
@@ -1041,51 +1033,50 @@ pub fn remove(app: &AppHandle, id: &str) -> Result<(), String> {
 /// Imports the plugin of a zip file, in place of the plugin of the same id,
 /// whose token and colors stay. Returns its id; the approval follows.
 pub fn import(app: &AppHandle, zip: &Path) -> Result<String, Reason> {
-    let folder = read(app, |host| host.folder.clone()).ok_or(Reason::Missing)?;
-    let _ = std::fs::create_dir_all(&folder);
-    let unpacked = scan::unpack(zip, &folder)?;
-    put_in_place(app, &folder, unpacked)
+    let zip = File::open(zip).map_err(|_| Reason::Missing)?;
+    put_in_place(app, unpack(app, zip)?)
 }
 
 /// Imports a plugin of the catalog, as `import` does, once its zip proved to
 /// hold the plugin `id` with the files of `fingerprint`, those of the index.
 fn import_reviewed(
     app: &AppHandle,
-    zip: &Path,
+    zip: impl Read + Seek,
     id: &str,
     fingerprint: &str,
 ) -> Result<String, catalog::CatalogError> {
     let unreadable = |reason| catalog::CatalogError::Unreadable { reason };
-    let folder = read(app, |host| host.folder.clone()).ok_or(unreadable(Reason::Missing))?;
-    let _ = std::fs::create_dir_all(&folder);
-    let unpacked = scan::unpack(zip, &folder).map_err(unreadable)?;
+    let unpacked = unpack(app, zip).map_err(unreadable)?;
     if unpacked.id() != id || unpacked.fingerprint().as_deref() != Ok(fingerprint) {
         unpacked.discard();
         return Err(catalog::CatalogError::Mismatch);
     }
-    put_in_place(app, &folder, unpacked).map_err(unreadable)
+    put_in_place(app, unpacked).map_err(unreadable)
+}
+
+/// Unpacks a zip file in the folder of the plugins, under a name that no
+/// plugin takes until it is put in place.
+fn unpack(app: &AppHandle, zip: impl Read + Seek) -> Result<scan::Unpacked, Reason> {
+    let folder = read(app, |host| host.folder.clone()).ok_or(Reason::Missing)?;
+    let _ = std::fs::create_dir_all(&folder);
+    scan::unpack(zip, &folder)
 }
 
 /// Puts an unpacked plugin in place of the plugin of its id, whose program
 /// stops first, since its files go.
-fn put_in_place(
-    app: &AppHandle,
-    folder: &Path,
-    unpacked: scan::Unpacked,
-) -> Result<String, Reason> {
+fn put_in_place(app: &AppHandle, unpacked: scan::Unpacked) -> Result<String, Reason> {
     let id = unpacked.id().to_owned();
     with(app, |host, outbox| {
         if let Some(program) = host.programs.remove(&id) {
             outbox.stop.push(program);
         }
     });
-    let result = unpacked.install(folder);
+    let result = unpacked.install();
     with(app, |host, outbox| host.rescan(app, outbox));
     result
 }
 
-/// The plugins of the folder, read again: their version, while they read,
-/// and their fingerprint, for the catalog.
+/// The plugins of the folder, read again, for the catalog.
 fn installed(app: &AppHandle) -> catalog::Installed {
     with(app, |host, outbox| {
         host.rescan(app, outbox);
@@ -1097,7 +1088,7 @@ fn installed(app: &AppHandle) -> catalog::Installed {
                     .as_ref()
                     .ok()
                     .map(|manifest| manifest.version.clone());
-                (id.clone(), (version, plugin.fingerprint.clone()))
+                (id.clone(), version.zip(plugin.fingerprint.clone()))
             })
             .collect()
     })
@@ -1136,9 +1127,7 @@ pub fn colors_changed(app: &AppHandle) {
         let mut changed = false;
         for entry in host.stored.plugins.values_mut() {
             let before = entry.colors.len();
-            entry
-                .colors
-                .retain(|_, slot| *slot < BUILT_IN || palette.defines(*slot));
+            entry.colors.retain(|_, slot| palette.defines(*slot));
             changed |= entry.colors.len() != before;
         }
         if changed {

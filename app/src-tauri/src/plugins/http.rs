@@ -24,6 +24,8 @@ use subtle::ConstantTimeEq;
 use tokio::sync::mpsc;
 
 pub const PORT: u16 = 47831;
+/// The path of the events, before the id of the plugin.
+const ROUTE: &str = "/v1/hooks/";
 const TOKEN_HEADER: &str = "x-disled-token";
 /// A `PostToolUse` of Claude Code can carry a large tool output.
 const MAX_BODY: usize = 8 * 1024 * 1024;
@@ -54,9 +56,14 @@ struct Server {
     events: mpsc::Sender<Event>,
 }
 
+/// The address of the events of a plugin, which its installation note shows.
+pub fn hook_url(id: &str) -> String {
+    format!("http://127.0.0.1:{PORT}{ROUTE}{id}")
+}
+
 pub fn router(hooks: Hooks, events: mpsc::Sender<Event>) -> Router {
     Router::new()
-        .route("/v1/hooks/{id}", post(hook))
+        .route(&format!("{ROUTE}{{id}}"), post(hook))
         .with_state(Server { hooks, events })
 }
 
@@ -177,6 +184,10 @@ mod tests {
 
     #[tokio::test]
     async fn an_event_gets_204_with_no_body_and_reaches_the_host() {
+        assert_eq!(
+            hook_url("claude-code"),
+            "http://127.0.0.1:47831/v1/hooks/claude-code"
+        );
         let (router, mut received) = server(true, QUEUE);
         let (status, body) = send(&router, hook(r#"{"hook_event_name":"Stop"}"#)).await;
         assert_eq!(status, StatusCode::NO_CONTENT);

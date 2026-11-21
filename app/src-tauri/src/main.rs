@@ -171,10 +171,7 @@ fn plugin_open_source(app: AppHandle, id: String) -> Result<(), String> {
         return Err("no such plugin".into());
     }
     app.opener()
-        .open_url(
-            format!("{}{id}", plugins::catalog::SOURCE_URL),
-            None::<&str>,
-        )
+        .open_url(plugins::catalog::source_url(&id), None::<&str>)
         .map_err(|e| e.to_string())
 }
 

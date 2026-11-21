@@ -5,9 +5,6 @@ import { useI18n } from 'vue-i18n';
 import type { PluginView } from '@/bindings/PluginView';
 import type { Reason } from '@/bindings/Reason';
 
-/** The port of the events of the plugins (plugins/http.rs). */
-const PORT = 47831;
-
 /** How the integrations window words the plugins. */
 export function usePluginTexts() {
   const { t } = useI18n();
@@ -89,7 +86,7 @@ export function usePluginTexts() {
       return null;
     }
     if (plugin.port_taken) {
-      return t('integrations.status.portTaken', { port: PORT });
+      return t('integrations.status.portTaken', { port: plugin.port_taken });
     }
     switch (plugin.program?.kind) {
       case 'failed':

@@ -17,7 +17,7 @@ const ALPHABET: &[u8; 62] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmn
 
 /// A new token. Bytes of 248 and more are drawn again, so that every
 /// character is as likely as the others.
-pub fn generate() -> io::Result<String> {
+fn generate() -> io::Result<String> {
     let mut token = String::from(PREFIX);
     while token.len() < PREFIX.len() + LENGTH {
         let mut bytes = [0u8; 32];
@@ -53,21 +53,19 @@ impl Tokens {
         self.tokens.get(id).map(String::as_str)
     }
 
-    /// The token of a plugin, made at its first approval and kept through
+    /// Makes the token of a plugin at its first approval. It stays through
     /// its updates.
-    pub fn ensure(&mut self, id: &str) -> io::Result<String> {
-        if let Some(token) = self.tokens.get(id) {
-            return Ok(token.clone());
+    pub fn ensure(&mut self, id: &str) -> io::Result<()> {
+        if self.tokens.contains_key(id) {
+            return Ok(());
         }
         self.regenerate(id)
     }
 
     /// A new token, which ends the old one.
-    pub fn regenerate(&mut self, id: &str) -> io::Result<String> {
-        let token = generate()?;
-        self.tokens.insert(id.to_owned(), token.clone());
-        self.save()?;
-        Ok(token)
+    pub fn regenerate(&mut self, id: &str) -> io::Result<()> {
+        self.tokens.insert(id.to_owned(), generate()?);
+        self.save()
     }
 
     pub fn remove(&mut self, id: &str) -> io::Result<()> {
@@ -115,12 +113,14 @@ mod tests {
         let folder = tempfile::tempdir().expect("folder");
         let path = folder.path().join("plugin-tokens.json");
         let mut tokens = Tokens::load(path.clone());
-        let first = tokens.ensure("claude-code").expect("token");
-        assert_eq!(tokens.ensure("claude-code").expect("token"), first, "kept");
+        tokens.ensure("claude-code").expect("token");
+        let first = tokens.get("claude-code").expect("token").to_owned();
+        tokens.ensure("claude-code").expect("token");
+        assert_eq!(tokens.get("claude-code"), Some(first.as_str()), "kept");
         let reloaded = Tokens::load(path.clone());
         assert_eq!(reloaded.get("claude-code"), Some(first.as_str()));
-        let second = tokens.regenerate("claude-code").expect("token");
-        assert_ne!(second, first);
+        tokens.regenerate("claude-code").expect("token");
+        assert_ne!(tokens.get("claude-code"), Some(first.as_str()));
         tokens.remove("claude-code").expect("remove");
         assert_eq!(Tokens::load(path.clone()).get("claude-code"), None);
         #[cfg(unix)]

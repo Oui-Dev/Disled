@@ -22,7 +22,7 @@ pub const API: u64 = 1;
 
 /// The icons a plugin may name. The windows bundle exactly these, since the
 /// app never loads anything from the Internet.
-pub const ICONS: [&str; 14] = [
+const ICONS: [&str; 14] = [
     "terminal",
     "timer",
     "bot",
@@ -38,7 +38,7 @@ pub const ICONS: [&str; 14] = [
     "zap",
     "puzzle",
 ];
-const DEFAULT_ICON: &str = "puzzle";
+pub const DEFAULT_ICON: &str = "puzzle";
 
 const MAX_STATES: usize = 8;
 const MAX_DESCRIPTION: usize = 300;
@@ -451,7 +451,7 @@ fn read_events(value: &Value, states: &[State]) -> Result<Events, Reason> {
         None => None,
         Some(key) => Some(
             key.as_str()
-                .filter(|key| key.is_empty() || key.starts_with('/'))
+                .filter(|key| rules::is_pointer(key))
                 .ok_or_else(|| invalid("events.key"))?
                 .to_owned(),
         ),

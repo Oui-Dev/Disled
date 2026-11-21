@@ -169,7 +169,7 @@
         "events": "Events from {name}"
       },
       "error": {
-        "network": "Cannot reach the catalog. Check the connection to the Internet.",
+        "network": "Cannot reach the catalog. Check the connection to the Internet. Error: {detail}",
         "signature": "The catalog is not signed with its key: Disled shows none of it.",
         "index": "This version of Disled cannot read the catalog: update the app.",
         "missing": "The catalog no longer lists this plugin.",

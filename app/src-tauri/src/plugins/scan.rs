@@ -8,7 +8,7 @@
 
 use std::collections::HashMap;
 use std::fs::{self, File, Metadata};
-use std::io::{self, Read, Write};
+use std::io::{self, Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
@@ -16,10 +16,12 @@ use sha2::{Digest, Sha256};
 
 use super::manifest::{self, Manifest, Reason};
 
-pub const MAX_FILES: usize = 5_000;
-pub const MAX_BYTES: u64 = 100 * 1024 * 1024;
+const MAX_FILES: usize = 5_000;
+const MAX_BYTES: u64 = 100 * 1024 * 1024;
 
-fn hex(bytes: &[u8]) -> String {
+/// Bytes in lowercase hexadecimal, as the fingerprints and the catalog
+/// write their digests.
+pub(super) fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
@@ -116,14 +118,6 @@ fn import_folder(plugins: &Path) -> PathBuf {
     plugins.join(format!(".import-{}", hex(&random)))
 }
 
-/// Imports the plugin of a zip file, whose `plugin.json` sits at its root or
-/// in its only folder, into `plugins/<id>`, in place of the plugin of that
-/// id. Returns the id.
-#[cfg(test)]
-pub fn import(zip: &Path, plugins: &Path) -> Result<String, Reason> {
-    unpack(zip, plugins)?.install(plugins)
-}
-
 /// A plugin that came out of its zip file, in a folder that no plugin can
 /// take until `install`.
 pub struct Unpacked {
@@ -147,8 +141,8 @@ impl Unpacked {
     }
 
     /// Puts the plugin in `plugins/<id>`, in place of the plugin of that id.
-    pub fn install(self, plugins: &Path) -> Result<String, Reason> {
-        let destination = plugins.join(&self.id);
+    pub fn install(self) -> Result<String, Reason> {
+        let destination = self.folder.with_file_name(&self.id);
         if destination.exists() {
             fs::remove_dir_all(&destination).map_err(|_| Reason::Missing)?;
         }
@@ -162,9 +156,8 @@ impl Unpacked {
 
 /// Unpacks the plugin of a zip file, whose `plugin.json` sits at its root or
 /// in its only folder, after checking every path, and reads its manifest.
-pub fn unpack(zip: &Path, plugins: &Path) -> Result<Unpacked, Reason> {
-    let mut archive = zip::ZipArchive::new(File::open(zip).map_err(|_| Reason::Missing)?)
-        .map_err(|_| Reason::Missing)?;
+pub fn unpack(zip: impl Read + Seek, plugins: &Path) -> Result<Unpacked, Reason> {
+    let mut archive = zip::ZipArchive::new(zip).map_err(|_| Reason::Missing)?;
     // First the names, checked before anything is written.
     let mut names = Vec::with_capacity(archive.len());
     for index in 0..archive.len() {
@@ -229,7 +222,7 @@ fn root(names: &[(PathBuf, bool)]) -> Result<PathBuf, Reason> {
     }
 }
 
-fn extract<R: Read + io::Seek>(
+fn extract<R: Read + Seek>(
     archive: &mut zip::ZipArchive<R>,
     names: &[(PathBuf, bool)],
     root: &Path,
@@ -278,6 +271,11 @@ mod tests {
         "description": "A test plugin.", "capabilities": ["run"],
         "run": { "default": ["demo"] }
     }"#;
+
+    /// Imports a zip file into `plugins/<id>`, as the host does.
+    fn import(zip: &Path, plugins: &Path) -> Result<String, Reason> {
+        unpack(File::open(zip).expect("zip"), plugins)?.install()
+    }
 
     fn write(path: &Path, text: &str) {
         if let Some(parent) = path.parent() {

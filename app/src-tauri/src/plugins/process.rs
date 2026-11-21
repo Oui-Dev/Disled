@@ -25,6 +25,8 @@ use parking_lot::{Condvar, Mutex};
 use serde::Serialize;
 use serde_json::Value;
 
+use super::manifest;
+
 /// A line of the output, at most.
 const MAX_LINE: usize = 64 * 1024;
 /// The log of a plugin, before it moves to its `.1` file.
@@ -33,6 +35,10 @@ const MAX_LOG: u64 = 256 * 1024;
 const POLL: Duration = Duration::from_millis(100);
 /// The presses that wait for a program that does not read its input, at most.
 const MAX_PRESSES: usize = 16;
+/// A program that crashes this many times within `CRASH_WINDOW` stays
+/// stopped.
+const MAX_CRASHES: usize = 5;
+const CRASH_WINDOW: Duration = Duration::from_secs(600);
 
 /// What a program asks for.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,7 +56,7 @@ pub enum Notification {
 }
 
 /// A line of the output: a JSON-RPC 2.0 notification, or none.
-pub fn parse(line: &str) -> Option<Notification> {
+fn parse(line: &str) -> Option<Notification> {
     let value: Value = serde_json::from_str(line).ok()?;
     if value.get("jsonrpc")? != "2.0" {
         return None;
@@ -82,6 +88,12 @@ fn allowed(path: &Path) -> bool {
         })
 }
 
+/// A program given by its path in the folder of the plugin, rather than by
+/// a name that the PATH finds.
+pub fn is_path(program: &str) -> bool {
+    program.contains(['/', '\\'])
+}
+
 /// Where the program is: a path inside the folder of the plugin, never out
 /// of it, or a name on the PATH. An app started from the Finder does not get
 /// the PATH of the shell, so macOS also looks in the folders of Homebrew, and
@@ -92,7 +104,7 @@ pub fn resolve(
     path: Option<OsString>,
     home: Option<PathBuf>,
 ) -> Option<PathBuf> {
-    if program.contains('/') || program.contains('\\') {
+    if is_path(program) {
         let folder = folder.canonicalize().ok()?;
         let candidate = folder.join(program).canonicalize().ok()?;
         return (candidate.starts_with(&folder) && candidate.is_file() && allowed(&candidate))
@@ -155,10 +167,10 @@ impl Line {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct Lines {
     /// The latest state, which every start of the program gets first.
-    state: Option<String>,
+    state: String,
     /// What waits for the start that reads, in order.
     waiting: VecDeque<Line>,
     /// That start, none while the program does not run.
@@ -172,18 +184,20 @@ struct Lines {
 /// first. While the program does not read, a new state takes the place of
 /// the one that waits, and the presses past `MAX_PRESSES` go, the oldest
 /// first, so that Disled never waits for it.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Feed {
     lines: Mutex<Lines>,
     ready: Condvar,
 }
 
 impl Feed {
-    pub fn new(state: Option<String>) -> Arc<Self> {
+    pub fn new(state: String) -> Arc<Self> {
         Arc::new(Self {
             lines: Mutex::new(Lines {
                 state,
-                ..Lines::default()
+                waiting: VecDeque::new(),
+                reader: None,
+                starts: 0,
             }),
             ready: Condvar::new(),
         })
@@ -197,7 +211,7 @@ impl Feed {
                 lines.waiting.retain(|line| matches!(line, Line::Press(_)));
                 lines.waiting.push_back(Line::State(line.clone()));
             }
-            lines.state = Some(line);
+            lines.state = line;
         }
         self.ready.notify_all();
     }
@@ -233,7 +247,7 @@ impl Feed {
         lines.starts += 1;
         let start = lines.starts;
         lines.reader = Some(start);
-        lines.waiting = lines.state.clone().map(Line::State).into_iter().collect();
+        lines.waiting = VecDeque::from([Line::State(lines.state.clone())]);
         start
     }
 
@@ -289,12 +303,12 @@ pub struct Spec {
     pub log: PathBuf,
 }
 
-/// The delays of the supervisor.
+/// The delays of the supervisor, which the tests shorten.
 #[derive(Debug, Clone, Copy)]
 pub struct Timing {
+    /// The pause before starting again after the first, second, third and
+    /// later crashes in the window.
     pub restarts: [Duration; 4],
-    pub window: Duration,
-    pub crashes: usize,
     /// How long a program has to stop by itself once its input closes.
     pub grace: Duration,
 }
@@ -303,8 +317,6 @@ impl Default for Timing {
     fn default() -> Self {
         Self {
             restarts: [1, 5, 30, 60].map(Duration::from_secs),
-            window: Duration::from_secs(600),
-            crashes: 5,
             grace: Duration::from_secs(2),
         }
     }
@@ -398,11 +410,11 @@ fn supervise(
         crashes.push_back(now);
         while crashes
             .front()
-            .is_some_and(|first| now.duration_since(*first) > timing.window)
+            .is_some_and(|first| now.duration_since(*first) > CRASH_WINDOW)
         {
             crashes.pop_front();
         }
-        if crashes.len() >= timing.crashes {
+        if crashes.len() >= MAX_CRASHES {
             on_status(ProgramStatus::Failed);
             let _ = stopped.recv();
             return;
@@ -478,17 +490,17 @@ fn launch(
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .env("DISLED_API", "1")
+        .env("DISLED_API", manifest::API.to_string())
         .env("DISLED_PLUGIN_ID", &spec.id)
         .env("DISLED_PLUGIN_DATA", &spec.data)
         .env("DISLED_LANG", &spec.language);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
+        use windows::Win32::System::Threading::CREATE_NO_WINDOW;
         // Without it, a console program started by a GUI app opens a
         // console window.
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        command.creation_flags(CREATE_NO_WINDOW);
+        command.creation_flags(CREATE_NO_WINDOW.0);
     }
     #[cfg(unix)]
     {
@@ -537,18 +549,14 @@ fn launch(
     }
     // With a feed, a writer holds the input, among the threads that the end
     // of the program joins.
-    let mut input = child.stdin.take();
-    let feed = match (feed, input.take()) {
+    let (input, feed) = match (feed, child.stdin.take()) {
         (Some(feed), Some(stdin)) => {
             let start = feed.open();
             let writer = Arc::clone(feed);
             readers.push(thread::spawn(move || write_lines(stdin, &writer, start)));
-            Some((Arc::clone(feed), start))
+            (None, Some((Arc::clone(feed), start)))
         }
-        (_, stdin) => {
-            input = stdin;
-            None
-        }
+        (_, stdin) => (stdin, None),
     };
     Ok(Running {
         input,
@@ -769,7 +777,6 @@ mod tests {
         Timing {
             restarts: [Duration::from_millis(10); 4],
             grace: Duration::from_millis(300),
-            ..Timing::default()
         }
     }
 
@@ -934,7 +941,7 @@ mod tests {
 
     #[test]
     fn a_feed_keeps_the_latest_state_and_the_last_presses() {
-        let feed = Feed::new(Some("state 1".into()));
+        let feed = Feed::new("state 1".into());
         // Nobody reads: the state changes, the presses go nowhere.
         feed.state("state 2".into());
         feed.press("lost");
@@ -979,7 +986,7 @@ mod tests {
     #[test]
     fn a_program_reads_the_state_first_then_the_changes() {
         let folder = tempfile::tempdir().expect("folder");
-        let feed = Feed::new(Some(r#"{"jsonrpc":"2.0","method":"lamp"}"#.into()));
+        let feed = Feed::new(r#"{"jsonrpc":"2.0","method":"lamp"}"#.into());
         let (program, noted, status) =
             start_fed(spec(folder.path(), "feed"), fast(), Some(Arc::clone(&feed)));
         assert_eq!(
@@ -999,7 +1006,7 @@ mod tests {
     #[test]
     fn a_program_that_starts_again_reads_the_latest_state_again() {
         let folder = tempfile::tempdir().expect("folder");
-        let feed = Feed::new(Some(r#"{"jsonrpc":"2.0","method":"first"}"#.into()));
+        let feed = Feed::new(r#"{"jsonrpc":"2.0","method":"first"}"#.into());
         let (program, noted, _status) = start_fed(
             spec(folder.path(), "feed-crash"),
             fast(),

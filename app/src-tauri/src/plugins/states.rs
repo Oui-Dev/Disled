@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use super::manifest::Manifest;
 
 /// Live keys of a plugin; past this, the key used least recently leaves.
-pub const MAX_KEYS: usize = 32;
+const MAX_KEYS: usize = 32;
 
 #[derive(Debug, Clone)]
 struct Key {
