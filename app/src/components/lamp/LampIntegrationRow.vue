@@ -60,7 +60,7 @@ function turnOn(): void {
 
 <template>
   <div class="flex flex-col gap-2">
-    <span aria-hidden="true" class="text-sm font-semibold text-highlighted">
+    <span aria-hidden="true" class="text-highlighted text-sm font-semibold">
       {{ t('lamp.colors.title') }}
     </span>
     <!-- A tile and a card, with no background on hover, as the tiles of the
@@ -72,7 +72,7 @@ function turnOn(): void {
         variant="ghost"
         :disabled="!lamp.ready"
         :aria-pressed="off"
-        class="group flex w-1/6 shrink-0 flex-col gap-1.5 rounded-lg p-0 py-1 font-normal text-muted hover:bg-transparent active:bg-transparent"
+        class="group text-muted flex w-1/6 shrink-0 flex-col gap-1.5 rounded-lg p-0 py-1 font-normal hover:bg-transparent active:bg-transparent"
         @click="turnOff"
       >
         <span
@@ -101,7 +101,7 @@ function turnOn(): void {
         >
           <span
             aria-hidden="true"
-            class="swatch relative block size-9 shrink-0 ring-2 ring-offset-2 ring-offset-bg transition-shadow"
+            class="swatch ring-offset-bg relative block size-9 shrink-0 ring-2 ring-offset-2 transition-shadow"
             :class="off ? 'ring-transparent' : 'ring-inverted'"
           >
             <span
@@ -111,12 +111,12 @@ function turnOn(): void {
             />
           </span>
           <template #content>
-            <UIcon :name="icon" class="size-2.5 text-primary" />
+            <UIcon :name="icon" class="text-primary size-2.5" />
           </template>
         </UChip>
         <span class="flex min-w-0 flex-col text-xs">
-          <b class="truncate font-medium text-highlighted">{{ lines[0] }}</b>
-          <span class="truncate text-muted">{{ lines[1] }}</span>
+          <b class="text-highlighted truncate font-medium">{{ lines[0] }}</b>
+          <span class="text-muted truncate">{{ lines[1] }}</span>
         </span>
       </UButton>
     </div>

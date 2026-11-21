@@ -34,13 +34,13 @@ function choose(state: string, slot: number): void {
 
 <template>
   <section class="flex flex-col gap-3">
-    <h3 class="text-sm font-semibold text-highlighted">{{ t('integrations.colors') }}</h3>
-    <p class="text-sm text-muted">
+    <h3 class="text-highlighted text-sm font-semibold">{{ t('integrations.colors') }}</h3>
+    <p class="text-muted text-sm">
       {{ t('integrations.colorsHint', { name: plugin.name }) }}
     </p>
     <div class="grid grid-cols-[minmax(0,1fr)_14rem] items-center gap-x-4 gap-y-2">
       <template v-for="state in plugin.states" :key="state.id">
-        <span class="truncate text-sm text-default">{{ state.label }}</span>
+        <span class="text-default truncate text-sm">{{ state.label }}</span>
         <USelect
           :model-value="state.slot"
           :items="items"

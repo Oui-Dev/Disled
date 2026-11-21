@@ -92,7 +92,7 @@ async function choose(slot: number | null): Promise<void> {
           :style="current ? { background: current.hex } : undefined"
         />
         <template #content>
-          <UIcon name="i-lucide-chevron-down" class="size-3 text-muted" />
+          <UIcon name="i-lucide-chevron-down" class="text-muted size-3" />
         </template>
       </UChip>
       <LampTileName :name="current?.name ?? t('lamp.colors.more')" :narrow="narrow" />
@@ -101,7 +101,7 @@ async function choose(slot: number | null): Promise<void> {
     <template #content>
       <div class="flex flex-col gap-3" v-bind="listeners">
         <div class="flex items-center justify-between gap-2">
-          <p class="text-sm font-semibold text-highlighted">{{ t('colors.mine.title') }}</p>
+          <p class="text-highlighted text-sm font-semibold">{{ t('colors.mine.title') }}</p>
           <UButton
             v-if="!standalone"
             color="primary"
@@ -160,9 +160,9 @@ async function choose(slot: number | null): Promise<void> {
           >
             <span
               aria-hidden="true"
-              class="flex size-9 items-center justify-center rounded-[20%] border border-dashed border-accented"
+              class="border-accented flex size-9 items-center justify-center rounded-[20%] border border-dashed"
             >
-              <UIcon name="i-lucide-plus" class="size-4 text-muted" />
+              <UIcon name="i-lucide-plus" class="text-muted size-4" />
             </span>
             <LampTileName :name="t('colors.mine.new')" />
           </UButton>

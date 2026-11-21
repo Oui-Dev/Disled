@@ -35,10 +35,10 @@ const { t } = useI18n();
     @confirm="plugin?.fingerprint && emit('approve', plugin.id, plugin.fingerprint)"
   >
     <template #body>
-      <div v-if="plugin" class="flex flex-col gap-4 text-sm text-default">
+      <div v-if="plugin" class="text-default flex flex-col gap-4 text-sm">
         <p>{{ plugin.description }}</p>
         <div class="flex flex-col gap-2">
-          <p class="font-medium text-highlighted">{{ t('integrations.approve.can') }}</p>
+          <p class="text-highlighted font-medium">{{ t('integrations.approve.can') }}</p>
           <IntegrationsPermissions :plugin="plugin" />
         </div>
         <p class="text-muted">{{ t('integrations.approve.trust') }}</p>

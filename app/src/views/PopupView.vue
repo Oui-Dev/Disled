@@ -148,15 +148,15 @@ const back = computed<Page | null>(() => {
       <div ref="body" class="flex flex-col gap-4 p-4 pb-3">
         <header class="flex items-start justify-between gap-3">
           <div class="min-w-0">
-            <h1 class="text-base font-bold tracking-wide text-highlighted">Disled</h1>
-            <p role="status" class="text-xs text-muted">{{ status }}</p>
+            <h1 class="text-highlighted text-base font-bold tracking-wide">Disled</h1>
+            <p role="status" class="text-muted text-xs">{{ status }}</p>
           </div>
           <LampModeMenu v-if="page === 'lamp'" />
         </header>
 
         <section v-if="page === 'lamp'" class="flex flex-col gap-4">
           <h2 data-page-heading tabindex="-1" class="sr-only">{{ t('popup.lampPage') }}</h2>
-          <p v-if="!lamp.connection.connected" class="text-xs text-muted">
+          <p v-if="!lamp.connection.connected" class="text-muted text-xs">
             {{ t('lamp.unplugged') }}
           </p>
           <LampLockAlert />
@@ -174,7 +174,7 @@ const back = computed<Page | null>(() => {
             <h2
               data-page-heading
               tabindex="-1"
-              class="text-sm font-semibold text-highlighted focus:outline-none"
+              class="text-highlighted text-sm font-semibold focus:outline-none"
             >
               {{ t('common.settings') }}
             </h2>

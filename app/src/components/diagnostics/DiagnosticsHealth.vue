@@ -98,28 +98,28 @@ const groups = computed<{ title: string; rows: Row[] }[]>(() => {
 <template>
   <!-- The tab names the panel; this h2 names it for screen readers too, above the h3 of the groups. -->
   <h2 class="sr-only">{{ t('health.title') }}</h2>
-  <p v-if="!lamp.connection.connected" class="text-sm text-muted">
+  <p v-if="!lamp.connection.connected" class="text-muted text-sm">
     {{ t('diagnostics.noLamp') }}
   </p>
-  <p v-else-if="!groups.length" class="text-sm text-muted">{{ t('health.reading') }}</p>
+  <p v-else-if="!groups.length" class="text-muted text-sm">{{ t('health.reading') }}</p>
   <div v-else class="flex flex-col gap-5">
     <section v-for="group in groups" :key="group.title" class="flex flex-col gap-1">
-      <h3 class="text-xs font-semibold text-muted">{{ group.title }}</h3>
-      <dl class="flex flex-col divide-y divide-default text-sm">
+      <h3 class="text-muted text-xs font-semibold">{{ group.title }}</h3>
+      <dl class="divide-default flex flex-col divide-y text-sm">
         <div
           v-for="row in group.rows"
           :key="row.label"
           class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-0.5 py-2"
         >
           <dt>{{ row.label }}</dt>
-          <dd class="flex items-center gap-1.5 font-medium text-highlighted tabular-nums">
+          <dd class="text-highlighted flex items-center gap-1.5 font-medium tabular-nums">
             {{ row.value }}
             <template v-if="row.issue">
-              <UIcon name="i-lucide-triangle-alert" class="size-4 shrink-0 text-warning" />
+              <UIcon name="i-lucide-triangle-alert" class="text-warning size-4 shrink-0" />
               <span class="sr-only">{{ t('health.issue') }}</span>
             </template>
           </dd>
-          <dd v-if="row.detail" class="col-span-2 text-xs text-muted">{{ row.detail }}</dd>
+          <dd v-if="row.detail" class="text-muted col-span-2 text-xs">{{ row.detail }}</dd>
         </div>
       </dl>
     </section>

@@ -121,7 +121,7 @@ const charts = computed<
     <div class="@container flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2">
-          <h2 class="font-semibold text-highlighted">{{ t('telemetry.title') }}</h2>
+          <h2 class="text-highlighted font-semibold">{{ t('telemetry.title') }}</h2>
           <!-- The figures and charts of a stream turned off stay on show, frozen. -->
           <UBadge
             v-if="telemetry.latest && telemetry.periodMs === 0"
@@ -164,7 +164,7 @@ const charts = computed<
     </div>
 
     <!-- The recording, at hand whatever the scroll. -->
-    <footer class="flex flex-wrap items-center gap-3 border-t border-default px-5 py-3">
+    <footer class="border-default flex flex-wrap items-center gap-3 border-t px-5 py-3">
       <UButton
         v-if="!telemetry.recording"
         color="neutral"
@@ -185,7 +185,7 @@ const charts = computed<
       >
         {{ t('telemetry.stop') }}
       </UButton>
-      <span class="text-xs text-muted tabular-nums">
+      <span class="text-muted text-xs tabular-nums">
         {{ t('telemetry.rows', telemetry.recordedRows) }}
       </span>
       <UButton

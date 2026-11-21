@@ -93,6 +93,6 @@ const cards = { legend: 'text-sm', fieldset: 'flex-nowrap gap-2', item: 'min-w-0
     />
 
     <!-- A development firmware has a long version, so the line truncates and shows it whole on hover. -->
-    <p class="truncate text-xs text-muted" :title="versions">{{ versions }}</p>
+    <p class="text-muted truncate text-xs" :title="versions">{{ versions }}</p>
   </div>
 </template>

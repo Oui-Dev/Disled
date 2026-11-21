@@ -103,10 +103,10 @@ async function importPlugin(): Promise<void> {
 
 <template>
   <main class="flex h-screen flex-col">
-    <header class="flex items-start justify-between gap-4 border-b border-default px-6 py-4">
+    <header class="border-default flex items-start justify-between gap-4 border-b px-6 py-4">
       <div>
-        <h1 class="text-lg font-bold text-highlighted">{{ t('integrations.title') }}</h1>
-        <p class="text-sm text-muted">{{ t('integrations.subtitle') }}</p>
+        <h1 class="text-highlighted text-lg font-bold">{{ t('integrations.title') }}</h1>
+        <p class="text-muted text-sm">{{ t('integrations.subtitle') }}</p>
       </div>
       <div class="flex shrink-0 gap-2">
         <UButton
@@ -148,14 +148,14 @@ async function importPlugin(): Promise<void> {
       :content="false"
       variant="link"
       size="sm"
-      class="shrink-0 border-b border-default px-4"
+      class="border-default shrink-0 border-b px-4"
       :ui="{ list: 'border-0' }"
     />
 
     <div v-if="tab === 'installed'" class="flex min-h-0 flex-1">
       <IntegrationsList
         v-model="selected"
-        class="w-72 shrink-0 border-e border-default"
+        class="border-default w-72 shrink-0 border-e"
         @toggle="toggle"
       />
       <div class="min-w-0 flex-1 overflow-y-auto">

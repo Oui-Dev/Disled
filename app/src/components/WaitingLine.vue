@@ -9,7 +9,7 @@ defineProps<{ text: string }>();
 </script>
 
 <template>
-  <p role="status" class="flex items-center gap-2 text-muted">
+  <p role="status" class="text-muted flex items-center gap-2">
     <UIcon name="i-lucide-loader-circle" class="size-4 shrink-0 motion-safe:animate-spin" />
     {{ text }}
   </p>

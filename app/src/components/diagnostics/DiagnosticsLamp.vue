@@ -14,14 +14,14 @@ const lamp = useLampStore();
 </script>
 
 <template>
-  <p v-if="!lamp.connection.connected" class="text-sm text-muted">
+  <p v-if="!lamp.connection.connected" class="text-muted text-sm">
     {{ t('diagnostics.noLamp') }}
   </p>
-  <p v-else-if="!lamp.state" class="text-sm text-muted">{{ t('diagnostics.waiting') }}</p>
+  <p v-else-if="!lamp.state" class="text-muted text-sm">{{ t('diagnostics.waiting') }}</p>
   <div v-else class="flex flex-col gap-4">
     <LampColorPicker standalone />
     <LampBrightness />
-    <p class="text-xs text-muted">
+    <p class="text-muted text-xs">
       {{
         t('diagnostics.state', {
           seq: lamp.state.state_seq,

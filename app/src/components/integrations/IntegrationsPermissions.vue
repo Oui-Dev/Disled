@@ -22,21 +22,21 @@ const shown = computed(() => CAPABILITIES.filter(({ key }) => props.plugin.capab
 </script>
 
 <template>
-  <ul class="flex flex-col gap-2 text-sm text-default">
+  <ul class="text-default flex flex-col gap-2 text-sm">
     <li v-if="plugin.capabilities.run && plugin.command" class="flex items-start gap-2">
-      <UIcon name="i-lucide-triangle-alert" class="mt-0.5 size-4 shrink-0 text-warning" />
+      <UIcon name="i-lucide-triangle-alert" class="text-warning mt-0.5 size-4 shrink-0" />
       <i18n-t keypath="integrations.perm.process" tag="span" scope="global">
         <template #command>
-          <code class="rounded bg-muted px-1 py-0.5 font-mono text-xs">{{ plugin.command }}</code>
+          <code class="bg-muted rounded px-1 py-0.5 font-mono text-xs">{{ plugin.command }}</code>
         </template>
       </i18n-t>
     </li>
     <li v-for="{ key, icon } in shown" :key="key" class="flex items-start gap-2">
-      <UIcon :name="icon" class="mt-0.5 size-4 shrink-0 text-muted" />
+      <UIcon :name="icon" class="text-muted mt-0.5 size-4 shrink-0" />
       <span>{{ t(`integrations.perm.${key}`, { name: plugin.from ?? '' }) }}</span>
     </li>
     <li v-if="!plugin.capabilities.run" class="flex items-start gap-2">
-      <UIcon name="i-lucide-shield-check" class="mt-0.5 size-4 shrink-0 text-success" />
+      <UIcon name="i-lucide-shield-check" class="text-success mt-0.5 size-4 shrink-0" />
       <span>{{ t('integrations.perm.nothingElse') }}</span>
     </li>
   </ul>

@@ -91,8 +91,8 @@ function install(): void {
 <template>
   <main class="flex min-h-screen flex-col gap-5 p-6">
     <header class="flex flex-col gap-1">
-      <h1 class="text-lg font-bold text-highlighted">{{ t('lampInstall.title') }}</h1>
-      <p v-if="summary" class="text-sm text-muted">{{ summary }}</p>
+      <h1 class="text-highlighted text-lg font-bold">{{ t('lampInstall.title') }}</h1>
+      <p v-if="summary" class="text-muted text-sm">{{ summary }}</p>
     </header>
 
     <template v-if="idle">

@@ -55,15 +55,15 @@ async function read(text: string): Promise<void> {
     <h2
       data-page-heading
       tabindex="-1"
-      class="text-sm font-semibold text-highlighted focus:outline-none"
+      class="text-highlighted text-sm font-semibold focus:outline-none"
     >
       {{ t('colors.share.title') }}
     </h2>
 
     <section class="flex flex-col gap-2">
-      <h3 class="text-xs font-semibold text-muted">{{ t('colors.share.send') }}</h3>
-      <p class="text-xs text-default">{{ t('colors.share.sendHint') }}</p>
-      <p class="truncate rounded-md bg-elevated px-2 py-1.5 font-mono text-xs text-default">
+      <h3 class="text-muted text-xs font-semibold">{{ t('colors.share.send') }}</h3>
+      <p class="text-default text-xs">{{ t('colors.share.sendHint') }}</p>
+      <p class="bg-elevated text-default truncate rounded-md px-2 py-1.5 font-mono text-xs">
         {{ code }}
       </p>
       <div class="flex items-center gap-3">
@@ -76,9 +76,9 @@ async function read(text: string): Promise<void> {
         >
           {{ t('colors.share.copy') }}
         </UButton>
-        <span role="status" class="flex items-center gap-1 text-xs text-muted">
+        <span role="status" class="text-muted flex items-center gap-1 text-xs">
           <template v-if="copied">
-            <UIcon name="i-lucide-circle-check" class="size-3.5 text-success" />
+            <UIcon name="i-lucide-circle-check" class="text-success size-3.5" />
             {{ t('common.copied') }}
           </template>
         </span>

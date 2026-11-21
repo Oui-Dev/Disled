@@ -30,7 +30,7 @@ const { t } = useI18n();
   <UModal v-model:open="open" :title="title" :description="description">
     <template v-if="slots.body || text" #body>
       <slot name="body">
-        <p class="text-sm text-default">{{ text }}</p>
+        <p class="text-default text-sm">{{ text }}</p>
       </slot>
     </template>
     <template #footer>
