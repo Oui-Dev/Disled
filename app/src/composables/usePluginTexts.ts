@@ -14,6 +14,8 @@ export function usePluginTexts() {
     switch (why.kind) {
       case 'missing':
         return t('integrations.reason.missing');
+      case 'io':
+        return t('integrations.reason.io');
       case 'json':
         return t('integrations.reason.json', { line: why.line });
       case 'field':
