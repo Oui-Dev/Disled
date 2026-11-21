@@ -30,74 +30,15 @@ uint16_t color_perceived_to_linear(uint16_t level_permille)
     return (uint16_t)(y0 + ((y1 - y0) * remainder + LUT_STEP_PERMILLE / 2u) / LUT_STEP_PERMILLE);
 }
 
-uint16_t color_scale(uint16_t value, uint16_t factor)
+uint16_t color_level_shown(uint16_t level_permille, uint16_t floor_permille)
 {
-    return (uint16_t)(((uint32_t)value * factor + COLOR_LINEAR_MAX / 2u) / COLOR_LINEAR_MAX);
-}
-
-rgb16_t color_shade(rgb16_t base, uint16_t level_permille)
-{
-    const uint16_t intensity = color_perceived_to_linear(level_permille);
-    const rgb16_t result = {
-        .r = color_scale(base.r, intensity),
-        .g = color_scale(base.g, intensity),
-        .b = color_scale(base.b, intensity),
-    };
-    return result;
-}
-
-static uint16_t gain_channel(uint16_t value, uint16_t num, uint16_t den)
-{
-    /* 65535 * 65535 + 32767 still fits 32 bits. */
-    const uint32_t scaled = ((uint32_t)value * num + den / 2u) / den;
-    return (scaled > COLOR_LINEAR_MAX) ? (uint16_t)COLOR_LINEAR_MAX : (uint16_t)scaled;
-}
-
-rgb16_t color_gain(rgb16_t color, uint16_t num, uint16_t den)
-{
-    const rgb16_t result = {
-        .r = gain_channel(color.r, num, den),
-        .g = gain_channel(color.g, num, den),
-        .b = gain_channel(color.b, num, den),
-    };
-    return result;
-}
-
-rgb16_t color_balance(rgb16_t color, rgb16_t gains)
-{
-    const rgb16_t weighted = {
-        .r = color_scale(color.r, gains.r),
-        .g = color_scale(color.g, gains.g),
-        .b = color_scale(color.b, gains.b),
-    };
-    uint16_t largest = weighted.r;
-    if (weighted.g > largest) {
-        largest = weighted.g;
+    if (level_permille <= 10u) {
+        return floor_permille;
     }
-    if (weighted.b > largest) {
-        largest = weighted.b;
+    if (level_permille >= 1000u) {
+        return 1000u;
     }
-    if (largest == 0u) {
-        return weighted;
-    }
-    return color_gain(weighted, COLOR_LINEAR_MAX, largest);
-}
-
-static uint16_t mix_channel(uint16_t from, uint16_t to, uint16_t t)
-{
-    /* t on 15 bits keeps span * t in 32 bits, with no 64-bit division from libgcc. */
-    const int32_t span = (int32_t)to - (int32_t)from;
-    const int32_t t15 = (int32_t)(t >> 1);
-    const int32_t offset = (span * t15 + (span >= 0 ? 16383 : -16383)) / 32767;
-    return (uint16_t)((int32_t)from + offset);
-}
-
-rgb16_t color_mix(rgb16_t from, rgb16_t to, uint16_t t)
-{
-    const rgb16_t result = {
-        .r = mix_channel(from.r, to.r, t),
-        .g = mix_channel(from.g, to.g, t),
-        .b = mix_channel(from.b, to.b, t),
-    };
-    return result;
+    /* (level - 10) * (1000 - floor) < 990 * 1000: no overflow. */
+    const uint32_t span = 1000u - floor_permille;
+    return (uint16_t)(floor_permille + ((uint32_t)(level_permille - 10u) * span + 495u) / 990u);
 }

@@ -25,6 +25,17 @@ void led_pwm_start(void);
 /* Timer ticks for 100 % duty. */
 uint16_t led_pwm_period(void);
 
+#if DISLED_DEBUG
+#include <stddef.h>
+
+/* LED calibration only (docs/bringup.md): up to LED_PWM_PATTERN_MAX periods
+ * of whole ticks, cycled in place of the duties while `length` is not 0. No
+ * current cap applies: the caller checks it. */
+#define LED_PWM_PATTERN_MAX 32u
+void led_pwm_set_pattern(size_t index, const uint16_t ticks[LED_CHANNEL_COUNT]);
+void led_pwm_run_pattern(uint8_t length);
+#endif
+
 /* New duties in sub-ticks (red, green, blue), applied from the next
  * period. */
 void led_pwm_set(const uint16_t duty[LED_CHANNEL_COUNT]);

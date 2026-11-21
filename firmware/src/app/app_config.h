@@ -12,6 +12,7 @@
 #include "brightness.h"
 #include "color.h"
 #include "drivers/tkey.h"
+#include "led_cal.h"
 #include "led_output.h"
 #include "power_limiter.h"
 #include "self_test.h"
@@ -23,6 +24,13 @@
 #define APP_PWM_FREQUENCY_HZ 20000u
 #define APP_LED_FADE_MS      300u
 #define APP_OUTPUT_PERIOD_MS 10u
+/* Timer ticks per PWM period that the light tables were measured at. */
+#define APP_LED_CAL_PERIOD 3600u
+/* Level 1 % shows 3 % of perceived brightness, and the levels above spread up
+ * to 100 % (color_level_shown). Lower, the pulses of a channel fall to the
+ * few ticks where the light tables are least sure and differ from board to
+ * board (note N4 in hardware/README.md). */
+#define APP_LED_FLOOR_PERMILLE 30u
 
 /* Light sensor: the task polls, and reads once per integration
  * (drivers/veml7700.h). */
@@ -63,15 +71,10 @@ extern const touch_config_t app_touch_config;
 extern const brightness_config_t app_brightness_config;
 extern const color_config_t app_color_config;
 extern const power_config_t app_power_config;
-/* Light lost per PWM pulse, per channel, in ns: points of the pulse that the
- * light needs and of the loss added to it (led_loss_curve_t). */
-typedef struct {
-    uint16_t signal_ns[LED_LOSS_POINTS];
-    uint16_t loss_ns[LED_LOSS_POINTS];
-} app_loss_curve_t;
-extern const app_loss_curve_t app_led_pulse_loss[LED_CHANNEL_COUNT];
-/* Gains of the custom colors, fractions of 65535 (palette_light). */
-extern const rgb16_t app_led_white_balance;
+/* The LED calibration (led_cal.h): sRGB to LED light, then light to duty. */
+extern const led_color_cal_t app_led_color_cal;
+extern const led_light_cal_t app_led_light_cal[LED_CHANNEL_COUNT];
+/* The white step is replaced at start-up by the warm white of the palette. */
 extern const self_test_config_t app_self_test_config;
 
 #endif /* DISLED_APP_CONFIG_H */
