@@ -502,11 +502,12 @@
         "pink": "Rose",
         "coolWhite": "Blanc froid"
       },
-      "hue": "Teinte",
-      "pale": "Pâle",
-      "vivid": "Vive",
-      "vividLabel": "Pâle ou vive",
-      "hex": "Code hexadécimal",
+      "square": {
+        "role": "Sélecteur de couleurs",
+        "thumb": "Curseur 2D",
+        "label": "Teinte et vivacité",
+        "value": "Teinte {hue}, vivacité {vivid}"
+      },
       "preview": "Aperçu sur la lampe",
       "restore": "Rétablir « {name} »",
       "fixed": "Les couleurs d’origine gardent leur teinte. Pour une autre nuance, créez une couleur."

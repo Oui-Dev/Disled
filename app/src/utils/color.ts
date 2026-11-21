@@ -1,24 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Disled contributors
 
-// Color codes as the editor handles them. The code the user typed or picked
-// stays as it is; only the sliders make a new one, at full brightness.
-
-/**
- * Reads a code as the user types it: 3 or 6 hexadecimal digits, with or
- * without "#". It gives the same color as `#RRGGBB` in upper case, and null
- * for anything else and for black, which has no light: the rule of
- * src-tauri/src/colors.rs.
- */
-export function parseHex(input: string): string | null {
-  const digits = input.trim().replace(/^#/, '');
-  const full = digits.length === 3 ? [...digits].map((digit) => digit + digit).join('') : digits;
-  if (!/^[0-9a-f]{6}$/i.test(full)) {
-    return null;
-  }
-  const hex = `#${full.toUpperCase()}`;
-  return hex === '#000000' ? null : hex;
-}
+// Color codes as the editor makes them: a hue and a vividness at full
+// brightness. The lamp lights every color with its largest channel at full,
+// the brightness being set apart, so these are the colors it shows as they
+// are (light_hex in src-tauri/src/colors.rs).
 
 /**
  * The hue (0 to 359 degrees) and the vividness (0 to 100, the HSV

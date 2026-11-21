@@ -9,6 +9,7 @@ export type CustomColor = {
  */
 slot: number, name: string, 
 /**
- * `#RRGGBB` in upper case, as the user typed it, never black.
+ * `#RRGGBB` in upper case, the color the lamp shows, so its largest
+ * channel is FF (`light_hex`).
  */
 hex: string, };

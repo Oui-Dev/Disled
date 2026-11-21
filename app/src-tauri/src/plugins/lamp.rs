@@ -167,7 +167,7 @@ mod tests {
         Palette::from_value(&json!({
             "schema": 1,
             "names": ["Libre", null, null, null],
-            "custom": [{ "slot": 4, "name": "Musique", "hex": "#9B59F6" }]
+            "custom": [{ "slot": 4, "name": "Musique", "hex": "#A15DFF" }]
         }))
     }
 
@@ -197,7 +197,7 @@ mod tests {
             json!({
                 "connected": true,
                 "on": true,
-                "color": { "slot": 0, "name": "Libre", "hex": "#2ECC71" },
+                "color": { "slot": 0, "name": "Libre", "hex": "#00FFA2" },
                 "brightness": { "mode": "auto", "level": 40 },
                 "source": "touch",
                 "follows": null
@@ -218,7 +218,7 @@ mod tests {
             Some(Color {
                 slot: 4,
                 name: Some("Musique".into()),
-                hex: "#9B59F6".into()
+                hex: "#A15DFF".into()
             })
         );
         // A slot the palette does not know: the light of the lamp, no name.

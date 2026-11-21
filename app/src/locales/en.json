@@ -502,11 +502,12 @@
         "pink": "Pink",
         "coolWhite": "Cool white"
       },
-      "hue": "Hue",
-      "pale": "Pale",
-      "vivid": "Vivid",
-      "vividLabel": "Pale or vivid",
-      "hex": "Hex code",
+      "square": {
+        "role": "Color picker",
+        "thumb": "2D slider",
+        "label": "Hue and vividness",
+        "value": "Hue {hue}, vividness {vivid}"
+      },
       "preview": "Preview on the lamp",
       "restore": "Restore “{name}”",
       "fixed": "The original colors keep their shade. For another one, create a color."

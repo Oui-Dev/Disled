@@ -13,7 +13,7 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, Wry};
 
-use crate::colors::{ColorsState, PREVIEW_SLOT, Palette};
+use crate::colors::{ColorsState, PREVIEW_SLOT, Palette, srgb_of};
 use crate::device::DeviceHandle;
 use crate::i18n::{Locale, LocaleState};
 use crate::windows;
@@ -29,10 +29,10 @@ const CORNER: f32 = 8.0;
 /// The built-in colors, by palette slot: the key of their default name, and
 /// their color on screen, as the swatches of the popup (`app/src/utils/lamp.ts`).
 pub const BUILT_IN_COLORS: [(&str, [u8; 3]); 4] = [
-    ("green", [0x2e, 0xcc, 0x71]),
-    ("orange", [0xf3, 0x9c, 0x12]),
-    ("red", [0xe7, 0x4c, 0x3c]),
-    ("warm_white", [0xff, 0xe2, 0xb8]),
+    ("green", [0x00, 0xff, 0xa2]),
+    ("orange", [0xff, 0x6f, 0x00]),
+    ("red", [0xff, 0x00, 0x1c]),
+    ("warm_white", [0xff, 0xad, 0x59]),
 ];
 
 /// What the icon shows.
@@ -84,19 +84,6 @@ fn rgb_of_hex(hex: &str) -> [u8; 3] {
             .unwrap_or(0)
     };
     [byte(1), byte(3), byte(5)]
-}
-
-/// The light a lamp reports, linear, back to sRGB for the screen.
-fn srgb_of(light: LinearRgb) -> [u8; 3] {
-    [light.r, light.g, light.b].map(|channel| {
-        let value = f64::from(channel) / 65535.0;
-        let encoded = if value <= 0.003_130_8 {
-            value * 12.92
-        } else {
-            1.055 * value.powf(1.0 / 2.4) - 0.055
-        };
-        (encoded * 255.0).round() as u8
-    })
 }
 
 /// A slot as the user sees it: its color on screen and its name. A built-in
@@ -366,15 +353,31 @@ mod tests {
     fn palette() -> Palette {
         Palette::from_value(&json!({
             "names": [null, "Libre", null, null],
-            "custom": [{ "slot": 4, "name": "Musique", "hex": "#9B59F6" }]
+            "custom": [{ "slot": 4, "name": "Musique", "hex": "#A15DFF" }]
         }))
+    }
+
+    #[test]
+    fn the_swatches_are_those_of_the_popup() {
+        // app/src/utils/lamp.ts lists the same swatches for the popup, in
+        // the same order: both lists change together.
+        let popup = include_str!("../../src/utils/lamp.ts");
+        let mut after = 0;
+        for (key, [r, g, b]) in BUILT_IN_COLORS {
+            let entry = format!("{{ key: '{key}', swatch: '#{r:02x}{g:02x}{b:02x}' }}");
+            let at = popup
+                .find(&entry)
+                .unwrap_or_else(|| panic!("lamp.ts lacks {entry}"));
+            assert!(at >= after, "{key} out of order in lamp.ts");
+            after = at;
+        }
     }
 
     #[test]
     fn a_lit_lamp_is_a_full_square_in_its_color() {
         let look = look_of(&state(true, 2), &palette(), Locale::Fr).expect("look");
         let image = render(&look);
-        assert_eq!(pixel(&image, 16, 16), [0xe7, 0x4c, 0x3c, 255]);
+        assert_eq!(pixel(&image, 16, 16), [0xff, 0x00, 0x1c, 255]);
         assert_eq!(pixel(&image, 0, 0)[3], 0, "the margin stays transparent");
         assert_eq!(pixel(&image, 5, 5)[3], 255, "a square, not a dot");
         let corner = pixel(&image, 4, 4)[3];
@@ -384,7 +387,7 @@ mod tests {
     #[test]
     fn a_custom_color_shows_in_its_own_code() {
         let look = look_of(&state(true, 4), &palette(), Locale::Fr).expect("look");
-        assert_eq!(pixel(&render(&look), 16, 16), [0x9b, 0x59, 0xf6, 255]);
+        assert_eq!(pixel(&render(&look), 16, 16), [0xa1, 0x5d, 0xff, 255]);
         assert_eq!(look.tooltip(Locale::Fr), "Disled\u{202f}: Musique");
     }
 

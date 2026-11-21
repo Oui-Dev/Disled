@@ -29,6 +29,8 @@ const numberFormats = {
   percent: { style: 'percent', maximumFractionDigits: 1 },
   /** A correction: +10 %, −20 %, 0 %. */
   signedPercent: { style: 'percent', signDisplay: 'exceptZero', maximumFractionDigits: 0 },
+  /** A hue, as screen readers say it: "210 degrees". */
+  degrees: { style: 'unit', unit: 'degree', unitDisplay: 'long' },
   milliseconds: { style: 'unit', unit: 'millisecond' },
   seconds: { style: 'unit', unit: 'second' },
   minutes: { style: 'unit', unit: 'minute', minimumFractionDigits: 1, maximumFractionDigits: 1 },

@@ -421,6 +421,30 @@ mod tests {
     }
 
     #[test]
+    fn a_color_saved_darker_loads_as_the_color_the_lamp_shows() {
+        // App 2.1 kept the codes as typed: a brown, which the lamp lights as
+        // amber, and a grey, which it lights as white. They load so, and the
+        // palette that the start of the app saves once holds them so.
+        let colors = json!({
+            "schema": 1,
+            "names": [null, null, null, null],
+            "custom": [
+                { "slot": 4, "name": "Marron", "hex": "#704214" },
+                { "slot": 5, "name": "Gris", "hex": "#808080" },
+                { "slot": 6, "name": "Rouge", "hex": "#FF0000" }
+            ],
+            "cycle": [0, 4, 1]
+        });
+        let (_, palette) = read_all(&file_of_1_1_2(), &colors);
+        let codes: Vec<&str> = palette.custom.iter().map(|c| c.hex.as_str()).collect();
+        assert_eq!(codes, ["#FF9D3B", "#FFFFFF", "#FF0000"]);
+        assert_eq!(palette.cycle, [0, 4, 1]);
+        let saved = serde_json::to_value(&palette).expect("JSON");
+        assert_eq!(saved["custom"][0]["hex"], "#FF9D3B");
+        assert_eq!(Palette::from_value(&saved), palette);
+    }
+
+    #[test]
     fn a_call_color_that_left_the_palette_goes_back_to_red() {
         let file = json!({ "calls": { "mic": true, "color": 6 } });
         let (settings, _) = read_all(&file, &Value::Null);
