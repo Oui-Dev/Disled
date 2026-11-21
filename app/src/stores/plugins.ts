@@ -7,6 +7,7 @@
 // catalog comes from the network, only when its tab opens
 // (plugins/catalog.rs).
 
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { open } from '@tauri-apps/plugin-dialog';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -73,7 +74,6 @@ export const usePluginsStore = defineStore('plugins', () => {
     try {
       const installed = await pluginInstall(id);
       catalogError.value = null;
-      await refresh();
       return installed;
     } catch (error) {
       catalogError.value = error as CatalogError;
@@ -90,7 +90,7 @@ export const usePluginsStore = defineStore('plugins', () => {
     }
   }
 
-  /** Reads the folder again, as when the window gets the focus. */
+  /** Reads the folder again. */
   async function refresh(): Promise<void> {
     plugins.value = await pluginsList();
   }
@@ -126,7 +126,6 @@ export const usePluginsStore = defineStore('plugins', () => {
     catalogError,
     installing,
     tokenChanges,
-    refresh,
     importPlugin,
     loadCatalog,
     install,
@@ -138,7 +137,17 @@ export const usePluginsStore = defineStore('plugins', () => {
     regenerateToken: (id: string) => changeToken(pluginRegenerateToken(id)),
     remove: (id: string) => errors.attempt(pluginRemove(id)),
     openFolder: () => errors.attempt(pluginsOpenFolder()),
-    /** Follows the backend events. Call once per window. */
-    start: () => mirror(plugins, 'plugins-changed', pluginsList),
+    /**
+     * Follows the backend events, and reads the folder again whenever the
+     * window gets the focus. Call once per window.
+     */
+    start: async () => {
+      await mirror(plugins, 'plugins-changed', pluginsList);
+      await getCurrentWebviewWindow().onFocusChanged(({ payload: focused }) => {
+        if (focused) {
+          void refresh();
+        }
+      });
+    },
   };
 });
