@@ -46,6 +46,11 @@ export const usePluginsStore = defineStore('plugins', () => {
   const catalogError = ref<CatalogError | null>(null);
   /** The plugin of the catalog being installed. */
   const installing = ref<string | null>(null);
+  /**
+   * Counts the approvals and the new tokens. The fingerprint of a plugin
+   * stays through both, so the note asks for its token again at each.
+   */
+  const tokenChanges = ref(0);
 
   /** Reads the catalog again, from the network. */
   async function loadCatalog(): Promise<void> {
@@ -91,6 +96,15 @@ export const usePluginsStore = defineStore('plugins', () => {
     }
   }
 
+  /** Runs a change that may give a plugin another token. */
+  async function changeToken(action: () => Promise<void>): Promise<boolean> {
+    const done = await change(action);
+    if (done) {
+      tokenChanges.value += 1;
+    }
+    return done;
+  }
+
   /** Reads the folder again, as when the window gets the focus. */
   async function refresh(): Promise<void> {
     plugins.value = await pluginsList();
@@ -126,16 +140,17 @@ export const usePluginsStore = defineStore('plugins', () => {
     catalogLoading,
     catalogError,
     installing,
+    tokenChanges,
     refresh,
     importPlugin,
     loadCatalog,
     install,
     openSource: (id: string) => change(() => pluginOpenSource(id)),
-    approve: (id: string, fingerprint: string) => change(() => pluginApprove(id, fingerprint)),
+    approve: (id: string, fingerprint: string) => changeToken(() => pluginApprove(id, fingerprint)),
     setEnabled: (id: string, enabled: boolean) => change(() => pluginSetEnabled(id, enabled)),
     setColor: (id: string, state: string, slot: number) =>
       change(() => pluginSetColor(id, state, slot)),
-    regenerateToken: (id: string) => change(() => pluginRegenerateToken(id)),
+    regenerateToken: (id: string) => changeToken(() => pluginRegenerateToken(id)),
     remove: (id: string) => change(() => pluginRemove(id)),
     copyNote: (id: string) => change(() => pluginCopyNote(id)),
     openFolder: () => change(pluginsOpenFolder),
