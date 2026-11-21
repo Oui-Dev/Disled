@@ -10,29 +10,21 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignoreUnknown": false,
     // release-please writes CHANGELOG.md; src-tauri is the Rust side (cargo
     // fmt); the Nuxt UI plugin writes src/components.d.ts and ts-rs writes
     // src/bindings.
     "includes": ["**", "!CHANGELOG.md", "!src-tauri", "!src/components.d.ts", "!src/bindings"]
   },
   "formatter": {
-    "enabled": true,
     "indentStyle": "space",
-    "indentWidth": 2,
-    "lineWidth": 100,
-    "lineEnding": "lf"
+    "lineWidth": 100
   },
   // Biome's Markdown formatter drops the blank line before a list.
   "markdown": { "formatter": { "enabled": false } },
   "linter": {
-    "enabled": true,
     // The rules of the tests check the test files only: elsewhere they take
     // the `fit` of the popup for a focused test.
-    "domains": { "test": "none" },
-    "rules": {
-      "preset": "recommended"
-    }
+    "domains": { "test": "none" }
   },
   "overrides": [
     {
@@ -49,13 +41,6 @@
   "javascript": {
     "formatter": {
       "quoteStyle": "single",
-      "jsxQuoteStyle": "double",
-      "quoteProperties": "asNeeded",
-      "trailingCommas": "all",
-      "semicolons": "always",
-      "arrowParentheses": "always",
-      "bracketSpacing": true,
-      "bracketSameLine": false,
       "operatorLinebreak": "before"
     }
   },
@@ -63,14 +48,6 @@
     "parser": { "tailwindDirectives": true },
     "formatter": {
       "quoteStyle": "single"
-    }
-  },
-  "assist": {
-    "enabled": true,
-    "actions": {
-      "source": {
-        "organizeImports": "on"
-      }
     }
   }
 }
