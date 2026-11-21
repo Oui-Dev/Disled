@@ -328,9 +328,9 @@ keeping its own copy of the palette. Unsolicited `STATE` messages caused
 only by automatic brightness are sent at most every 500 ms; changes in
 between are merged into the next message. So are the changes made while
 earlier messages wait to leave, as when the host does not read the lamp.
-Other changes, a redefined color included, leave at once. A host that sees
-`state_seq` jump by more than one has missed a message and should send
-`GET_STATE`.
+Other changes, a redefined color included, leave at once. A `state_seq`
+jump of more than one means a missed message: the `STATE` that arrives
+still carries the whole state.
 
 ### TELEMETRY body (32 bytes)
 
