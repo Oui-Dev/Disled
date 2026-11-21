@@ -131,6 +131,7 @@ To add a language:
 | `src-tauri/src/windows.rs`          | Popup placement, height and hiding, the other windows                                                          |
 | `src-tauri/src/updates.rs`          | Update checks (start-up, then daily) and install                                                               |
 | `src-tauri/src/firmware.rs`         | Lamp updates: signed firmware releases, download, erase, update steps                                          |
+| `src-tauri/src/net.rs`              | Downloads that the updater does not make: the firmware files and the catalog of plugins                        |
 | `src-tauri/src/main.rs`             | Plugins, start-up, Tauri commands                                                                              |
 | `src/App.vue`                       | One root for every window: its view, its stores, its color mode and language                                   |
 | `src/views/`                        | One view per window: popup, Diagnostics, lamp update, reinstall, integrations                                  |
