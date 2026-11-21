@@ -9,7 +9,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { ControlStatus } from '@/bindings/ControlStatus';
 import { controlGet, controlSetMode } from '@/ipc/commands';
-import { follow } from '@/ipc/events';
+import { mirror } from '@/ipc/events';
 import { useErrorStore } from './errors';
 
 export const useControlStore = defineStore('control', () => {
@@ -28,24 +28,13 @@ export const useControlStore = defineStore('control', () => {
   );
 
   /** Follows an integration, or the user with null; a failure becomes the last error. */
-  async function setMode(mode: string | null): Promise<void> {
-    try {
-      await controlSetMode(mode);
-      errors.clear();
-    } catch (error) {
-      errors.reportFailure(error);
-    }
+  function setMode(mode: string | null): Promise<void> {
+    return errors.attempt(controlSetMode(mode));
   }
 
   /** Follows the backend events. Call once per window. */
-  async function start(): Promise<void> {
-    await follow(
-      'control-changed',
-      (next) => {
-        status.value = next;
-      },
-      controlGet,
-    );
+  function start(): Promise<void> {
+    return mirror(status, 'control-changed', controlGet);
   }
 
   return { status, integration, setMode, start };

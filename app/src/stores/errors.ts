@@ -33,5 +33,21 @@ export const useErrorStore = defineStore('errors', () => {
     last.value = null;
   }
 
-  return { last, report, reportFailure, clear };
+  /**
+   * Waits for something the user asked for: a failure becomes the last
+   * error, a success clears it. Resolves to the result, undefined after a
+   * failure.
+   */
+  async function attempt<T>(action: Promise<T>): Promise<T | undefined> {
+    try {
+      const result = await action;
+      clear();
+      return result;
+    } catch (error) {
+      reportFailure(error);
+      return undefined;
+    }
+  }
+
+  return { last, report, reportFailure, clear, attempt };
 });

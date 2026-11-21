@@ -46,28 +46,18 @@ export const useLampStore = defineStore('lamp', () => {
    * asked for clears it once sent. One the app sends on its own, to poll or
    * to start a stream again, leaves it on show, since it says nothing of it.
    */
-  async function send(command: Command, { automatic = false } = {}): Promise<void> {
-    try {
-      await deviceSend(command);
-      if (!automatic) {
-        errors.clear();
-      }
-    } catch (error) {
-      errors.reportFailure(error);
-    }
+  function send(command: Command, { automatic = false } = {}): Promise<void> {
+    return automatic
+      ? deviceSend(command).catch(errors.reportFailure)
+      : errors.attempt(deviceSend(command));
   }
 
   /**
    * The user turns the lamp off, or on with a color slot: the lamp's own
    * state, which this computer does not save. A failure becomes the last error.
    */
-  async function choose(choice: LampChoice): Promise<void> {
-    try {
-      await lampChoose(choice);
-      errors.clear();
-    } catch (error) {
-      errors.reportFailure(error);
-    }
+  function choose(choice: LampChoice): Promise<void> {
+    return errors.attempt(lampChoose(choice));
   }
 
   function restart(): Promise<void> {
