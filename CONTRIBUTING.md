@@ -132,20 +132,15 @@ sensor, USB sleep. [docs/bringup.md](docs/bringup.md) lists the checks.
 ## Dependencies
 
 Dependabot opens update pull requests every week
-([`.github/dependabot.yml`](.github/dependabot.yml)). Some versions stay
-pinned on purpose:
+([`.github/dependabot.yml`](.github/dependabot.yml)). The maintainers hold
+some versions back on purpose, and close their pull requests by hand.
 
-- `@tauri-apps/cli` stays on 2.11. From 2.12, the Windows installer can
-  abort an update started from the app with "Failed to kill Disled"
-  ([tauri-apps/tauri#16277](https://github.com/tauri-apps/tauri/issues/16277)).
-  Close Dependabot's pull requests for 2.12 and later until that issue is
-  fixed.
-- The release workflow builds wchisp, the flasher bundled with the app, at
-  the version of `WCHISP_VERSION` (`.github/workflows/release.yml`). wchisp
-  has no machine interface, so the app and the production tool read its
-  log lines (`crates/disled-flash/src/wchisp.rs`). Before a new version,
-  check those lines against it, then update the `cargo install
-  wchisp@0.3.0` commands of the documentation.
+The release workflow builds wchisp, the flasher bundled with the app, at
+the version of `WCHISP_VERSION` (`.github/workflows/release.yml`). wchisp
+has no machine interface, so the app and the production tool read its log
+lines (`crates/disled-flash/src/wchisp.rs`). Before a new version, check
+those lines against it, then update the `cargo install wchisp@0.3.0`
+commands of the documentation.
 
 ## Releases
 
