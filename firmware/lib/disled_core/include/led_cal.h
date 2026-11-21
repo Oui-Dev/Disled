@@ -25,10 +25,10 @@
 #include <stdint.h>
 
 #include "disled_types.h"
+#include "pwm_dither.h"
 
 #define LED_LIGHT_FULL  (65535u * 256u)
 #define LED_LIGHT_TICKS 128u /* whole ticks in a light table */
-#define LED_SUBTICKS    16u  /* sub-ticks per tick, as pwm_dither.h */
 #define LED_OFFSET_MIN  (-1024)
 
 typedef struct {

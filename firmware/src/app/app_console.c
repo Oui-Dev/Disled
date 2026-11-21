@@ -24,12 +24,12 @@ static uint16_t s_raw_duty[LED_CHANNEL_COUNT]; /* sub-ticks */
 static const char *const color_names[] = { "green", "orange", "red", "warm-white" };
 static const char *const link_names[] = { "unconfigured", "configured", "suspended" };
 
-static const char *color_name(lamp_color_t color)
+static const char *color_name(uint8_t slot)
 {
-    if ((uint32_t)color >= LAMP_COLOR_COUNT) {
+    if (slot >= LAMP_COLOR_COUNT) {
         return "custom";
     }
-    return color_names[color];
+    return color_names[slot];
 }
 
 /* Parses a decimal number; false if `text` is not one. */
@@ -52,8 +52,8 @@ static bool parse_u32(const char *text, uint32_t *value)
 /* Prints sub-ticks as ticks with two decimals. */
 static void print_subticks(uint16_t subticks)
 {
-    console_printf("%u.%02u", (unsigned)(subticks / LED_DUTY_SUBTICKS),
-                   (unsigned)(((subticks % LED_DUTY_SUBTICKS) * 100u) / LED_DUTY_SUBTICKS));
+    console_printf("%u.%02u", (unsigned)(subticks / PWM_DITHER_SUBTICKS),
+                   (unsigned)(((subticks % PWM_DITHER_SUBTICKS) * 100u) / PWM_DITHER_SUBTICKS));
 }
 
 static void cmd_state(int argc, char **argv)
@@ -104,7 +104,7 @@ static void cmd_set(int argc, char **argv)
         request.brightness_mode = BRIGHTNESS_MODE_AUTO;
     } else if (argc == 3 && strcmp(argv[1], "color") == 0 && parse_u32(argv[2], &value)) {
         request.fields = LAMP_FIELD_COLOR;
-        request.color = (lamp_color_t)value;
+        request.color = (uint8_t)((value > 255u) ? 255u : value);
     } else if (argc == 3 && strcmp(argv[1], "level") == 0 && parse_u32(argv[2], &value)) {
         request.fields = LAMP_FIELD_BRIGHTNESS_MODE | LAMP_FIELD_MANUAL_LEVEL;
         request.brightness_mode = BRIGHTNESS_MODE_MANUAL;
@@ -187,7 +187,7 @@ static void cmd_cap(int argc, char **argv)
  * within `cap_ma`. */
 static void cap_raw(uint16_t duty[LED_CHANNEL_COUNT], uint16_t cap_ma)
 {
-    const uint16_t full = (uint16_t)(led_pwm_period() * LED_DUTY_SUBTICKS);
+    const uint16_t full = (uint16_t)(led_pwm_period() * PWM_DITHER_SUBTICKS);
     const uint32_t estimate_x10 = led_output_duty_ma_x10(&app_power_config, s_raw_duty, full);
     const uint32_t cap_x10 = (uint32_t)cap_ma * 10u;
     for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
@@ -213,7 +213,7 @@ void app_console_raw_output(uint16_t duty[LED_CHANNEL_COUNT])
 
 static void cmd_raw(int argc, char **argv)
 {
-    const uint32_t full = (uint32_t)led_pwm_period() * LED_DUTY_SUBTICKS;
+    const uint32_t full = (uint32_t)led_pwm_period() * PWM_DITHER_SUBTICKS;
     uint32_t value[LED_CHANNEL_COUNT] = { 0 };
     if (argc == 2 && strcmp(argv[1], "off") == 0) {
         s_raw_on = false;

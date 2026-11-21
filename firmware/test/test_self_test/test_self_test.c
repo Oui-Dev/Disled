@@ -81,9 +81,8 @@ static void test_a_touch_passes_the_test(void)
     in.touch_pressed = true;
     TEST_ASSERT_EQUAL_UINT32(8010, run(8010, 8100));
     TEST_ASSERT_FALSE(self_test_running(&t));
-    TEST_ASSERT_EQUAL_HEX8(SELF_TEST_LIGHT_OK | SELF_TEST_TOUCH_IDLE_OK | SELF_TEST_TOUCH_PRESSED |
-                               SELF_TEST_COMPLETED,
-                           t.results);
+    /* Every bit of the SELF_TEST_RESULT byte: light, idle touch, touch, done. */
+    TEST_ASSERT_EQUAL_HEX8(0x0F, t.results);
     TEST_ASSERT_EQUAL_INT16(52, t.touch_peak_permille);
     TEST_ASSERT_EQUAL_UINT16(2620, t.touch_baseline);
     TEST_ASSERT_EQUAL_UINT32(12345, t.lux_centi);

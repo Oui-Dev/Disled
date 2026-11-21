@@ -20,10 +20,9 @@ STATUS = {
     "bad_length": "PROTO_ERR_BAD_LENGTH",
     "bad_value": "PROTO_ERR_BAD_VALUE",
 }
-KINDS = {"state": "MSG_STATE", "info": "MSG_INFO", "telemetry": "MSG_TELEMETRY",
-         "diagnostics": "MSG_DIAGNOSTICS", "self_test_result": "MSG_SELF_TEST_RESULT",
-         "ack": "MSG_ACK", "error": "MSG_ERROR", "color": "MSG_COLOR",
-         "touch_cycle": "MSG_TOUCH_CYCLE", "alert_done": "MSG_ALERT_DONE", "touch": "MSG_TOUCH"}
+# The message kinds of the JSON; the C enum names each one MSG_<KIND>.
+KINDS = ("state", "info", "telemetry", "diagnostics", "self_test_result", "ack", "error", "color",
+         "touch_cycle", "alert_done", "touch")
 
 
 def c_bytes(hex_text):
@@ -48,7 +47,7 @@ def command_entry(vector):
     set_state = vector.get("set_state")
     request = "{ 0 }"
     if set_state is not None:
-        request = "{ .fields = %d, .on = %s, .color = (lamp_color_t)%d, " \
+        request = "{ .fields = %d, .on = %s, .color = %d, " \
                   ".brightness_mode = (brightness_mode_t)%d, .manual_level = %d, " \
                   ".touch_mode = (touch_mode_t)%d }" % (
                       set_state["fields"], c_bool(set_state.get("on", False)),
@@ -86,7 +85,7 @@ def message_entry(vector):
     fields = []
     if kind == "state":
         s = vector["state"]
-        fields.append(".state = { .state_seq = %d, .lamp = { .on = %s, .color = (lamp_color_t)%d, "
+        fields.append(".state = { .state_seq = %d, .lamp = { .on = %s, .color = %d, "
                       ".brightness_mode = (brightness_mode_t)%d, .manual_level = %d, "
                       ".touch_mode = (touch_mode_t)%d }, .applied_percent = %d, "
                       ".link = (usb_link_t)%d, .source = (change_source_t)%d, .rgb = %s }"
@@ -149,7 +148,8 @@ def message_entry(vector):
         fields.append(".press = %d" % vector["press"])
     fields.append(".canonical = %s" % c_bool(vector.get("canonical", True)))
     return "    { .name = \"%s\", .kind = %s, .seq = %d, .payload = %s,\n      %s },\n" % (
-        vector["name"], KINDS[kind], vector["seq"], c_bytes(vector["bytes"]), ", ".join(fields))
+        vector["name"], "MSG_" + kind.upper(), vector["seq"], c_bytes(vector["bytes"]),
+        ", ".join(fields))
 
 
 def generate(source, target):
@@ -170,9 +170,8 @@ def generate(source, target):
         "    bool has_alert;\n    uint8_t alert_count;\n    uint16_t alert_period_ms;\n"
         "    bool has_touch_sensitivity;\n    int8_t touch_sensitivity;\n"
         "} command_vector_t;\n\n",
-        "typedef enum {\n    MSG_STATE,\n    MSG_INFO,\n    MSG_TELEMETRY,\n    MSG_DIAGNOSTICS,\n"
-        "    MSG_SELF_TEST_RESULT,\n    MSG_ACK,\n    MSG_ERROR,\n    MSG_COLOR,\n"
-        "    MSG_TOUCH_CYCLE,\n    MSG_ALERT_DONE,\n    MSG_TOUCH\n} message_kind_t;\n\n",
+        "typedef enum {\n" + "".join("    MSG_%s,\n" % kind.upper() for kind in KINDS)
+        + "} message_kind_t;\n\n",
         "typedef struct {\n    const char *name;\n    message_kind_t kind;\n    uint8_t seq;\n"
         "    uint8_t payload[PROTO_REPORT_SIZE];\n    proto_state_t state;\n    proto_info_t info;\n"
         "    proto_telemetry_t telemetry;\n    proto_diagnostics_t diagnostics;\n"

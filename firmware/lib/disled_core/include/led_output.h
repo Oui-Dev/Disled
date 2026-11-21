@@ -21,9 +21,6 @@
 #include "power_limiter.h"
 #include "pwm_dither.h"
 
-/* Duties in sub-ticks, 1/16 of a tick: at low levels, whole ticks make visible steps. */
-#define LED_DUTY_SUBTICKS PWM_DITHER_SUBTICKS
-
 typedef struct {
     const power_config_t *power;
     /* One light table per channel, LED_CHANNEL_COUNT of them, or NULL for a

@@ -25,12 +25,9 @@ static bool same(const uint32_t a[LED_CHANNEL_COUNT], const uint32_t b[LED_CHANN
     return a[0] == b[0] && a[1] == b[1] && a[2] == b[2];
 }
 
-_Static_assert(LED_SUBTICKS == LED_DUTY_SUBTICKS,
-               "the light tables count the sub-ticks of the dither");
-
 static uint16_t full_duty(const led_output_config_t *config)
 {
-    return (uint16_t)(config->pwm_period * LED_DUTY_SUBTICKS);
+    return (uint16_t)(config->pwm_period * PWM_DITHER_SUBTICKS);
 }
 
 void led_output_init(led_output_t *out, const led_output_config_t *config)
@@ -44,8 +41,8 @@ void led_output_init(led_output_t *out, const led_output_config_t *config)
     }
     /* full less the lowest offset must fit the 16 bits of mul_div
      * (led_cal_duty), and the table must end within the period. */
-    DISLED_ASSERT((uint32_t)config->pwm_period * LED_DUTY_SUBTICKS + (uint32_t)(-LED_OFFSET_MIN) <=
-                  0xFFFFu);
+    const uint32_t full = (uint32_t)config->pwm_period * PWM_DITHER_SUBTICKS;
+    DISLED_ASSERT(full + (uint32_t)(-LED_OFFSET_MIN) <= 0xFFFFu);
     DISLED_ASSERT(config->pwm_period >= LED_LIGHT_TICKS);
     for (size_t c = 0; c < LED_CHANNEL_COUNT; c++) {
         DISLED_ASSERT(led_cal_light_valid(&config->light[c]));

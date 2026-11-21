@@ -32,7 +32,7 @@ bool touch_cycle_set(touch_cycle_t *cycle, const uint8_t *slots, uint32_t count,
 
 /* The color after `color`: the next one in the cycle, the first one after the
  * last, and the first one from a color outside the cycle. */
-lamp_color_t touch_cycle_next(const touch_cycle_t *cycle, lamp_color_t color);
+uint8_t touch_cycle_next(const touch_cycle_t *cycle, uint8_t color);
 
 /* Drops a color that no longer exists. An empty cycle becomes the default
  * one. */

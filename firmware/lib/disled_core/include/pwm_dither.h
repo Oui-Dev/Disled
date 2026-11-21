@@ -3,9 +3,10 @@
  * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
- * Temporal dithering of a PWM duty in sub-ticks, 1/16 of a tick: called once
- * per period, pwm_dither_next() returns the ticks of the next one, exact on
- * average over 16 periods. Header-only, for the PWM interrupt.
+ * Temporal dithering of a PWM duty in sub-ticks, 1/16 of a tick, since whole
+ * ticks make visible steps at low levels: called once per period,
+ * pwm_dither_next() returns the ticks of the next one, exact on average over
+ * 16 periods. Header-only, for the PWM interrupt.
  */
 #ifndef DISLED_PWM_DITHER_H
 #define DISLED_PWM_DITHER_H

@@ -24,10 +24,11 @@ typedef enum {
     TOUCH_EVENT_LONG_PRESS,
 } touch_event_t;
 
+/* Values on the wire (TELEMETRY). */
 typedef enum {
     TOUCH_STATE_CALIBRATING = 0, /* building the first baseline */
-    TOUCH_STATE_IDLE,
-    TOUCH_STATE_PRESSED,
+    TOUCH_STATE_IDLE = 1,
+    TOUCH_STATE_PRESSED = 2,
 } touch_state_t;
 
 /* Where the idle signal lies, for the baseline. */

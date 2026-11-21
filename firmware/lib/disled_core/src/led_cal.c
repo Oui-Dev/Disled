@@ -141,7 +141,7 @@ uint16_t led_cal_duty(const led_light_cal_t *cal, uint32_t light, uint16_t full)
     const uint32_t base = (uint32_t)cal->light[low] * TABLE_UNIT;
     const uint32_t step = (uint32_t)cal->light[low + 1u] * TABLE_UNIT - base; /* > 0 */
     /* (lu - base) * 16 < step * 16 < 2^24. */
-    const uint32_t sub = ((lu - base) * LED_SUBTICKS + step / 2u) / step; /* 0 to 16 */
+    const uint32_t sub = ((lu - base) * PWM_DITHER_SUBTICKS + step / 2u) / step; /* 0 to 16 */
     if (base == 0u && sub == 0u) {
         return 0; /* nearer to dark than to the first light */
     }
@@ -151,13 +151,13 @@ uint16_t led_cal_duty(const led_light_cal_t *cal, uint32_t light, uint16_t full)
             low--;
         }
     }
-    return (uint16_t)(low * LED_SUBTICKS + sub);
+    return (uint16_t)(low * PWM_DITHER_SUBTICKS + sub);
 }
 
 uint32_t led_cal_light(const led_light_cal_t *cal, uint16_t duty)
 {
-    const uint32_t n = duty / LED_SUBTICKS;
-    const uint32_t f = duty % LED_SUBTICKS;
+    const uint32_t n = duty / PWM_DITHER_SUBTICKS;
+    const uint32_t f = duty % PWM_DITHER_SUBTICKS;
     if (n >= N) {
         /* duty >= 16 N > offset */
         return (uint32_t)((int32_t)duty - cal->offset) * LU_SUBTICK;
@@ -165,7 +165,7 @@ uint32_t led_cal_light(const led_light_cal_t *cal, uint16_t duty)
     /* The dithering shows f periods of n + 1 ticks in 16: the linear mix. */
     const uint32_t a = (uint32_t)cal->light[n] * TABLE_UNIT;
     const uint32_t b = (uint32_t)cal->light[n + 1u] * TABLE_UNIT;
-    return a + ((b - a) * f) / LED_SUBTICKS;
+    return a + ((b - a) * f) / PWM_DITHER_SUBTICKS;
 }
 
 uint16_t led_cal_excess(const led_light_cal_t *cal, uint16_t full)
@@ -188,8 +188,9 @@ uint16_t led_cal_excess(const led_light_cal_t *cal, uint16_t full)
      * sub-tick. */
     uint32_t rise_max = LU_SUBTICK;
     for (uint32_t n = 1; n <= N; n++) {
-        const uint32_t lit = (uint32_t)cal->light[n] / LED_SUBTICKS; /* light / 256, sub-ticks */
-        const uint32_t duty = n * LED_SUBTICKS;
+        /* light / 256, in sub-ticks */
+        const uint32_t lit = (uint32_t)cal->light[n] / PWM_DITHER_SUBTICKS;
+        const uint32_t duty = n * PWM_DITHER_SUBTICKS;
         if (duty > lit && duty - lit > worst) {
             worst = duty - lit;
         }
@@ -202,7 +203,7 @@ uint16_t led_cal_excess(const led_light_cal_t *cal, uint16_t full)
      * most: rise_max / 2 LU, that is rise_max / 512 sub-ticks, rounded up. */
     worst += (rise_max + 2u * LU_SUBTICK - 1u) / (2u * LU_SUBTICK);
     if (cal->offset < 0) {
-        worst += (N * LED_SUBTICKS * (uint32_t)(-cal->offset) + full - 1u) / full;
+        worst += (N * PWM_DITHER_SUBTICKS * (uint32_t)(-cal->offset) + full - 1u) / full;
     }
     return (uint16_t)worst;
 }
@@ -224,7 +225,7 @@ bool led_cal_color_valid(const led_color_cal_t *cal)
 bool led_cal_light_valid(const led_light_cal_t *cal)
 {
     if (cal->light[0] != 0u || cal->offset < LED_OFFSET_MIN ||
-        cal->offset >= (int32_t)(N * LED_SUBTICKS)) {
+        cal->offset >= (int32_t)(N * PWM_DITHER_SUBTICKS)) {
         return false;
     }
     for (uint32_t n = 1; n <= N; n++) {
@@ -233,5 +234,5 @@ bool led_cal_light_valid(const led_light_cal_t *cal)
         }
     }
     return (int32_t)cal->light[N] ==
-           ((int32_t)(N * LED_SUBTICKS) - cal->offset) * (int32_t)(LU_SUBTICK / TABLE_UNIT);
+           ((int32_t)(N * PWM_DITHER_SUBTICKS) - cal->offset) * (int32_t)(LU_SUBTICK / TABLE_UNIT);
 }
