@@ -24,8 +24,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use disled_protocol::{
     self as protocol, ChangeSource, Command, DecodeError, Frame, Info, Message, PAYLOAD_SIZE,
-    PROTOCOL_MAJOR, REPORT_ID_COMMAND, REPORT_ID_MESSAGE, SetState, State, TouchMode,
-    USB_PRODUCT_ID_DEBUG, USB_VENDOR_ID,
+    PROTOCOL_MAJOR, SetState, State, TouchMode, USB_PRODUCT_ID_DEBUG, USB_VENDOR_ID,
 };
 
 use crate::colors::{ColorsState, Palette, PreviewState};
@@ -96,8 +95,8 @@ impl Session {
     /// Until a version 2 lamp sent its INFO, only INFO passes: anything else
     /// from that lamp, readable or not, such as the 9-byte STATE of a version
     /// 1 lamp, drops without an error.
-    fn receive(&mut self, report: &[u8]) -> Incoming {
-        match protocol::decode_message(report) {
+    fn receive(&mut self, decoded: Result<Frame, DecodeError>) -> Incoming {
+        match decoded {
             Ok(frame) => {
                 if let Message::Info(info) = &frame.message {
                     self.generation = Some(Generation::of(info));
@@ -422,26 +421,18 @@ impl Worker {
         }
     }
 
-    fn next_seq(&mut self) -> u8 {
-        // 0 marks unsolicited messages, so a request never uses it.
-        self.seq = if self.seq == u8::MAX { 1 } else { self.seq + 1 };
-        self.seq
-    }
-
     /// Writes a command the session allows, and drops the others. False if
     /// the lamp is gone.
     fn write(&mut self, device: &HidDevice, command: &Command, automatic: bool) -> bool {
         if !self.session.allows(command) {
             return true;
         }
-        let seq = self.next_seq();
+        let seq = protocol::next_seq(self.seq);
+        self.seq = seq;
         self.automatic[usize::from(seq)] = automatic;
         self.last_seq = Some(seq);
         self.last_write = Instant::now();
-        let mut report = [0u8; PAYLOAD_SIZE + 1];
-        report[0] = REPORT_ID_COMMAND;
-        report[1..].copy_from_slice(&command.encode(seq));
-        let written = device.write(&report).is_ok();
+        let written = device.write(&command.report(seq)).is_ok();
         // The lamp refuses the commands of the control during a self-test,
         // which the control hears of.
         if written && *command == Command::SelfTest {
@@ -568,39 +559,39 @@ impl Worker {
                 }
                 self.heartbeat_seq = self.last_seq;
             }
-            match device.read_timeout(&mut buffer, READ_TIMEOUT_MS) {
-                Ok(0) => {}
-                Ok(length) if buffer[0] == REPORT_ID_MESSAGE => {
-                    let first_info = self.session.generation.is_none();
-                    match self.session.receive(&buffer[1..length]) {
-                        Incoming::Forward(frame) => {
-                            let previous = self
-                                .state
-                                .lock()
-                                .ok()
-                                .and_then(|state| state.as_ref().map(|state| state.state_seq));
-                            if !self.follow(device, &frame.message, first_info) {
-                                return Exit::Disconnected;
-                            }
-                            if !self.route(&frame, previous) {
-                                continue;
-                            }
-                            // Up to 50 samples a second, which only the
-                            // Diagnostics window follows.
-                            let _ = if let Message::Telemetry(_) = frame.message {
-                                self.app.emit_to(windows::DIAGNOSTICS, EVENT_MESSAGE, frame)
-                            } else {
-                                self.app.emit(EVENT_MESSAGE, frame)
-                            };
-                        }
-                        Incoming::Unreadable(detail) => {
-                            let _ = self.app.emit(EVENT_PROTOCOL_ERROR, detail);
-                        }
-                        Incoming::Ignore => {}
+            let Ok(length) = device.read_timeout(&mut buffer, READ_TIMEOUT_MS) else {
+                return Exit::Disconnected;
+            };
+            // Nothing before the timeout, or a report of another ID.
+            let Some(decoded) = protocol::decode_report(&buffer[..length]) else {
+                continue;
+            };
+            let first_info = self.session.generation.is_none();
+            match self.session.receive(decoded) {
+                Incoming::Forward(frame) => {
+                    let previous = self
+                        .state
+                        .lock()
+                        .ok()
+                        .and_then(|state| state.as_ref().map(|state| state.state_seq));
+                    if !self.follow(device, &frame.message, first_info) {
+                        return Exit::Disconnected;
                     }
+                    if !self.route(&frame, previous) {
+                        continue;
+                    }
+                    // Up to 50 samples a second, which only the Diagnostics
+                    // window follows.
+                    let _ = if let Message::Telemetry(_) = frame.message {
+                        self.app.emit_to(windows::DIAGNOSTICS, EVENT_MESSAGE, frame)
+                    } else {
+                        self.app.emit(EVENT_MESSAGE, frame)
+                    };
                 }
-                Ok(_) => {} // another report ID, not ours
-                Err(_) => return Exit::Disconnected,
+                Incoming::Unreadable(detail) => {
+                    let _ = self.app.emit(EVENT_PROTOCOL_ERROR, detail);
+                }
+                Incoming::Ignore => {}
             }
         }
     }
@@ -624,8 +615,8 @@ mod tests {
         serde_json::from_str(&std::fs::read_to_string(path).expect("v2.json")).expect("JSON")
     }
 
-    /// The payload of a message vector of v2.json.
-    fn report(name: &str) -> Vec<u8> {
+    /// A message vector of v2.json, decoded.
+    fn decoded(name: &str) -> Result<Frame, DecodeError> {
         let doc = vectors();
         let vector = doc["messages"]
             .as_array()
@@ -642,14 +633,11 @@ mod tests {
         {
             payload[i] = u8::from_str_radix(pair, 16).expect("hex");
         }
-        payload
+        protocol::decode_message(&payload)
     }
 
     fn info_of(name: &str) -> Info {
-        match protocol::decode_message(&report(name))
-            .expect("INFO")
-            .message
-        {
+        match decoded(name).expect("INFO").message {
             Message::Info(info) => info,
             other => panic!("{other:?}"),
         }
@@ -670,16 +658,16 @@ mod tests {
         for state_first in [false, true] {
             let mut session = Session::default();
             let mut received = Vec::new();
-            let mut reports = vec![report("info_of_a_version_1_lamp")];
+            let mut messages = vec![decoded("info_of_a_version_1_lamp")];
             // The STATE it sends on its own at every change, 9 bytes long.
-            let state = report("state_of_a_version_1_lamp");
+            let state = decoded("state_of_a_version_1_lamp");
             if state_first {
-                reports.insert(0, state);
+                messages.insert(0, state);
             } else {
-                reports.push(state);
+                messages.push(state);
             }
-            for report in &reports {
-                received.push(session.receive(report));
+            for message in messages {
+                received.push(session.receive(message));
             }
             let forwarded: Vec<&Incoming> = received
                 .iter()
@@ -708,7 +696,7 @@ mod tests {
         // Nor does an unreadable report show before it.
         let mut session = Session::default();
         assert_eq!(
-            session.receive(&report("state_of_a_version_1_lamp")),
+            session.receive(decoded("state_of_a_version_1_lamp")),
             Incoming::Ignore
         );
     }
@@ -717,17 +705,17 @@ mod tests {
     fn a_version_2_lamp_is_driven() {
         let mut session = Session::default();
         assert!(matches!(
-            session.receive(&report("info")),
+            session.receive(decoded("info")),
             Incoming::Forward(_)
         ));
         assert!(session.allows(&Command::GetState));
         assert!(matches!(
-            session.receive(&report("state_after_touch")),
+            session.receive(decoded("state_after_touch")),
             Incoming::Forward(_)
         ));
         // A short body from a version 2 lamp is a fault worth showing.
         assert!(matches!(
-            session.receive(&report("state_of_a_version_1_lamp")),
+            session.receive(decoded("state_of_a_version_1_lamp")),
             Incoming::Unreadable(_)
         ));
     }
@@ -845,10 +833,7 @@ mod tests {
 
     #[test]
     fn the_windows_hear_a_heartbeat_only_when_it_changed_something() {
-        let state = |state_seq| match protocol::decode_message(&report("state_after_touch"))
-            .expect("STATE")
-            .message
-        {
+        let state = |state_seq| match decoded("state_after_touch").expect("STATE").message {
             Message::State(state) => Message::State(State { state_seq, ..state }),
             other => panic!("{other:?}"),
         };
