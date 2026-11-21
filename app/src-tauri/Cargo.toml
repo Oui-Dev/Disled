@@ -10,7 +10,7 @@ repository.workspace = true
 publish.workspace = true
 
 [build-dependencies]
-tauri-build = "^2.7.6"
+tauri-build = { version = "^2.7.6", features = [] }
 
 [dependencies]
 disled-protocol.workspace = true
@@ -32,7 +32,7 @@ tauri-plugin-opener = "^2.7.3"
 # files and wchisp, shared with the production tool, then the HTTP client and
 # the TLS stack of the updater.
 disled-flash.workspace = true
-reqwest ={ version = "^0.13.5", default-features = false, features = ["rustls-no-provider", "system-proxy"] }
+reqwest = { version = "^0.13.5", default-features = false, features = ["rustls-no-provider", "system-proxy"] }
 rustls = { version = "^0.23.46", default-features = false, features = ["ring", "std"] }
 semver.workspace = true
 # The languages of the system, for the "System" language setting.
@@ -42,7 +42,7 @@ base64.workspace = true
 # The plugins: the local server of the plugins with events on the runtime of
 # Tauri, the fingerprint of their files, their tokens, compared in constant
 # time, and their import from a zip file.
-axum = { version = "^0.8.9", default-features = false, features = ["http1", "json", "tokio"] }
+axum = { version = "^0.8.9", default-features = false, features = ["http1", "tokio"] }
 tokio = { version = "^1.54.1", features = ["net", "rt", "sync", "time"] }
 sha2 = "^0.10.9"
 subtle = "^2.6.1"
@@ -61,11 +61,13 @@ libc = "^0.2.191"
 # The popup as a panel, the only kind of window that macOS shows over an app
 # in full screen, which AppKit places under the icon of the menu bar and
 # shows at once. The calls come from the process objects of CoreAudio.
+# tauri-nspanel turns on the default features of AppKit and Foundation,
+# every class included, so a list of classes here would check nothing.
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-nspanel = "^2.1.1"
 objc2 = "^0.6.5"
-objc2-app-kit = { version = "^0.3.2", default-features = false, features = ["std", "NSApplication", "NSButton", "NSControl", "NSPanel", "NSResponder", "NSScreen", "NSStatusBarButton", "NSStatusItem", "NSView", "NSWindow"] }
-objc2-foundation = { version = "^0.3.2", default-features = false, features = ["std", "NSGeometry", "objc2-core-foundation"] }
+objc2-app-kit = "^0.3.2"
+objc2-foundation = "^0.3.2"
 objc2-core-audio = { version = "^0.3.2", default-features = false, features = ["std", "AudioHardware"] }
 
 # The calls come from the sound server through libpulse, loaded at run time,
