@@ -3,7 +3,8 @@
   SPDX-FileCopyrightText: 2026 The Disled contributors
 
   A live chart of the telemetry history, newest sample on the right, drawn at most
-  every REFRESH_MS, with its legend under it. The plot takes the height its parent
+  every REFRESH_MS, with its legend under it. No transition: an animated redraw at
+  each refresh made the lines pulse. The plot takes the height its parent
   gives, down to a minimum, and the tooltip gives the lamp's uptime and the values.
 -->
 <script setup lang="ts">
@@ -62,6 +63,7 @@ watch(
         :height="height"
         :x-axis="false"
         :legend="false"
+        :transition="false"
         :format="format"
         :aria-label="title"
         :aria-description="description"
