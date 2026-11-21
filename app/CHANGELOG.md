@@ -1,5 +1,60 @@
 # Changelog
 
+## [2.2.0](https://github.com/Oui-Dev/Disled/compare/app-v2.1.0...app-v2.2.0) (2026-11-21)
+
+
+### 🚀 Enhancements
+
+* **app:** swatches that match the lamp, and a hue and vividness square instead of the color code ([bf5158c](https://github.com/Oui-Dev/Disled/commit/bf5158c635ed7b53a0512116abb0185068c8c4df))
+* **app:** the reinstall window lists the firmware of its own major only ([2a2adae](https://github.com/Oui-Dev/Disled/commit/2a2adae4ac26b961c0e6e116fd58b0ee5f57cc48))
+
+
+### 🩹 Fixes
+
+* **app:** a file error of a plugin says so instead of 'No plugin.json file' ([bbe3a82](https://github.com/Oui-Dev/Disled/commit/bbe3a82555b54f31213754ab35df3b4925533621))
+* **app:** a missing local test firmware stops the update before the erase ([423d7e7](https://github.com/Oui-Dev/Disled/commit/423d7e7438e51daec0c47b7d7f91c4286d63996d))
+* **app:** a plugin whose files match its approval again turns back on ([7823895](https://github.com/Oui-Dev/Disled/commit/7823895d13f3373ddf1fe23f76caa52435d9a523))
+* **app:** downloads bounded per read, so that a slow link still finishes ([c895f4e](https://github.com/Oui-Dev/Disled/commit/c895f4e80203e7196c58fd1060e912f825814ef2))
+* **app:** opening Disled again on macOS shows its popup ([f332bc0](https://github.com/Oui-Dev/Disled/commit/f332bc0cc1092a32b6cd99524c6396c3304a75a5))
+* **app:** reading a plugin's note no longer redraws the windows in a loop ([345c42d](https://github.com/Oui-Dev/Disled/commit/345c42d990b5e29f7e7c0ee8c52e337ee71ef34b))
+* **app:** the built-in green swatch as saturated as the other colors ([e80ad1a](https://github.com/Oui-Dev/Disled/commit/e80ad1aee7a60694dde4251745b3211126e0e3cb))
+* **app:** the default name of a recording in local time ([861744b](https://github.com/Oui-Dev/Disled/commit/861744b1fe21e087d90c443778a8625e5be21b71))
+* **app:** the Diagnostics charts no longer pulse at each refresh ([f14690e](https://github.com/Oui-Dev/Disled/commit/f14690efdbbd685c3c27d5937b1fb07e796e00c2))
+* **app:** the last error announced to screen readers in every window ([b3990f5](https://github.com/Oui-Dev/Disled/commit/b3990f5f49f86c9f214bf4ff2016c8f62f2bf835))
+* **app:** the popup that the launch shows stays open ([3613887](https://github.com/Oui-Dev/Disled/commit/3613887367e8828e961eab7d83e83dc7868defc8))
+* **app:** the scroll box of the versions no longer cuts the focus outline of a row ([3eb343e](https://github.com/Oui-Dev/Disled/commit/3eb343e745bf391976ad2830b287644bdccdcffc))
+
+
+### 💅 Refactors
+
+* **app:** a state_seq gap no longer asks the lamp again ([00e3759](https://github.com/Oui-Dev/Disled/commit/00e375946181e6ec69280c6de1b24edc634dc1f2))
+* **app:** backend items without a second user ([3452f95](https://github.com/Oui-Dev/Disled/commit/3452f959e016afcc14990895b66d14904c286bd5))
+* **app:** color tiles that take their hex from the store ([11846e6](https://github.com/Oui-Dev/Disled/commit/11846e6ac67cdc93166fc8e41d418e857020b8d8))
+* **app:** Nuxt UI themes and components in place of copied classes ([169e4c8](https://github.com/Oui-Dev/Disled/commit/169e4c86ed62ecdad2be560eef6b5f8afb881c6d))
+* **app:** one error helper and one event mirror for the stores ([fb60e2a](https://github.com/Oui-Dev/Disled/commit/fb60e2a2f9cc2dbe0f344a9fe75a565b6409ba73))
+* **app:** one install command for the lamp firmware ([029d987](https://github.com/Oui-Dev/Disled/commit/029d987acddccfa72d2ed4979693d3fe55b7aa3b))
+* **app:** one opener for the windows, and the popup built in Rust ([236cbaa](https://github.com/Oui-Dev/Disled/commit/236cbaa9d9936c2d83fbb4eed9f57f63dc1f74e2))
+* **app:** one picture of the lamp in the device worker, which tells the windows its generation ([3a7bf1f](https://github.com/Oui-Dev/Disled/commit/3a7bf1fe0f3040570b15ee4a2059586bcfa284f3))
+* **app:** one reader and one writer of the color codes ([5cd3052](https://github.com/Oui-Dev/Disled/commit/5cd30525098d8a3d13fc1d10cf3a4aa6ccaeaf6f))
+* **app:** parking_lot locks, and the macOS version check through objc2 ([28365de](https://github.com/Oui-Dev/Disled/commit/28365de9579adbccde30abb3004fb64fef4b39d8))
+* **app:** plugin helpers defined once, a catalog install from memory with its network error in full, and a host that copies less ([86eb561](https://github.com/Oui-Dev/Disled/commit/86eb561cbd6fd9d233c91327ba45ec2703e80df3))
+* **app:** shared pieces for the sliders, the confirmations and the capability lists ([aced213](https://github.com/Oui-Dev/Disled/commit/aced2137b7120dbcda72b130503a5433995efa76))
+* **app:** the check of signed files, the wait for the bootloader and the erase in disled-flash ([a54e6a5](https://github.com/Oui-Dev/Disled/commit/a54e6a57531c760db7ca679251db4ef1992794d9))
+* **app:** the color square through Reka UI's color functions, with one update period for the controls that move ([81d526d](https://github.com/Oui-Dev/Disled/commit/81d526d791f41358ed75f97876e18bd279dae27f))
+* **app:** the control's lamp commands through two helpers ([00f34b7](https://github.com/Oui-Dev/Disled/commit/00f34b7a38de729ee06e69f2975e2f03a25d4c2f))
+* **app:** the integrations settings save the manual mode as null ([387e2ab](https://github.com/Oui-Dev/Disled/commit/387e2abff66ac4206c4bdec08828d686384820a8))
+* **app:** the integrations window reads the plugin folder once as it opens ([f290023](https://github.com/Oui-Dev/Disled/commit/f2900237cd89d34e1ede537c9df07d645802db8c))
+* **app:** the plugin host's rules testable without a running app ([626939f](https://github.com/Oui-Dev/Disled/commit/626939fe9fc7e441f8bc3d112c8ca6b3fd95f92e))
+* **app:** the telemetry CSV columns in one table ([431ebb6](https://github.com/Oui-Dev/Disled/commit/431ebb6845aee7cf9bef41a46ef29dcefda2da5a))
+* **app:** the update windows share their steps and footer ([b78d319](https://github.com/Oui-Dev/Disled/commit/b78d319e55795cf436eb835ef8afca9d1af8defe))
+* **app:** the version picker as one list ([2ae368b](https://github.com/Oui-Dev/Disled/commit/2ae368b29262afb49a5347cac35ba3188c53ae01))
+* **app:** the windows write the clipboard themselves ([aab0e8a](https://github.com/Oui-Dev/Disled/commit/aab0e8ab09d3158b4fc7b7633cadc5dd9baaf7be))
+* **app:** tile names with a fixed margin ([c217e19](https://github.com/Oui-Dev/Disled/commit/c217e19d63096eebfba32fdd2379f00ee419e72c))
+* **app:** VueUse in place of hand-made timers and loaders ([fc01103](https://github.com/Oui-Dev/Disled/commit/fc01103ffef2b1addfed7728e1f3f297282564fe))
+* **app:** window code without its unused exports and defaults ([3b3be62](https://github.com/Oui-Dev/Disled/commit/3b3be620bad0e3427136fecf9c8258b49e68b2e0))
+* **protocol:** INFO and the codec without what no host uses, and reset causes 5 and 6 reserved ([1068ae7](https://github.com/Oui-Dev/Disled/commit/1068ae7adbf2f13e43bee3c975d651abc2e6d5f9))
+* **protocol:** the HID report framing in the codec ([3b4776e](https://github.com/Oui-Dev/Disled/commit/3b4776ede85071147f7c62276b566b48614cf797))
+
 ## [2.1.0](https://github.com/Oui-Dev/Disled/compare/app-v2.0.1...app-v2.1.0) (2026-11-20)
 
 
