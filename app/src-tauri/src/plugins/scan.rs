@@ -275,6 +275,19 @@ pub(super) mod tests {
         fs::write(path, text).expect("write");
     }
 
+    /// Writes a file again, a little later. The cache knows a file by its
+    /// size and its date, and a rewrite within one tick of the file
+    /// system's clock keeps the date, as on the Windows runners of the CI.
+    fn rewrite(path: &Path, text: &str) {
+        let before = fs::metadata(path).and_then(|m| m.modified()).expect("date");
+        write(path, text);
+        File::options()
+            .write(true)
+            .open(path)
+            .and_then(|file| file.set_modified(before + std::time::Duration::from_secs(2)))
+            .expect("date");
+    }
+
     #[test]
     fn the_fingerprint_follows_every_file_and_only_them() {
         let folder = tempfile::tempdir().expect("folder");
@@ -289,10 +302,10 @@ pub(super) mod tests {
             fingerprint(&plugin, &mut Cache::default()),
             Ok(first.clone())
         );
-        write(&plugin.join("lib/index.js"), "console.log(2)");
+        rewrite(&plugin.join("lib/index.js"), "console.log(2)");
         let changed = fingerprint(&plugin, &mut cache).expect("fingerprint");
         assert_ne!(changed, first);
-        write(&plugin.join("lib/index.js"), "console.log(1)");
+        rewrite(&plugin.join("lib/index.js"), "console.log(1)");
         write(&plugin.join("extra.txt"), "");
         assert_ne!(fingerprint(&plugin, &mut cache), Ok(first));
     }
