@@ -341,6 +341,84 @@ fn wrong_colors(answer: &str) -> Vec<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use disled_protocol::{Fault, ResetCause};
+    use std::path::PathBuf;
+
+    #[test]
+    fn a_board_passes_with_the_release_build_of_the_firmware_given() {
+        let lamp = Info {
+            protocol: [2, 1],
+            firmware: [2, 1, 0],
+            firmware_version: "v2.1.0".into(),
+            board_revision: 1,
+            uid: "0123456789ABCDEF01234567".into(),
+            reset_cause: ResetCause::PowerOn,
+            debug_build: false,
+            fault: None,
+        };
+        let signed = Firmware {
+            path: PathBuf::new(),
+            version: Some(Version::new(2, 1, 0)),
+        };
+        let mut row = Row::default();
+        assert_eq!(check_info(&lamp, &signed, &mut row), Ok(()));
+        assert_eq!(row.uid, "0123456789ABCDEF01234567");
+        assert_eq!(row.firmware, "v2.1.0");
+        assert_eq!(row.board_revision, Some(1));
+        assert!(row.remarks.is_empty());
+
+        let refused = [
+            Info {
+                firmware: [2, 0, 0],
+                ..lamp.clone()
+            },
+            Info {
+                debug_build: true,
+                ..lamp.clone()
+            },
+            Info {
+                protocol: [1, 1],
+                ..lamp.clone()
+            },
+            Info {
+                protocol: [3, 0],
+                ..lamp.clone()
+            },
+        ];
+        for info in &refused {
+            assert!(
+                check_info(info, &signed, &mut Row::default()).is_err(),
+                "{info:?}"
+            );
+        }
+
+        // A fault before the last reset is noted, and fails nothing.
+        let faulted = Info {
+            fault: Some(Fault {
+                mcause: 2,
+                mepc: 0x0800_1234,
+            }),
+            ..lamp.clone()
+        };
+        let mut row = Row::default();
+        assert_eq!(check_info(&faulted, &signed, &mut row), Ok(()));
+        assert_eq!(
+            row.remarks,
+            ["fault before the last reset: mcause 0x2, mepc 0x08001234"]
+        );
+
+        // --unsigned checks no version.
+        let unsigned = Firmware {
+            path: PathBuf::new(),
+            version: None,
+        };
+        let local = Info {
+            firmware: [2, 0, 0],
+            debug_build: true,
+            ..lamp
+        };
+        assert_eq!(check_info(&local, &unsigned, &mut Row::default()), Ok(()));
+    }
 
     #[test]
     fn answers() {
