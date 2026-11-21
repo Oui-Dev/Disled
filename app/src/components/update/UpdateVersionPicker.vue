@@ -45,7 +45,10 @@ const rows = computed(() => props.versions.map((version) => ({ label: version, v
       </UButton>
     </div>
 
-    <div class="max-h-72 overflow-y-auto">
+    <!-- The scroll box cuts what passes its edge: the padding holds the
+         focus outline of the rows, and the negative margin keeps them in
+         line with the header. -->
+    <div class="-m-1 max-h-72 overflow-y-auto p-1">
       <!-- Reka names each radio once, from its label and its badges: the
            group mounts again when they change. -->
       <URadioGroup
