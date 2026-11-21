@@ -11,11 +11,11 @@
 name = "disled-firmware-tools"
 version = "0.0.0"
 description = "Build and check tools of the Disled firmware"
-requires-python = ">=3.14.9"
+requires-python = ">=3.14.10"
 dependencies = [
     "platformio==6.2.0",
     "clang-format==23.1.5",
 ]
 
 [tool.uv]
-required-version = ">=0.13.5"
+required-version = ">=0.13.6"
