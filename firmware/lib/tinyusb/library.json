@@ -1,7 +1,7 @@
 {
   "name": "tinyusb",
   "version": "0.21.0",
-  "description": "TinyUSB device stack built for the CH32V20x USBD (FSDEV) port. The upstream sources are the upstream/ git submodule, pinned to tag 0.21.0.",
+  "description": "TinyUSB device stack built for the CH32V20x USBD (FSDEV) port. The upstream sources are the upstream/ git submodule, at a release tag.",
   "license": "MIT",
   "frameworks": "*",
   "platforms": "ch32v",

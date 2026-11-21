@@ -71,6 +71,12 @@ wchisp flash disled-fw-X.Y.Z.hex
 larger firmware, such as a debug build, the rest of the old one would stay
 behind it. `wchisp erase` first empties the whole flash.
 
+The same two commands flash a local build
+(`firmware/.pio/build/<env>/firmware.hex`) or a CI artifact. WCH's own
+tools work too: WCHISPStudio on macOS, and WCHISPTool on Windows, which
+needs WCH's driver in place of WinUSB
+([above](#first-time-on-windows-install-the-winusb-driver)).
+
 After flashing, press **RESET**, or unplug the board and plug it back in.
 The lamp starts green and shows up as:
 
@@ -79,9 +85,8 @@ The lamp starts green and shows up as:
 | debug | `1209:0002` | HID "Disled control" + serial port "Disled console" |
 | release | `1209:0001` | HID "Disled control" |
 
-Both are test PIDs of pid.codes. The release builds move to the lamp's own,
-`1209:D1ED`, once pid.codes grants it, and the debug builds keep `1209:0002`
-([LICENSING.md](../LICENSING.md#usb-identifiers)).
+For a batch of boards, `disled-factory` flashes and tests them one after
+the other ([production.md](production.md)).
 
 ## Debug console
 
@@ -106,16 +111,6 @@ Type `help` for the list of commands:
 
 The Diagnostics window of the desktop app shows the rest: chip, faults,
 counters and the self-test.
-
-## Without PlatformIO
-
-Any WCH ISP tool can flash `firmware.bin` or `firmware.hex`, from
-`firmware/.pio/build/<env>/` or from the CI artifacts: `wchisp erase` then
-`wchisp flash firmware.bin`, WCHISPTool on Windows, or WCHISPStudio on
-macOS.
-
-For a batch of boards, `disled-factory` flashes and tests them one after
-the other ([production.md](production.md)).
 
 ## Troubleshooting
 

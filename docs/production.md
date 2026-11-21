@@ -23,11 +23,6 @@ board takes about 30 seconds.
   download the release build `disled-fw-X.Y.Z.hex` and its signature
   `disled-fw-X.Y.Z.hex.sig` into the same folder. The tool flashes only a
   release build signed with the update key.
-- **USB IDs.** The release builds use `1209:0001`, a test PID of pid.codes,
-  until the lamp gets its own, `1209:D1ED`
-  ([LICENSING.md](../LICENSING.md#usb-identifiers)). The tool accepts
-  `1209:0001` until then, and refuses it from the first release whose
-  firmware uses `1209:D1ED`.
 
 ## Run
 
