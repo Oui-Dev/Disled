@@ -337,8 +337,7 @@ mod tests {
         );
     }
 
-    // The lines of `wchisp erase`, read in the source of wchisp 0.3.0, until
-    // the test lamp confirms them.
+    // The lines of `wchisp erase`, as wchisp 0.3.0 prints them.
 
     #[test]
     fn a_full_erase() {
