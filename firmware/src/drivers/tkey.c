@@ -13,6 +13,8 @@
 #include "bsp/ch32.h"
 #include "led_pwm.h"
 
+_Static_assert(TKEY_SAMPLE_1CYCLE5 == ADC_SampleTime_1Cycles5, "the sample time of the SDK");
+
 /* ADC_CTLR1 touch-key bits (WCH TouchKey example, CH32V20x EVT). */
 #define ADC_CTLR1_TKENABLE (1u << 24)
 #define ADC_CTLR1_BUFEN    (1u << 26)

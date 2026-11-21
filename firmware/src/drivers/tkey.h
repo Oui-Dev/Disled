@@ -13,6 +13,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/* ADC_SampleTime_1Cycles5 of the SDK, for a configuration that builds without
+ * the SDK (app_config.c, also built natively). */
+#define TKEY_SAMPLE_1CYCLE5 0u
+
 typedef struct {
     uint8_t charge_time;     /* electrode charge time, ADC clock cycles */
     uint8_t discharge_time;  /* discharge time, ADC clock cycles */
