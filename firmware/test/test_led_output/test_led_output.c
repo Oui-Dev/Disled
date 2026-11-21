@@ -225,16 +225,6 @@ static void test_self_test_shows_its_drive_without_the_level(void)
     TEST_ASSERT_EQUAL_UINT16(0, duty[LED_CHANNEL_BLUE]);
 }
 
-static void test_estimate_is_duty_times_full_scale(void)
-{
-    const uint16_t red_full[LED_CHANNEL_COUNT] = { FULL, 0, 0 };
-    const uint16_t white_full[LED_CHANNEL_COUNT] = { FULL, FULL, FULL };
-    const uint16_t half_blue[LED_CHANNEL_COUNT] = { 0, 0, FULL / 2u };
-    TEST_ASSERT_EQUAL_UINT32(860, led_output_duty_ma_x10(&power, red_full, FULL));
-    TEST_ASSERT_EQUAL_UINT32(2740, led_output_duty_ma_x10(&power, white_full, FULL));
-    TEST_ASSERT_EQUAL_UINT32(625, led_output_duty_ma_x10(&power, half_blue, FULL));
-}
-
 /* Each channel's light as a share of its full light, in 1/65535. */
 static uint32_t light_share(size_t channel)
 {
@@ -375,11 +365,7 @@ static uint32_t check_random_updates(const led_output_config_t *cfg)
         now_ms += random_below(&state, 200);
         led_output_update(&out, &in, now_ms, duty);
 
-        uint16_t cap_ma =
-            (in.cap_override_ma != 0u) ? in.cap_override_ma : power_cap_ma(&power, in.link);
-        if (in.link == USB_LINK_SUSPENDED) {
-            cap_ma = 0;
-        }
+        const uint16_t cap_ma = power_cap_ma(&power, in.link, in.cap_override_ma);
         TEST_ASSERT_EQUAL_UINT16(cap_ma, led_output_cap_ma(&out));
         /* The current of the duties, in tenths of mA times FULL. */
         uint64_t current = 0;
@@ -504,7 +490,6 @@ int main(void)
     RUN_TEST(test_a_new_target_during_a_fade_starts_from_what_is_shown);
     RUN_TEST(test_suspend_turns_off_immediately);
     RUN_TEST(test_self_test_shows_its_drive_without_the_level);
-    RUN_TEST(test_estimate_is_duty_times_full_scale);
     RUN_TEST(test_white_is_capped_by_the_usb_state);
     RUN_TEST(test_cap_override_for_the_thermal_test);
     RUN_TEST(test_a_pure_color_at_full_brightness_keeps_its_full_duty);

@@ -57,18 +57,6 @@ static uint16_t linear_duty(uint32_t light, uint16_t full)
     return (uint16_t)((mul_div(light, full, 65535u) + 128u) / 256u);
 }
 
-uint32_t led_output_duty_ma_x10(const power_config_t *power, const uint16_t duty[LED_CHANNEL_COUNT],
-                                uint16_t full)
-{
-    /* duty <= 65535 and every current <= POWER_MAX_MA: 3 * 65535 * 1000 * 10
-     * < 2^32. */
-    uint32_t sum = 0;
-    for (size_t c = 0; c < LED_CHANNEL_COUNT; c++) {
-        sum += (uint32_t)duty[c] * power->full_scale_ma[c] * 10u;
-    }
-    return (sum + full / 2u) / full;
-}
-
 /* The light the lamp settings ask for, before the fade. */
 static void target_for(const led_output_inputs_t *in, uint32_t target[LED_CHANNEL_COUNT])
 {
@@ -194,11 +182,7 @@ void led_output_update(led_output_t *out, const led_output_inputs_t *in, uint32_
         }
     }
 
-    out->cap_ma =
-        (in->cap_override_ma != 0u) ? in->cap_override_ma : power_cap_ma(cfg->power, in->link);
-    if (in->link == USB_LINK_SUSPENDED) {
-        out->cap_ma = 0;
-    }
+    out->cap_ma = power_cap_ma(cfg->power, in->link, in->cap_override_ma);
     breathe(out, in);
     uint32_t light[LED_CHANNEL_COUNT];
     copy(light, out->visible);
@@ -207,7 +191,7 @@ void led_output_update(led_output_t *out, const led_output_inputs_t *in, uint32_
         duty[c] = (cfg->light != NULL) ? led_cal_duty(&cfg->light[c], light[c], full)
                                        : linear_duty(light[c], full);
     }
-    out->estimate_ma_x10 = led_output_duty_ma_x10(cfg->power, duty, full);
+    out->estimate_ma_x10 = power_duty_ma_x10(cfg->power, duty, full);
 }
 
 uint32_t led_output_estimate_ma_x10(const led_output_t *out)
