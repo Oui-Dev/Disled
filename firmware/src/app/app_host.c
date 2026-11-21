@@ -180,8 +180,8 @@ static void report_touch(uint32_t now_ms)
     }
 }
 
-/* Commands that change what the lamp shows wait for the self-test. Version 2
- * adds a color redefined in place and the alert. */
+/* Commands that change what the lamp shows wait for the self-test: SET_COLOR
+ * may redefine the color shown. */
 static bool busy_with_self_test(uint8_t type)
 {
     if (!self_test_running(&app.self_test)) {

@@ -37,7 +37,7 @@ void tearDown(void)
 
 static void test_decode_ignores_extra_body_bytes(void)
 {
-    /* Compatibility rule of version 1.1: a newer host may extend a body. */
+    /* A newer host may extend a body. */
     const uint8_t extra[] = { 0xAB };
     command_payload(PROTO_CMD_GET_INFO, 1, extra, sizeof extra);
     TEST_ASSERT_EQUAL(PROTO_OK, proto_decode_command(payload, &command));

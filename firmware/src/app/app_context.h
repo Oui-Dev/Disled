@@ -54,7 +54,7 @@ typedef struct {
     uint8_t alert_done_seq; /* the ALERT_DONE waiting to be sent: seq and reason */
     uint8_t alert_done_reason;
     bool alert_report;
-    bool touch_report;        /* a short press waits for its TOUCH (version 2.1) */
+    bool touch_report;        /* a short press waits for its TOUCH */
     uint32_t touch_report_ms; /* when task_touch() saw its release */
 } app_context_t;
 
@@ -72,7 +72,8 @@ static inline bool app_request_allowed(const lamp_request_t *request)
            palette_defined(&app.palette, request->color);
 }
 
-/* The lamp color at full brightness, linear (STATE). */
+/* The color of the slot shown, at full brightness, for STATE: as the host set
+ * it, or the LED drive of a built-in color. */
 rgb16_t app_lamp_rgb(void);
 
 /* The brightness level to apply, per mille, after the lamp's brightness

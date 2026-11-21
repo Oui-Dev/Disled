@@ -13,8 +13,9 @@
 
 #include "disled_types.h"
 
-/* Call first in main(). The LED pins keep their reset state (inputs, the
- * gate pull-downs hold the LED off) until the LED driver takes them. */
+/* Call at the start of main(), after bsp_stack_paint(). The LED pins keep
+ * their reset state (inputs, the gate pull-downs hold the LED off) until the
+ * LED driver takes them. */
 void bsp_init(void);
 
 /* Why the chip last reset, captured by bsp_init(). */

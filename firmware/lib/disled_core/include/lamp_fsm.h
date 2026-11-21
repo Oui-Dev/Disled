@@ -21,9 +21,7 @@
 
 typedef struct {
     bool on;
-    /* Shown when on; kept while off so that the lamp comes back with it. A
-     * palette slot with custom colors. */
-    uint8_t color;
+    uint8_t color; /* a palette slot, shown when on and kept while off */
     brightness_mode_t brightness_mode;
     /* Percent, BRIGHTNESS_MANUAL_MIN to BRIGHTNESS_MANUAL_MAX. */
     uint8_t manual_level;
@@ -65,8 +63,8 @@ bool lamp_fsm_touch_fallback(lamp_state_t *state, usb_link_t link, uint32_t sile
 void lamp_fsm_long_press(lamp_state_t *state);
 
 /* True if every selected field holds a valid value and no unknown field
- * bit is set. With custom colors, the application also checks that the
- * color slot holds a color. */
+ * bit is set. The application also checks that the color slot holds a
+ * color. */
 bool lamp_request_is_valid(const lamp_request_t *request);
 
 bool lamp_state_equal(const lamp_state_t *a, const lamp_state_t *b);
