@@ -60,8 +60,6 @@ void brightness_init(brightness_t *b, const brightness_config_t *config)
 {
     *b = (brightness_t){
         .config = config,
-        .mode = BRIGHTNESS_MODE_AUTO,
-        .manual_percent = BRIGHTNESS_MANUAL_MAX,
         .auto_permille = config->fallback_permille,
     };
 }
@@ -75,12 +73,6 @@ static uint16_t biased(const brightness_t *b, uint32_t level_permille)
         level = BRIGHTNESS_PERMILLE_MAX;
     }
     return (uint16_t)((level == 0u) ? 1u : level);
-}
-
-void brightness_set_mode(brightness_t *b, brightness_mode_t mode, uint8_t manual_percent)
-{
-    b->mode = mode;
-    b->manual_percent = manual_percent;
 }
 
 void brightness_set_auto_bias(brightness_t *b, int8_t bias_percent)
@@ -172,15 +164,17 @@ void brightness_lux_lost(brightness_t *b)
     b->large_sign = 0;
 }
 
-uint16_t brightness_level_permille(const brightness_t *b)
+uint16_t brightness_level_permille(const brightness_t *b, brightness_mode_t mode,
+                                   uint8_t manual_percent)
 {
-    if (b->mode == BRIGHTNESS_MODE_MANUAL) {
-        return (uint16_t)(b->manual_percent * 10u);
+    if (mode == BRIGHTNESS_MODE_MANUAL) {
+        return (uint16_t)(manual_percent * 10u);
     }
     return biased(b, b->have_lux ? b->auto_permille : b->config->fallback_permille);
 }
 
-uint8_t brightness_level_percent(const brightness_t *b)
+uint8_t brightness_level_percent(const brightness_t *b, brightness_mode_t mode,
+                                 uint8_t manual_percent)
 {
-    return (uint8_t)((brightness_level_permille(b) + 5u) / 10u);
+    return (uint8_t)((brightness_level_permille(b, mode, manual_percent) + 5u) / 10u);
 }

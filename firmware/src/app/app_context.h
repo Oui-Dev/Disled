@@ -82,6 +82,10 @@ static inline bool app_request_allowed(const lamp_request_t *request)
 /* The lamp color at full brightness, linear (STATE). */
 rgb16_t app_lamp_rgb(void);
 
+/* The brightness level to apply, per mille, after the lamp's brightness
+ * settings as they are at the call. */
+uint16_t app_level_permille(void);
+
 /* Sets or empties (black) a custom slot. An emptied color leaves the touch
  * cycle, and the lamp showing it goes to the first color of the cycle. */
 bool app_set_color(uint32_t slot, rgb16_t color);
