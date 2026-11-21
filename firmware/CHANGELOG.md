@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.2.0](https://github.com/Oui-Dev/Disled/compare/fw-v2.1.0...fw-v2.2.0) (2026-11-21)
+
+
+### 🚀 Enhancements
+
+* **firmware:** custom colors through a measured LED calibration, the built-ins as LED drives, and a 3 % floor ([b594319](https://github.com/Oui-Dev/Disled/commit/b594319c10a451b8ceed60565b95fbdc5a48c09d))
+
+
+### 🩹 Fixes
+
+* **app:** the built-in green swatch as saturated as the other colors ([e80ad1a](https://github.com/Oui-Dev/Disled/commit/e80ad1aee7a60694dde4251745b3211126e0e3cb))
+* **firmware:** one calibration pattern table, cleared by a suspend for the console too ([302dce9](https://github.com/Oui-Dev/Disled/commit/302dce982e4e2a2ac312100ecdd772178f68cd87))
+* **firmware:** the STATE that answers SET_STATE carries the new applied level ([745e58f](https://github.com/Oui-Dev/Disled/commit/745e58fd11513146de6ad1ce42c344127953961b))
+
+
+### 💅 Refactors
+
+* **firmware:** drop what nothing uses, the alert depth of the debug console included ([a4de797](https://github.com/Oui-Dev/Disled/commit/a4de797ffef9555350ddf69a2d9ebeadb093ccfd))
+* **firmware:** each limit, wire value and count defined once ([1de637f](https://github.com/Oui-Dev/Disled/commit/1de637f97830ece5371c2dd61d2c77f9085547e4))
+* **firmware:** simpler touch thresholds and app state, and app_config.c without the SDK ([bbed1d3](https://github.com/Oui-Dev/Disled/commit/bbed1d3d72b619956a842230c189664ae0c5ed4a))
+* **firmware:** the built-in colors as a plain array, and the white of the calibration from its matrix ([f282120](https://github.com/Oui-Dev/Disled/commit/f282120956a327d04ad13c7ef067ba98ec97b04b))
+* **firmware:** the cap in force and the current of duties in power_limiter ([893423d](https://github.com/Oui-Dev/Disled/commit/893423d2642817cfd8da1ea302f6f911239fdf9f))
+* **firmware:** the host's STATE and telemetry bookkeeping in a core module, with its tests ([fa0f23a](https://github.com/Oui-Dev/Disled/commit/fa0f23a46e0d2057b2e48bf143e92db7f1ef5e5a))
+
 ## [2.1.0](https://github.com/Oui-Dev/Disled/compare/fw-v2.0.0...fw-v2.1.0) (2026-11-20)
 
 
