@@ -9,6 +9,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useFlashSteps } from '@/composables/useFlashSteps';
 import { openLink } from '@/ipc/commands';
 import { useFirmwareStore } from '@/stores/firmware';
 import { stepOf, UPDATE_STEPS, type UpdateStep } from '@/utils/flash';
@@ -22,9 +23,7 @@ const STEP_ICONS: Record<UpdateStep, string> = {
 
 const { t } = useI18n();
 const firmware = useFirmwareStore();
-
-const flash = computed(() => firmware.status.flash);
-const failed = computed(() => flash.value.step === 'failed');
+const { flash, failed } = useFlashSteps();
 /** The version on its way to the lamp, or the one the guided window would install. */
 const version = computed(() => firmware.status.target ?? firmware.latest);
 

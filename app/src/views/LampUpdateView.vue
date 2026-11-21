@@ -9,22 +9,16 @@
   erases and flashes.
 -->
 <script setup lang="ts">
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useFlashSteps } from '@/composables/useFlashSteps';
 import { useFirmwareStore } from '@/stores/firmware';
 import { useLampStore } from '@/stores/lamp';
-import { stepOf } from '@/utils/flash';
 
 const { t } = useI18n();
 const lamp = useLampStore();
 const firmware = useFirmwareStore();
-
-const flash = computed(() => firmware.status.flash);
-const idle = computed(() => flash.value.step === 'idle');
-const failed = computed(() => flash.value.step === 'failed');
-const finished = computed(() => flash.value.step === 'done' || failed.value);
-const waitingForBootloader = computed(() => stepOf(flash.value) === 1);
+const { flash, idle } = useFlashSteps();
 
 const summary = computed(() => {
   const { latest } = firmware;
@@ -52,10 +46,6 @@ function install(): void {
     void firmware.install(firmware.latest);
   }
 }
-
-function close(): Promise<void> {
-  return getCurrentWebviewWindow().close();
-}
 </script>
 
 <template>
@@ -78,40 +68,14 @@ function close(): Promise<void> {
 
     <UpdateProgress />
 
-    <footer class="mt-auto flex justify-end gap-2">
-      <template v-if="idle">
-        <UButton
-          v-if="!firmware.latest"
-          color="neutral"
-          variant="outline"
-          icon="i-lucide-refresh-cw"
-          :loading="firmware.status.checking"
-          @click="firmware.check"
-        >
-          {{ t('updates.check') }}
-        </UButton>
-        <UButton v-else icon="i-lucide-download" @click="install">
-          {{
-            lamp.connection.connected && !firmware.newerForLamp
-              ? t('lampUpdate.reinstall')
-              : t('lampUpdate.start')
-          }}
-        </UButton>
-      </template>
-      <UButton
-        v-if="waitingForBootloader"
-        color="neutral"
-        variant="outline"
-        @click="firmware.cancel"
-      >
-        {{ t('common.cancel') }}
+    <UpdateFooter @retry="install">
+      <UButton icon="i-lucide-download" @click="install">
+        {{
+          lamp.connection.connected && !firmware.newerForLamp
+            ? t('lampUpdate.reinstall')
+            : t('lampUpdate.start')
+        }}
       </UButton>
-      <UButton v-if="failed" icon="i-lucide-rotate-ccw" @click="install">
-        {{ t('lampUpdate.retry') }}
-      </UButton>
-      <UButton v-if="finished" color="neutral" variant="outline" @click="close">
-        {{ t('common.close') }}
-      </UButton>
-    </footer>
+    </UpdateFooter>
   </main>
 </template>
