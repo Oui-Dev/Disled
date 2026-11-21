@@ -3,7 +3,7 @@
 
 //! The wchisp flasher, GPL-2.0, which this code cannot link: it runs as a separate
 //! program, read through its log lines. Those below are of wchisp 0.3.0, which the
-//! app ships, and of the 0.2.3 nightly that PlatformIO installs.
+//! app ships.
 
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
@@ -218,8 +218,7 @@ fn parse_probe(text: &str) -> Result<Probe, String> {
     if text.contains("Failed to open USB device on Linux") {
         return Ok(Probe::NoPermission);
     }
-    // wchisp 0.3.0 prints "Found 1 USB device" and 0.2.3 "Found 1 devices",
-    // then "Device #0: CH32V203G6U6[0x3619]".
+    // "Found 1 USB device", then "Device #0: CH32V203G6U6[0x3619]".
     let found = text
         .lines()
         .filter(|line| line.contains(" device"))
@@ -287,10 +286,6 @@ mod tests {
         let text = "03:29:57 [INFO] Found 0 USB devices\n\
                     03:29:57 [INFO] hint: use `wchisp info` to check chip info\n";
         assert_eq!(parse_probe(text), Ok(Probe::Nothing));
-        // PlatformIO's wchisp 0.2.3.
-        let text = "04:21:57 [INFO] Found 0 devices\n\
-                    04:21:57 [INFO] hint: use `wchisp info` to check chip info\n";
-        assert_eq!(parse_probe(text), Ok(Probe::Nothing));
     }
 
     #[test]
@@ -299,15 +294,6 @@ mod tests {
                     03:29:57 [INFO] Opening USB device #0\n\
                     03:29:57 [INFO] \tDevice #0: CH32V203G6U6[0x3619]\n\
                     03:29:57 [INFO] hint: use `wchisp info` to check chip info\n";
-        assert_eq!(
-            parse_probe(text),
-            Ok(Probe::Ready("CH32V203G6U6[0x3619]".into()))
-        );
-        // PlatformIO's wchisp 0.2.3 prints the device without a log prefix.
-        let text = "04:21:57 [INFO] Found 1 devices\n\
-                    04:21:57 [INFO] hint: use `wchisp info` to check chip info\n\
-                    04:21:57 [INFO] Opening USB device #0\n\
-                    Device #0: CH32V203G6U6[0x3619]\n";
         assert_eq!(
             parse_probe(text),
             Ok(Probe::Ready("CH32V203G6U6[0x3619]".into()))

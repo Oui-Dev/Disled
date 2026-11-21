@@ -11,7 +11,6 @@ board takes about 30 seconds.
   ([CONTRIBUTING.md](../CONTRIBUTING.md#before-you-start)), to build the
   tool.
 - **wchisp.** `cargo install wchisp@0.3.0 --locked` puts it on the PATH.
-  Without it, the tool takes the one PlatformIO installs for the firmware.
   `--wchisp` gives another one.
 - **Bootloader access**, once per computer. On Windows, install the WinUSB
   driver with Zadig
