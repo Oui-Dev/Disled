@@ -23,6 +23,7 @@ declare module 'vue' {
     DiagnosticsLamp: typeof import('./components/diagnostics/DiagnosticsLamp.vue')['default']
     DiagnosticsSelfTest: typeof import('./components/diagnostics/DiagnosticsSelfTest.vue')['default']
     DiagnosticsTelemetry: typeof import('./components/diagnostics/DiagnosticsTelemetry.vue')['default']
+    ErrorAlert: typeof import('./components/ErrorAlert.vue')['default']
     IntegrationsApproval: typeof import('./components/integrations/IntegrationsApproval.vue')['default']
     IntegrationsCatalog: typeof import('./components/integrations/IntegrationsCatalog.vue')['default']
     IntegrationsColors: typeof import('./components/integrations/IntegrationsColors.vue')['default']

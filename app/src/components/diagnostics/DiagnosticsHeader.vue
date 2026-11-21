@@ -8,15 +8,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useErrorText } from '@/composables/useErrorText';
 import { useFaultText } from '@/composables/useFaultText';
-import { useErrorStore } from '@/stores/errors';
 import { useLampStore } from '@/stores/lamp';
 
 const { t } = useI18n();
 const lamp = useLampStore();
-const errors = useErrorStore();
-const errorText = useErrorText();
 const faultText = useFaultText();
 
 const connected = computed(() => lamp.connection.connected);
@@ -95,16 +91,7 @@ function restart(): Promise<void> {
       :description="t('diagnostics.crashed', { fault: crash })"
       :ui="alert"
     />
-    <UAlert
-      v-if="errors.last"
-      color="error"
-      variant="subtle"
-      icon="i-lucide-circle-x"
-      :description="errorText(errors.last)"
-      :close="{ size: 'sm' }"
-      :ui="alert"
-      @update:open="errors.clear()"
-    />
+    <ErrorAlert :ui="alert" />
 
     <UModal
       v-model:open="confirmingRestart"
