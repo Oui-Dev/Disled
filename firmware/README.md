@@ -36,7 +36,7 @@ driver, the debug console and troubleshooting.
 |---|---|
 | `debug` (default) | HID protocol + CDC console and logs, USB ID `1209:0002` |
 | `release` | HID protocol only, no logs, USB ID `1209:0001` |
-| `native` | Unity tests of `lib/disled_core`, with the protocol vectors |
+| `native` | Unity tests of `lib/disled_core`, with the protocol vectors, and of the shipped configuration (`src/app/app_config.c`) |
 
 Both IDs are test PIDs of pid.codes. The release build moves to the lamp's
 own, `1209:D1ED`, once pid.codes grants it, and the debug build keeps
@@ -56,7 +56,7 @@ writes them, lives outside it.
 | `src/diag/` | logs and console (debug builds) |
 | `lib/disled_core/` | hardware-independent logic, unit tested |
 | `lib/tinyusb/` | TinyUSB 0.21.0 (submodule `upstream/`) and its build description |
-| `test/` | Unity tests, one folder per core module |
+| `test/` | Unity tests, one folder per core module, `test_app_config` for the shipped configuration, and the fixtures they share (`test_support.h`) |
 | `scripts/` | version from git, Intel HEX, protocol vectors to C |
 | `pyproject.toml`, `uv.lock` | build and check tools (PlatformIO, clang-format) for uv, kept up to date by Dependabot |
 | `tools/touch_replay/` | replays touch recordings through the detector on the build machine |
