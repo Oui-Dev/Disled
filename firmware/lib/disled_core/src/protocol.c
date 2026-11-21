@@ -7,6 +7,9 @@
 
 #include <string.h>
 
+#include "brightness.h"
+#include "touch_detector.h"
+
 _Static_assert(PROTO_INFO_SIZE <= PROTO_MAX_BODY_SIZE, "INFO fits one report");
 _Static_assert(PROTO_TELEMETRY_SIZE <= PROTO_MAX_BODY_SIZE, "TELEMETRY fits one report");
 _Static_assert(PROTO_DIAGNOSTICS_SIZE <= PROTO_MAX_BODY_SIZE, "DIAGNOSTICS fits one report");
@@ -116,7 +119,7 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
                 return PROTO_ERR_BAD_LENGTH;
             }
             const int32_t bias = get_i8(body);
-            if (bias < PROTO_AUTO_BIAS_MIN || bias > PROTO_AUTO_BIAS_MAX) {
+            if (bias < BRIGHTNESS_BIAS_MIN || bias > BRIGHTNESS_BIAS_MAX) {
                 return PROTO_ERR_BAD_VALUE;
             }
             command->body.auto_bias = (int8_t)bias;
@@ -187,7 +190,7 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
                 return PROTO_ERR_BAD_LENGTH;
             }
             const int32_t percent = get_i8(body);
-            if (percent < PROTO_TOUCH_SENSITIVITY_MIN || percent > PROTO_TOUCH_SENSITIVITY_MAX) {
+            if (percent < TOUCH_SENSITIVITY_MIN || percent > TOUCH_SENSITIVITY_MAX) {
                 return PROTO_ERR_BAD_VALUE;
             }
             command->body.touch_sensitivity = (int8_t)percent;

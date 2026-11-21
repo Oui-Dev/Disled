@@ -119,20 +119,6 @@
 #define PROTO_DIAG_FLAG_LIGHT_SENSOR (1u << 0)
 #define PROTO_DIAG_FLAG_CRYSTAL      (1u << 1)
 
-/* SELF_TEST_RESULT results. */
-#define PROTO_SELF_TEST_LIGHT_OK      (1u << 0)
-#define PROTO_SELF_TEST_TOUCH_IDLE_OK (1u << 1)
-#define PROTO_SELF_TEST_TOUCH_PRESSED (1u << 2)
-#define PROTO_SELF_TEST_COMPLETED     (1u << 3)
-
-/* Automatic brightness bias, percent. */
-#define PROTO_AUTO_BIAS_MIN (-50)
-#define PROTO_AUTO_BIAS_MAX 50
-
-/* Touch sensitivity correction, percent (version 2). */
-#define PROTO_TOUCH_SENSITIVITY_MIN (-50)
-#define PROTO_TOUCH_SENSITIVITY_MAX 50
-
 #define PROTO_FW_VERSION_SIZE 24u
 
 /* Shortest telemetry period, in ms (0 stops the stream). */
@@ -229,7 +215,7 @@ typedef struct {
 } proto_diagnostics_t;
 
 typedef struct {
-    uint8_t results; /* PROTO_SELF_TEST_* */
+    uint8_t results; /* SELF_TEST_* bits (self_test.h) */
     uint32_t lux_centi;
     uint16_t touch_baseline;
     int16_t touch_peak_permille;

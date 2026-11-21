@@ -15,7 +15,7 @@
 
 #include "disled_types.h"
 
-/* Results, same bits as the SELF_TEST_RESULT message. */
+/* Results: the bits of the SELF_TEST_RESULT message, on the wire as they are. */
 #define SELF_TEST_LIGHT_OK      (1u << 0)
 #define SELF_TEST_TOUCH_IDLE_OK (1u << 1)
 #define SELF_TEST_TOUCH_PRESSED (1u << 2)
