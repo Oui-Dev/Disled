@@ -83,5 +83,7 @@ private testing. Release builds still use `1209:0001` until pid.codes grants
 the lamp its own PID, `1209:D1ED`, requested for them, and the lamps
 published until then carry it too. A normal firmware update moves them to
 `1209:D1ED` once it is granted, after a version of the desktop app that
-knows it. Debug builds keep `1209:0002` for good: they serve private
-testing only and never ship.
+knows it. The production tool ([docs/production.md](docs/production.md))
+accepts `1209:0001` until the first release whose firmware uses
+`1209:D1ED`, and refuses it from that release on. Debug builds keep
+`1209:0002` for good: they serve private testing only and never ship.

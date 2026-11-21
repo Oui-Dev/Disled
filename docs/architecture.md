@@ -231,7 +231,8 @@ window only), `device-protocol-error`, `settings-changed`,
 `colors-changed`, `locale-changed`, `control-changed`, `plugins-changed`
 (with no token), `update-status` and `firmware-status`. A window that opens
 reads each value once, then follows its event (`follow` in
-`src/ipc/events.ts`), and asks the lamp for its INFO and its STATE.
+`src/ipc/events.ts`). A window that shows the lamp also asks it for its
+INFO and its STATE (`src/stores/lamp.ts`).
 
 ### Control
 
