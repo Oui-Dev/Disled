@@ -76,7 +76,7 @@ fn reply(status: StatusCode, text: &'static str) -> Response {
     }
 }
 
-/// The checks in the order of annex D, cheapest first.
+/// The checks, cheapest first.
 async fn hook(
     State(server): State<Server>,
     Path(id): Path<String>,

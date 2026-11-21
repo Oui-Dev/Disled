@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 The Disled contributors
 
 // The plugins, as the integrations window shows them. The backend reads
-// their folder, keeps their approvals and runs them (plugins/mod.rs); no
+// their folder, keeps their approvals and runs them (plugins/host.rs); no
 // event carries a token, which only the note of a plugin asks for. The
 // catalog comes from the network, only when its tab opens
 // (plugins/catalog.rs).

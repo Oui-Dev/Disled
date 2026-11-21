@@ -542,7 +542,8 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// The manifest of the Claude Code plugin of annex D, without its note.
+    /// A manifest like that of the Claude Code plugin of the catalog, without
+    /// its note.
     fn claude_code() -> Value {
         json!({
             "api": 1,
@@ -590,7 +591,7 @@ mod tests {
     }
 
     #[test]
-    fn the_manifests_of_annex_d_read() {
+    fn the_example_manifests_read() {
         let manifest = Manifest::from_value(&claude_code(), Some("claude-code")).expect("read");
         assert_eq!(manifest.name, "Claude Code");
         assert_eq!(manifest.icon, "terminal");

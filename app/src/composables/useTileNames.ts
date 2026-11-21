@@ -27,12 +27,12 @@ function smallestGap(left: HTMLElement, right: HTMLElement, cell: number): numbe
 }
 
 /**
- * Keeps 4 px between neighboring names (annex C, C.4.3). Where two names
- * would nearly touch on a line they share, one of them goes into a box 8 px
- * narrower: first a name of several words, otherwise the one with the widest
- * line. The narrower box stays only if the name still fits in two lines and
- * leaves the gap. One pass, left to right, after each change of the names.
- * Returns, for each name, whether its box is narrower.
+ * Keeps 4 px between neighboring names. Where two names would nearly touch
+ * on a line they share, one of them goes into a box 8 px narrower: first a
+ * name of several words, otherwise the one with the widest line. The
+ * narrower box stays only if the name still fits in two lines and leaves the
+ * gap. One pass, left to right, after each change of the names. Returns, for
+ * each name, whether its box is narrower.
  */
 export function useTileNames(row: Ref<HTMLElement | null>, names: Ref<string[]>): Ref<boolean[]> {
   const narrow = ref<boolean[]>([]);
