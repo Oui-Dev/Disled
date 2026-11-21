@@ -11,6 +11,7 @@
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { defaultName, useColorsStore } from '@/stores/colors';
+import { NOTE_UI } from '@/utils/ui';
 
 const props = defineProps<{ slot: number }>();
 const emit = defineEmits<{ done: [] }>();
@@ -46,11 +47,7 @@ defineExpose({ save, canSave });
       tabindex="-1"
       class="flex items-center gap-2 text-sm font-semibold text-highlighted focus:outline-none"
     >
-      <span
-        aria-hidden="true"
-        class="size-5 shrink-0 rounded-[20%] border border-accented"
-        :style="{ background: color?.hex }"
-      />
+      <span aria-hidden="true" class="swatch size-5 shrink-0" :style="{ background: color?.hex }" />
       {{ color?.name }}
     </h2>
 
@@ -76,11 +73,7 @@ defineExpose({ save, canSave });
       variant="outline"
       icon="i-lucide-lock"
       :description="t('colors.editor.fixed')"
-      :ui="{
-        root: 'gap-2 rounded-md p-3',
-        icon: 'mt-0.5 size-3.5 text-muted',
-        description: 'text-xs text-muted',
-      }"
+      :ui="NOTE_UI"
     />
   </div>
 </template>

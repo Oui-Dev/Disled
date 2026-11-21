@@ -60,7 +60,6 @@ declare module 'vue' {
     UpdateProgress: typeof import('./components/update/UpdateProgress.vue')['default']
     UpdateStepDetail: typeof import('./components/update/UpdateStepDetail.vue')['default']
     UpdateVersionPicker: typeof import('./components/update/UpdateVersionPicker.vue')['default']
-    UpdateWaiting: typeof import('./components/update/UpdateWaiting.vue')['default']
     UPopover: typeof import('./../node_modules/@nuxt/ui/dist/runtime/components/Popover.vue')['default']
     URadioGroup: typeof import('./../node_modules/@nuxt/ui/dist/runtime/components/RadioGroup.vue')['default']
     USelect: typeof import('./../node_modules/@nuxt/ui/dist/runtime/components/Select.vue')['default']
@@ -68,6 +67,8 @@ declare module 'vue' {
     USlider: typeof import('./../node_modules/@nuxt/ui/dist/runtime/components/Slider.vue')['default']
     USwitch: typeof import('./../node_modules/@nuxt/ui/dist/runtime/components/Switch.vue')['default']
     UTabs: typeof import('./../node_modules/@nuxt/ui/dist/runtime/components/Tabs.vue')['default']
+    UTheme: typeof import('./../node_modules/@nuxt/ui/dist/runtime/components/Theme.vue')['default']
     UTimeline: typeof import('./../node_modules/@nuxt/ui/dist/runtime/components/Timeline.vue')['default']
+    WaitingLine: typeof import('./components/WaitingLine.vue')['default']
   }
 }

@@ -106,7 +106,7 @@ function close(): Promise<void> {
     </header>
 
     <template v-if="idle">
-      <UpdateWaiting
+      <WaitingLine
         v-if="!versions.length && firmware.status.checking"
         :text="t('updates.checking')"
       />

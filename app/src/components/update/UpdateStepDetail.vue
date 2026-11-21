@@ -27,7 +27,7 @@ const { t } = useI18n();
         <template #boot><strong>BOOT</strong></template>
         <template #reset><strong>RESET</strong></template>
       </i18n-t>
-      <UpdateWaiting :text="t('lampUpdate.waitingForBootloader')" />
+      <WaitingLine :text="t('lampUpdate.waitingForBootloader')" />
     </template>
 
     <template v-else-if="flash.step === 'driver_missing'">
@@ -59,7 +59,7 @@ const { t } = useI18n();
           <template #replace><em>Replace Driver</em></template>
         </i18n-t>
       </ol>
-      <UpdateWaiting :text="t('lampUpdate.driver.waiting')" />
+      <WaitingLine :text="t('lampUpdate.driver.waiting')" />
     </template>
 
     <p v-else-if="flash.step === 'no_permission'">{{ t('lampUpdate.noPermission') }}</p>
@@ -71,11 +71,11 @@ const { t } = useI18n();
     </p>
 
     <template v-else-if="flash.step === 'flashing'">
-      <UpdateWaiting :text="t(`lampUpdate.stages.${flash.stage}`)" />
+      <WaitingLine :text="t(`lampUpdate.stages.${flash.stage}`)" />
       <p class="font-medium">{{ t('lampUpdate.doNotUnplug') }}</p>
     </template>
 
-    <UpdateWaiting
+    <WaitingLine
       v-else-if="flash.step === 'waiting_for_lamp'"
       :text="t('lampUpdate.waitingForLamp')"
     />

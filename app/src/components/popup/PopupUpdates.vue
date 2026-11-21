@@ -18,9 +18,6 @@ const { t } = useI18n();
 const updates = useUpdatesStore();
 const firmware = useFirmwareStore();
 const { offer, installing, appLine, lampLine } = useUpdateStatus();
-
-/** Compact, as the popup's other alert, its button under the text. */
-const alert = { root: 'gap-2 p-3', icon: 'size-4', description: 'text-xs', actions: 'mt-2' };
 </script>
 
 <template>
@@ -32,7 +29,6 @@ const alert = { root: 'gap-2 p-3', icon: 'size-4', description: 'text-xs', actio
     orientation="vertical"
     :description="appLine ?? undefined"
     :actions="[{ label: t('updates.install'), loading: installing, onClick: updates.install }]"
-    :ui="alert"
   />
   <UAlert
     v-if="firmware.updateForLamp"
@@ -44,6 +40,5 @@ const alert = { root: 'gap-2 p-3', icon: 'size-4', description: 'text-xs', actio
     :actions="
       offer === 'lamp' ? [{ label: t('updates.updateLamp'), onClick: openLampUpdate }] : undefined
     "
-    :ui="alert"
   />
 </template>

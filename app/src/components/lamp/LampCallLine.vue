@@ -118,7 +118,7 @@ function choose(slot: unknown): void {
                 fieldset: 'grid grid-cols-[repeat(7,2rem)] gap-x-1.5 gap-y-4 px-0.5 pt-1.5 pb-0.5',
                 item: 'group relative rounded-lg p-0.5',
                 wrapper: 'block',
-                label: 'block cursor-pointer',
+                label: 'block',
               }"
               @update:model-value="choose($event)"
             >
@@ -127,7 +127,7 @@ function choose(slot: unknown): void {
                 <span
                   aria-hidden="true"
                   :title="item.label"
-                  class="block size-7 rounded-[20%] border border-accented ring-2 ring-transparent ring-offset-2 ring-offset-bg transition-shadow group-has-data-[state=checked]:ring-inverted"
+                  class="swatch swatch-ring block size-7"
                   :style="{ background: colors.color(Number(item.value))?.hex }"
                 />
               </template>
