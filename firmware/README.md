@@ -56,7 +56,7 @@ writes them, lives outside it.
 | `lib/disled_core/` | hardware-independent logic, unit tested |
 | `lib/tinyusb/` | TinyUSB 0.21.0 (submodule `upstream/`) and its build description |
 | `test/` | Unity tests, one folder per core module |
-| `scripts/` | version from git, memory budget, Intel HEX, protocol vectors to C |
+| `scripts/` | version from git, Intel HEX, protocol vectors to C |
 | `pyproject.toml`, `uv.lock` | build and check tools (PlatformIO, clang-format) for uv, kept up to date by Dependabot |
 | `tools/touch_replay/` | replays touch recordings through the detector on the build machine |
 
