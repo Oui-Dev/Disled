@@ -116,6 +116,7 @@ mod tests {
                 "states": [
                     { "id": "waiting", "label": "attend", "color": "orange", "priority": 3, "ttl": 1800 },
                     { "id": "working", "label": "travaille", "color": "red", "priority": 2, "ttl": 600 },
+                    { "id": "paused", "label": "en pause", "color": "warm", "priority": 2 },
                     { "id": "done", "label": "a fini", "color": "green", "priority": 1, "ttl": 1800 }
                 ],
                 "idle": "done",
@@ -151,7 +152,8 @@ mod tests {
         let mut keys = Keys::default();
         let now = Instant::now();
         keys.set("a", "working", None, now);
-        keys.set("b", "working", None, now + Duration::from_secs(1));
+        keys.set("b", "paused", None, now + Duration::from_secs(1));
+        assert_eq!(keys.current(&manifest), Some("paused"));
         keys.set("a", "working", None, now + Duration::from_secs(2));
         assert_eq!(keys.current(&manifest), Some("working"));
         assert_eq!(keys.keys.len(), 2);
