@@ -91,6 +91,7 @@ Desktop app, from `app/`, then the Rust workspace from the root:
 npm ci
 npm run typecheck                    # vue-tsc, French messages included
 npm run check                        # Biome; npm run fix applies the fixes
+npm test                             # Vitest: the logic of the windows
 npm run build
 cd ..
 cargo fmt --all --check

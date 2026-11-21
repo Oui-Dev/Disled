@@ -12,18 +12,8 @@ import type { FirmwareStatus } from '@/bindings/FirmwareStatus';
 import type { Flash } from '@/bindings/Flash';
 import { firmwareCancel, firmwareCheck, firmwareInstall, firmwareStatus } from '@/ipc/commands';
 import { mirror } from '@/ipc/events';
+import { compare } from '@/utils/version';
 import { useLampStore } from './lamp';
-
-/** Compares an "X.Y.Z" version with the version a lamp reports. */
-function compare(version: string, lamp: readonly number[]): number {
-  const parts = version.split('.').map(Number);
-  for (let i = 0; i < 3; i++) {
-    if (parts[i] !== lamp[i]) {
-      return parts[i] - lamp[i];
-    }
-  }
-  return 0;
-}
 
 export const useFirmwareStore = defineStore('firmware', () => {
   const lamp = useLampStore();

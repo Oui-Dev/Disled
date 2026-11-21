@@ -30,5 +30,11 @@ export const AUTO_BIAS_MAX = 50;
 export const TOUCH_SENSITIVITY_MIN = -50;
 export const TOUCH_SENSITIVITY_MAX = 50;
 
+/** Most custom colors, as CUSTOM_MAX in src-tauri/src/colors.rs. */
+export const CUSTOM_MAX = 5;
+
+/** The code of SELF_TEST, which the ERROR that rejects it names: Command::SelfTest.code(). */
+export const CMD_SELF_TEST = 0x08;
+
 /** How often a moving control updates the lamp, ms. */
 export const MOVE_UPDATE_MS = 120;

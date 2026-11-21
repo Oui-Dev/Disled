@@ -67,6 +67,9 @@ jobs:
           npx biome ci .
           npm run build
 
+      - name: Front-end unit tests
+        run: npm test
+
       # The tests write the TypeScript types of the front end again with
       # ts-rs, into an emptied folder, so that a type renamed or removed in
       # Rust leaves no file behind.

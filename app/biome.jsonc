@@ -27,6 +27,9 @@
   "markdown": { "formatter": { "enabled": false } },
   "linter": {
     "enabled": true,
+    // The rules of the tests check the test files only: elsewhere they take
+    // the `fit` of the popup for a focused test.
+    "domains": { "test": "none" },
     "rules": {
       "preset": "recommended"
     }
@@ -37,6 +40,10 @@
       // attribute this rule guards; the app has no data tables.
       "includes": ["**/*.vue"],
       "linter": { "rules": { "a11y": { "noHeaderScope": "off" } } }
+    },
+    {
+      "includes": ["**/*.test.ts"],
+      "linter": { "domains": { "test": "recommended" } }
     }
   ],
   "javascript": {

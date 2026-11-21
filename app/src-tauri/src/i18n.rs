@@ -3,7 +3,8 @@
 
 //! English and French. The windows translate themselves with vue-i18n, and the backend
 //! reads the same files in `app/src/locales` for the texts the system draws: the tray
-//! menu and tooltip, and the window titles.
+//! menu and tooltip, the window titles, and the names of the colors (`lamp.colors`) that
+//! the tooltip shows.
 
 use std::sync::LazyLock;
 
@@ -133,19 +134,18 @@ mod tests {
         );
     }
 
-    /// The tray and the titles show the messages that the backend reads, so
-    /// they hold no vue-i18n syntax but the named marks that `format` fills:
-    /// no links, no plurals, no other placeholders.
+    /// The tray, the titles and the tooltip show the messages that the
+    /// backend reads, so they hold no vue-i18n syntax but the named marks
+    /// that `format` fills: no links, no plurals, no other placeholders.
     #[test]
     fn the_messages_of_the_backend_are_plain_text() {
         for locale in [Locale::En, Locale::Fr] {
             let mut found = BTreeSet::new();
-            for section in ["tray", "window"] {
-                keys(
-                    &locale.messages()[section],
-                    &format!("{section}."),
-                    &mut found,
-                );
+            for section in ["tray", "window", "lamp.colors"] {
+                let node = section
+                    .split('.')
+                    .fold(locale.messages(), |node, part| &node[part]);
+                keys(node, &format!("{section}."), &mut found);
             }
             assert!(!found.is_empty());
             for key in found {
