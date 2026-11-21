@@ -81,8 +81,6 @@ async function choose(slot: number | null): Promise<void> {
       :disabled="lamp.locked"
       :aria-label="tileLabel"
     >
-      <!-- As in a checked radio of the row: the ring and the name follow it. -->
-      <span v-if="current" hidden data-state="checked" />
       <!-- The chevron in a chip on the corner of the swatch, 3/8 of the chip
            outside it. -->
       <UChip
@@ -91,9 +89,11 @@ async function choose(slot: number | null): Promise<void> {
           base: 'size-4 translate-x-3/8 translate-y-3/8 bg-default ring-1 ring-default ring-inset',
         }"
       >
+        <!-- Checked as a radio of the row is: the ring and the name follow it. -->
         <span
           aria-hidden="true"
-          class="block size-9 rounded-[20%] border border-accented ring-2 ring-transparent ring-offset-2 ring-offset-bg transition-shadow group-has-data-[state=checked]:ring-inverted"
+          :data-state="current ? 'checked' : undefined"
+          class="swatch swatch-ring block size-9"
           :class="{ wheel: !current }"
           :style="current ? { background: current.hex } : undefined"
         />
@@ -146,17 +146,14 @@ async function choose(slot: number | null): Promise<void> {
               legend: 'sr-only',
               item: 'group min-w-0 rounded-lg px-0 py-1',
               wrapper: 'w-full',
-              // A class of ours would hide the cursor of a disabled group.
-              label: `flex w-full flex-col items-center gap-1.5 font-normal text-muted ${
-                lamp.ready ? 'cursor-pointer' : 'cursor-not-allowed'
-              }`,
+              label: 'flex w-full flex-col items-center gap-1.5 font-normal text-muted',
             }"
             @update:model-value="choose($event)"
           >
             <template #label="{ item }">
               <span
                 aria-hidden="true"
-                class="block size-9 rounded-[20%] border border-accented ring-2 ring-transparent ring-offset-2 ring-offset-bg transition-shadow group-has-data-[state=checked]:ring-inverted"
+                class="swatch swatch-ring block size-9"
                 :style="{ background: colors.color(Number(item.value))?.hex }"
               />
               <LampTileName :name="item.label ?? ''" :named="false" />

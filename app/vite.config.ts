@@ -42,6 +42,15 @@ export default defineConfig({
         // The badges likewise keep their color on the background, the ring
         // and the icon, and their text in the neutral tokens.
         badge: { slots: { label: 'text-default' } },
+        // The radios that take a click show the pointer. The theme's disabled
+        // variant comes after these classes, so a disabled group keeps its
+        // not-allowed cursor, which a class of a component would hide.
+        radioGroup: {
+          slots: { label: 'cursor-pointer' },
+          compoundVariants: [
+            { variant: ['card', 'table'], disabled: false, class: { item: 'cursor-pointer' } },
+          ],
+        },
       },
       // The app works offline and its CSP forbids other origins, so the icons
       // it uses are bundled, never fetched. The scan reads the TypeScript

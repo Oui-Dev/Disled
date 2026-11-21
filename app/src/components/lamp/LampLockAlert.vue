@@ -13,8 +13,6 @@ import { useLampStore } from '@/stores/lamp';
 
 const { t } = useI18n();
 const lamp = useLampStore();
-
-const ui = { root: 'gap-2 p-3', icon: 'size-4', title: 'text-sm', description: 'text-xs' };
 </script>
 
 <template>
@@ -35,7 +33,6 @@ const ui = { root: 'gap-2 p-3', icon: 'size-4', title: 'text-sm', description: '
         onClick: () => void openLampUpdate(),
       },
     ]"
-    :ui="ui"
   />
   <UAlert
     v-else-if="lamp.generation === 'newer'"
@@ -43,6 +40,5 @@ const ui = { root: 'gap-2 p-3', icon: 'size-4', title: 'text-sm', description: '
     variant="subtle"
     icon="i-lucide-triangle-alert"
     :description="t('lampNewer.text')"
-    :ui="ui"
   />
 </template>

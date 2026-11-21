@@ -58,14 +58,11 @@ function choose(state: string, slot: unknown): void {
           @update:model-value="(slot: unknown) => choose(state.id, slot)"
         >
           <template #leading>
-            <span
-              class="block size-3.5 rounded-[20%] border border-accented"
-              :style="{ background: hexOf(state.slot) }"
-            />
+            <span class="swatch block size-3.5" :style="{ background: hexOf(state.slot) }" />
           </template>
           <template #item-leading="{ item }">
             <span
-              class="block size-3.5 rounded-[20%] border border-accented"
+              class="swatch block size-3.5"
               :style="{ background: (item as { hex?: string }).hex }"
             />
           </template>

@@ -194,11 +194,7 @@ defineExpose({ save, canSave });
     </h2>
 
     <div class="flex items-center gap-3">
-      <span
-        aria-hidden="true"
-        class="size-8 shrink-0 rounded-[20%] border border-accented"
-        :style="{ background: hex }"
-      />
+      <span aria-hidden="true" class="swatch size-8 shrink-0" :style="{ background: hex }" />
       <UInput
         ref="nameInput"
         v-model="name"
@@ -223,14 +219,13 @@ defineExpose({ save, canSave });
         legend: 'sr-only',
         fieldset: 'flex-nowrap justify-between gap-x-0',
         item: 'group p-0',
-        label: 'cursor-pointer',
       }"
       @update:model-value="pick($event)"
     >
       <template #label="{ item }">
         <span
           :title="item.label"
-          class="block size-6 rounded-full border border-accented ring-2 ring-transparent ring-offset-2 ring-offset-bg transition-shadow group-has-data-[state=checked]:ring-inverted"
+          class="swatch-ring block size-6 rounded-full border border-accented"
           :style="{ background: String(item.value) }"
         />
         <span class="sr-only">{{ item.label }}</span>

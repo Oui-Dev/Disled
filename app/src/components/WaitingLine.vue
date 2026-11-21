@@ -2,7 +2,7 @@
   SPDX-License-Identifier: GPL-3.0-or-later
   SPDX-FileCopyrightText: 2026 The Disled contributors
 
-  A step the update waits for, announced to screen readers.
+  What a window waits for, with a spinner, announced to screen readers.
 -->
 <script setup lang="ts">
 defineProps<{ text: string }>();
