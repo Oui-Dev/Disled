@@ -19,7 +19,7 @@ use disled_protocol::{
     State, TouchMode,
 };
 use parking_lot::Mutex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::calls::Monitor;
@@ -33,6 +33,11 @@ const EVENT_CONTROL: &str = "control-changed";
 const ALERT_COUNT: u8 = 3;
 /// Length of a breath, chosen by eye on a closed lamp: 4.5 s in all.
 const ALERT_PERIOD_MS: u16 = 1500;
+/// The alert of every plugin.
+const ALERT: Command = Command::Alert {
+    count: ALERT_COUNT,
+    period_ms: ALERT_PERIOD_MS,
+};
 /// An alert counts as over this long after its breaths, should its
 /// ALERT_DONE never come.
 const ALERT_MARGIN: Duration = Duration::from_secs(2);
@@ -90,6 +95,15 @@ pub struct ControlStatus {
     pub integrations: Vec<Integration>,
 }
 
+/// What the user chose for the lamp: off, or on, with a color slot or the
+/// color it keeps.
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+#[cfg_attr(test, derive(ts_rs::TS), ts(export, optional_fields))]
+pub struct LampChoice {
+    pub on: bool,
+    pub slot: Option<u8>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Input {
     /// A version 2 lamp got the connection sequence.
@@ -98,10 +112,7 @@ pub enum Input {
     /// A STATE of the lamp, a reply or a change.
     State(State),
     /// The user chose in the popup: off, or on, with a slot in manual mode.
-    Choose {
-        on: bool,
-        slot: Option<u8>,
-    },
+    Choose(LampChoice),
     /// The source the lamp follows: an integration, or none for manual.
     Follow(Option<String>),
     /// The integrations on offer, from the plugins.
@@ -155,8 +166,22 @@ fn automatic(command: Command) -> Effect {
     }
 }
 
-fn set_state(state: SetState) -> Command {
-    Command::SetState(state)
+/// A color that the backend sets on its own.
+fn color(slot: u8) -> Effect {
+    automatic(Command::SetState(SetState {
+        color: Some(slot),
+        ..SetState::default()
+    }))
+}
+
+/// A touch mode that the backend sets on its own, with the color `slot`
+/// if any.
+fn touch(mode: TouchMode, slot: Option<u8>) -> Effect {
+    automatic(Command::SetState(SetState {
+        touch_mode: Some(mode),
+        color: slot,
+        ..SetState::default()
+    }))
 }
 
 /// A call that the app follows: in manual mode, with a lamp.
@@ -242,19 +267,15 @@ impl Control {
 
     /// What the app sets on the lamp, sent again after a self-test that
     /// refused it.
-    fn imposed(&self) -> SetState {
-        let (touch_mode, color) = self.on_connect();
-        SetState {
-            touch_mode: Some(touch_mode),
-            color: color.or(self.call_back().map(|_| self.calls.color)),
-            ..SetState::default()
-        }
+    fn imposed(&self) -> Effect {
+        let (mode, slot) = self.on_connect();
+        touch(mode, slot.or(self.call_back().map(|_| self.calls.color)))
     }
 
     /// The commands that hand the lamp back to its own behavior when the
     /// app quits, the heartbeat off first: normal touch after an
-    /// integration, then no sensitivity correction, the touch cycle of
-    /// version 1 and no custom color.
+    /// integration, then no sensitivity correction, the default touch cycle
+    /// and no custom color.
     fn quit(&self) -> Vec<Effect> {
         let mut effects = Vec::new();
         if !self.connected {
@@ -262,10 +283,7 @@ impl Control {
         }
         if self.mode.is_some() {
             effects.push(Effect::Heartbeat(false));
-            effects.push(automatic(set_state(SetState {
-                touch_mode: Some(TouchMode::Normal),
-                ..SetState::default()
-            })));
+            effects.push(touch(TouchMode::Normal, None));
         }
         effects.push(automatic(Command::SetTouchSensitivity { percent: 0 }));
         effects.push(automatic(Command::SetTouchCycle {
@@ -314,20 +332,20 @@ impl Control {
                 // A call heard before the lamp told its state.
                 self.start_call(&mut effects);
             }
-            Input::Choose { on, slot } => {
+            Input::Choose(LampChoice { on, slot }) => {
                 // A choice during a call keeps the hand until its end.
                 if let Some(call) = &mut self.call {
                     call.imposed = false;
                 }
                 // The card of an integration turns the lamp on with its color.
-                let color = match self.mode {
+                let slot = match self.mode {
                     Some(_) => self.integration_slot(),
                     None => slot,
                 };
                 effects.push(Effect::Send {
-                    command: set_state(SetState {
+                    command: Command::SetState(SetState {
                         on: Some(on),
-                        color: color.filter(|_| on),
+                        color: slot.filter(|_| on),
                         ..SetState::default()
                     }),
                     user: true,
@@ -366,10 +384,7 @@ impl Control {
                 // state, the lamp keeps the color it has.
                 let followed = self.connected && self.mode.as_ref() == Some(&id);
                 if let Some(slot) = slot.filter(|slot| followed && before != Some(*slot)) {
-                    effects.push(automatic(set_state(SetState {
-                        color: Some(slot),
-                        ..SetState::default()
-                    })));
+                    effects.push(color(slot));
                 }
             }
             Input::CallSettings(calls) => {
@@ -377,10 +392,7 @@ impl Control {
                 if !calls.mic {
                     self.end_call(&mut effects);
                 } else if calls.color != before.color && self.call_back().is_some() {
-                    effects.push(automatic(set_state(SetState {
-                        color: Some(calls.color),
-                        ..SetState::default()
-                    })));
+                    effects.push(color(calls.color));
                 } else {
                     self.start_call(&mut effects);
                 }
@@ -422,19 +434,12 @@ impl Control {
                 if self.connected && lit && !self.self_test && !running && spaced {
                     self.alert = Some(now);
                     self.last_alerts.insert(plugin, now);
-                    effects.push(automatic(Command::Alert {
-                        count: ALERT_COUNT,
-                        period_ms: ALERT_PERIOD_MS,
-                    }));
+                    effects.push(automatic(ALERT));
                 }
             }
             Input::AlertDone => self.alert = None,
             Input::Refused { command, error } => {
-                let alert = Command::Alert {
-                    count: ALERT_COUNT,
-                    period_ms: ALERT_PERIOD_MS,
-                };
-                if command == alert.code() {
+                if command == ALERT.code() {
                     self.alert = None;
                 }
                 if error == ProtocolError::Busy && self.self_test {
@@ -444,7 +449,7 @@ impl Control {
             Input::SelfTest(running) => {
                 self.self_test = running;
                 if !running && std::mem::take(&mut self.refused_in_test) && self.connected {
-                    effects.push(automatic(set_state(self.imposed())));
+                    effects.push(self.imposed());
                 }
                 if running {
                     self.refused_in_test = false;
@@ -482,21 +487,14 @@ impl Control {
         if self.mode.is_some() {
             self.call = None;
             if self.connected {
-                effects.push(automatic(set_state(SetState {
-                    touch_mode: Some(TouchMode::PowerOnly),
-                    color: self.integration_slot(),
-                    ..SetState::default()
-                })));
+                effects.push(touch(TouchMode::PowerOnly, self.integration_slot()));
                 if was_manual {
                     effects.push(Effect::Heartbeat(true));
                 }
             }
         } else if self.connected {
             effects.push(Effect::Heartbeat(false));
-            effects.push(automatic(set_state(SetState {
-                touch_mode: Some(TouchMode::Normal),
-                ..SetState::default()
-            })));
+            effects.push(touch(TouchMode::Normal, None));
             self.start_call(effects);
         }
     }
@@ -517,10 +515,7 @@ impl Control {
             back: state.color,
             imposed: true,
         });
-        effects.push(automatic(set_state(SetState {
-            color: Some(self.calls.color),
-            ..SetState::default()
-        })));
+        effects.push(color(self.calls.color));
     }
 
     /// The call ends: the lamp gets its color back, unless the user chose
@@ -533,10 +528,7 @@ impl Control {
             .map(|call| call.back)
             && self.connected
         {
-            effects.push(automatic(set_state(SetState {
-                color: Some(back),
-                ..SetState::default()
-            })));
+            effects.push(color(back));
         }
     }
 }
@@ -660,10 +652,10 @@ fn carry_out(app: &AppHandle, effects: Vec<Effect>) -> Result<(), String> {
     result
 }
 
-/// Hands the lamp back to its own behavior when the app quits, and waits a
-/// moment for its replies: "Sans l’app, la lampe reprend ses quatre
-/// couleurs et le cycle d’origine." Every way out but the restart of an
-/// update goes through here.
+/// Hands the lamp back to its own behavior when the app quits, as the
+/// colors page promises (`colors.library.appOnly`), and waits a moment for
+/// its replies. Every way out but the restart of an update goes through
+/// here.
 pub fn release(app: &AppHandle) {
     let effects = app.state::<ControlState>().core.lock().quit();
     if effects.is_empty() {
@@ -720,21 +712,6 @@ mod tests {
         }
     }
 
-    fn color(slot: u8) -> Effect {
-        automatic(set_state(SetState {
-            color: Some(slot),
-            ..SetState::default()
-        }))
-    }
-
-    fn touch_mode(mode: TouchMode, slot: Option<u8>) -> Effect {
-        automatic(set_state(SetState {
-            touch_mode: Some(mode),
-            color: slot,
-            ..SetState::default()
-        }))
-    }
-
     /// The control above, following an integration in state "working",
     /// orange.
     fn following() -> (Control, Instant) {
@@ -782,15 +759,15 @@ mod tests {
         control.step(now, heard(&control, true));
         let effects = control.step(
             now,
-            Input::Choose {
+            Input::Choose(LampChoice {
                 on: true,
                 slot: Some(SLOT_ORANGE),
-            },
+            }),
         );
         assert_eq!(
             effects,
             [Effect::Send {
-                command: set_state(SetState {
+                command: Command::SetState(SetState {
                     on: Some(true),
                     color: Some(SLOT_ORANGE),
                     ..SetState::default()
@@ -916,7 +893,7 @@ mod tests {
         assert_eq!(
             effects,
             [
-                touch_mode(TouchMode::PowerOnly, Some(SLOT_ORANGE)),
+                touch(TouchMode::PowerOnly, Some(SLOT_ORANGE)),
                 Effect::Heartbeat(true),
                 Effect::Monitor(None)
             ]
@@ -939,7 +916,7 @@ mod tests {
             control.step(now, Input::Follow(None)),
             [
                 Effect::Heartbeat(false),
-                touch_mode(TouchMode::Normal, None),
+                touch(TouchMode::Normal, None),
                 Effect::Monitor(Some(2))
             ]
         );
@@ -1071,15 +1048,15 @@ mod tests {
         let (mut control, now) = following();
         let effects = control.step(
             now,
-            Input::Choose {
+            Input::Choose(LampChoice {
                 on: true,
                 slot: None,
-            },
+            }),
         );
         assert_eq!(
             effects,
             [Effect::Send {
-                command: set_state(SetState {
+                command: Command::SetState(SetState {
                     on: Some(true),
                     color: Some(SLOT_ORANGE),
                     ..SetState::default()
@@ -1096,7 +1073,7 @@ mod tests {
             control.step(now, Input::Integrations(Vec::new())),
             [
                 Effect::Heartbeat(false),
-                touch_mode(TouchMode::Normal, None),
+                touch(TouchMode::Normal, None),
                 Effect::Monitor(Some(2))
             ]
         );
@@ -1129,10 +1106,7 @@ mod tests {
         let alert = || Input::Alert {
             plugin: "claude-code".into(),
         };
-        let sent = automatic(Command::Alert {
-            count: 3,
-            period_ms: ALERT_PERIOD_MS,
-        });
+        let sent = automatic(ALERT);
         let (mut control, now) = control();
         control.step(
             now,
@@ -1180,11 +1154,7 @@ mod tests {
         control.step(
             now,
             Input::Refused {
-                command: Command::Alert {
-                    count: 3,
-                    period_ms: ALERT_PERIOD_MS,
-                }
-                .code(),
+                command: ALERT.code(),
                 error: ProtocolError::LampOff,
             },
         );
@@ -1199,13 +1169,13 @@ mod tests {
         control.step(
             now,
             Input::Refused {
-                command: set_state(SetState::default()).code(),
+                command: Command::SetState(SetState::default()).code(),
                 error: ProtocolError::Busy,
             },
         );
         assert_eq!(
             control.step(now, Input::SelfTest(false)),
-            [touch_mode(TouchMode::PowerOnly, Some(SLOT_ORANGE))]
+            [touch(TouchMode::PowerOnly, Some(SLOT_ORANGE))]
         );
         // Nothing was refused this time.
         control.step(now, Input::SelfTest(true));
@@ -1224,7 +1194,7 @@ mod tests {
         let effects = control.quit();
         assert_eq!(effects.len(), 16, "the heartbeat, then 15 reports");
         assert_eq!(effects[0], Effect::Heartbeat(false));
-        assert_eq!(effects[1], touch_mode(TouchMode::Normal, None));
+        assert_eq!(effects[1], touch(TouchMode::Normal, None));
         assert_eq!(
             effects[2],
             automatic(Command::SetTouchSensitivity { percent: 0 })
