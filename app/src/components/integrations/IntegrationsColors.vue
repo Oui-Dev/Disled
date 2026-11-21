@@ -7,11 +7,10 @@
   color the user deleted takes its default color again.
 -->
 <script setup lang="ts">
-import type { SelectItem } from '@nuxt/ui';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { PluginView } from '@/bindings/PluginView';
-import { useColorsStore } from '@/stores/colors';
+import { type ShownColor, useColorsStore } from '@/stores/colors';
 import { usePluginsStore } from '@/stores/plugins';
 
 const props = defineProps<{ plugin: PluginView }>();
@@ -20,24 +19,16 @@ const { t } = useI18n();
 const colors = useColorsStore();
 const plugins = usePluginsStore();
 
-const items = computed<SelectItem[][]>(() => {
-  const shown = (list: typeof colors.builtIn) =>
+const items = computed(() => {
+  const shown = (list: ShownColor[]) =>
     list.map((color) => ({ label: color.name, value: color.slot, hex: color.hex }));
-  const groups = [shown(colors.builtIn)];
-  if (colors.custom.length) {
-    groups.push(shown(colors.custom));
-  }
-  return groups;
+  return colors.custom.length
+    ? [shown(colors.builtIn), shown(colors.custom)]
+    : [shown(colors.builtIn)];
 });
 
-function hexOf(slot: number): string | undefined {
-  return colors.color(slot)?.hex;
-}
-
-function choose(state: string, slot: unknown): void {
-  if (typeof slot === 'number') {
-    void plugins.setColor(props.plugin.id, state, slot);
-  }
+function choose(state: string, slot: number): void {
+  void plugins.setColor(props.plugin.id, state, slot);
 }
 </script>
 
@@ -53,18 +44,15 @@ function choose(state: string, slot: unknown): void {
         <USelect
           :model-value="state.slot"
           :items="items"
-          :aria-label="t('lamp.colors.title')"
+          :aria-label="state.label"
           size="sm"
-          @update:model-value="(slot: unknown) => choose(state.id, slot)"
+          @update:model-value="(slot) => choose(state.id, slot)"
         >
-          <template #leading>
-            <span class="swatch block size-3.5" :style="{ background: hexOf(state.slot) }" />
+          <template #leading="{ item }">
+            <span class="swatch block size-3.5" :style="{ background: item?.hex }" />
           </template>
           <template #item-leading="{ item }">
-            <span
-              class="swatch block size-3.5"
-              :style="{ background: (item as { hex?: string }).hex }"
-            />
+            <span class="swatch block size-3.5" :style="{ background: item.hex }" />
           </template>
         </USelect>
       </template>

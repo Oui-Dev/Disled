@@ -35,10 +35,18 @@ const control = useControlStore();
 /** An integration picks the color. */
 const following = computed(() => control.status.mode !== null);
 
-// A radio group emits the type of its items' values.
-const items = computed<{ value: Choice; label: string }[]>(() => [
+/** The custom color the lamp shows in manual mode, which the sixth tile takes. */
+const current = computed(() => {
+  const state = lamp.state;
+  return !following.value && state?.on && state.color >= BUILT_IN_COLORS.length
+    ? colors.custom.find((color) => color.slot === state.color)
+    : undefined;
+});
+
+// A radio group emits the type of its items' values. Off draws its own swatch.
+const items = computed<{ value: Choice; label: string; hex?: string }[]>(() => [
   { value: 'off', label: t('lamp.colors.off') },
-  ...colors.builtIn.map((color) => ({ value: color.slot, label: color.name })),
+  ...colors.builtIn.map((color) => ({ value: color.slot, label: color.name, hex: color.hex })),
 ]);
 const names = computed(() => items.value.map((item) => item.label).join('\n'));
 
@@ -58,30 +66,17 @@ const selected = computed<Choice | undefined>(() => {
   return state.color < BUILT_IN_COLORS.length ? state.color : 'other';
 });
 
-/** The name of the sixth tile: the custom color the lamp shows, or "More". */
-const moreName = computed(() => {
-  const state = lamp.state;
-  const shown =
-    state?.on && state.color >= BUILT_IN_COLORS.length
-      ? colors.custom.find((color) => color.slot === state.color)
-      : undefined;
-  return shown?.name ?? t('lamp.colors.more');
-});
-
 const row = useTemplateRef<HTMLElement>('row');
 const narrow = useTileNames(
   row,
-  computed(() => [...items.value.map((item) => item.label), moreName.value]),
+  computed(() => [
+    ...items.value.map((item) => item.label),
+    current.value?.name ?? t('lamp.colors.more'),
+  ]),
 );
 
 function narrowAt(choice: Choice): boolean {
   return narrow.value[items.value.findIndex((item) => item.value === choice)] ?? false;
-}
-
-/** The swatch of a built-in color; off draws its own. */
-function swatch(choice: Choice): { background: string } | undefined {
-  const color = typeof choice === 'number' ? BUILT_IN_COLORS[choice] : undefined;
-  return color ? { background: color.swatch } : undefined;
 }
 
 async function select(choice: Choice): Promise<void> {
@@ -133,7 +128,7 @@ async function select(choice: Choice): Promise<void> {
             aria-hidden="true"
             class="swatch swatch-ring block size-9"
             :class="{ 'swatch-off': item.value === 'off' }"
-            :style="swatch(item.value)"
+            :style="{ background: item.hex }"
           />
           <LampTileName :name="item.label" :narrow="narrowAt(item.value)" :named="false" />
         </template>
@@ -141,6 +136,7 @@ async function select(choice: Choice): Promise<void> {
       <LampMyColors
         :standalone="standalone"
         :narrow="narrow[items.length] ?? false"
+        :current="current"
         @manage="emit('manage')"
         @create="emit('create')"
       />
