@@ -188,7 +188,7 @@ static void cmd_cap(int argc, char **argv)
 static void cap_raw(uint16_t duty[LED_CHANNEL_COUNT], uint16_t cap_ma)
 {
     const uint16_t full = (uint16_t)(led_pwm_period() * PWM_DITHER_SUBTICKS);
-    const uint32_t estimate_x10 = led_output_duty_ma_x10(&app_power_config, s_raw_duty, full);
+    const uint32_t estimate_x10 = power_duty_ma_x10(&app_power_config, s_raw_duty, full);
     const uint32_t cap_x10 = (uint32_t)cap_ma * 10u;
     for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
         /* duty <= 65535 and cap_x10 <= 3000: the product fits 32 bits. */
@@ -203,12 +203,7 @@ void app_console_raw_output(uint16_t duty[LED_CHANNEL_COUNT])
     if (!s_raw_on) {
         return;
     }
-    uint16_t cap = (app.cap_override_ma != 0u) ? app.cap_override_ma
-                                               : power_cap_ma(&app_power_config, app.link);
-    if (app.link == USB_LINK_SUSPENDED) {
-        cap = 0;
-    }
-    cap_raw(duty, cap);
+    cap_raw(duty, power_cap_ma(&app_power_config, app.link, app.cap_override_ma));
 }
 
 static void cmd_raw(int argc, char **argv)
@@ -256,20 +251,12 @@ static uint32_t pattern_ma_x10(uint32_t length, size_t at, const uint16_t ticks[
     return (sum + length * period - 1u) / (length * period);
 }
 
-/* The cap a pattern must keep to: the cap of the link, as for raw. */
-static uint16_t pattern_cap_ma(void)
-{
-    if (app.link == USB_LINK_SUSPENDED) {
-        return 0;
-    }
-    return (app.cap_override_ma != 0u) ? app.cap_override_ma
-                                       : power_cap_ma(&app_power_config, app.link);
-}
-
+/* A pattern keeps to the cap in force, as raw does. Not led_output_cap_ma():
+ * that cap can be 10 ms old, as after `cap off` then `pat on` in one read. */
 static bool pattern_fits(uint32_t length, size_t at, const uint16_t ticks[LED_CHANNEL_COUNT])
 {
     const uint32_t estimate = pattern_ma_x10(length, at, ticks);
-    const uint16_t cap = pattern_cap_ma();
+    const uint16_t cap = power_cap_ma(&app_power_config, app.link, app.cap_override_ma);
     if (estimate > (uint32_t)cap * 10u) {
         console_printf("refused: %lu.%lu mA over the %u mA cap\r\n",
                        (unsigned long)(estimate / 10u), (unsigned long)(estimate % 10u),

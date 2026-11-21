@@ -82,9 +82,4 @@ uint32_t led_output_estimate_ma_x10(const led_output_t *out);
 /* Cap applied by the last update, in mA. */
 uint16_t led_output_cap_ma(const led_output_t *out);
 
-/* Estimated LED current of duties in sub-ticks, in tenths of mA, for a 100 %
- * duty of `full` sub-ticks. */
-uint32_t led_output_duty_ma_x10(const power_config_t *power, const uint16_t duty[LED_CHANNEL_COUNT],
-                                uint16_t full);
-
 #endif /* DISLED_LED_OUTPUT_H */
