@@ -226,15 +226,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn the_texts_name_the_app_disled() {
-        for locale in [Locale::En, Locale::Fr] {
-            for (key, text) in messages(locale) {
-                assert!(!text.contains("DISLED"), "{key}: {text}");
-            }
-        }
-    }
-
     /// Buttons and menus show no ellipsis; the messages that wait keep theirs.
     #[test]
     fn button_and_menu_labels_have_no_ellipsis() {

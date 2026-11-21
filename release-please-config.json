@@ -3,7 +3,6 @@
   "include-component-in-tag": true,
   "tag-separator": "-",
   "separate-pull-requests": false,
-  "bump-minor-pre-major": true,
   "draft": true,
   "force-tag-creation": true,
   "changelog-sections": [
@@ -22,13 +21,11 @@
   "packages": {
     "firmware": {
       "release-type": "simple",
-      "component": "fw",
-      "initial-version": "0.1.0"
+      "component": "fw"
     },
     "app": {
       "release-type": "node",
-      "component": "app",
-      "initial-version": "0.1.0"
+      "component": "app"
     }
   }
 }

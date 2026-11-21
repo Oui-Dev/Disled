@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Disled contributors
+name: wchisp
+description: >-
+  Builds wchisp, the flasher that the app ships for the lamp updates, into
+  app/src-tauri/binaries, named after the target as Tauri wants, for the
+  pull requests and for the releases alike.
+inputs:
+  version:
+    description: Version of wchisp on crates.io
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: wchisp
+      shell: bash
+      working-directory: app
+      env:
+        VERSION: ${{ inputs.version }}
+        # Like the app, with no dependency on the Visual C++ runtime DLLs.
+        RUSTFLAGS: ${{ runner.os == 'Windows' && '-C target-feature=+crt-static' || '' }}
+      run: |
+        cargo install "wchisp@$VERSION" --locked --root "$RUNNER_TEMP/wchisp"
+        triple=$(rustc -vV | sed -n 's/^host: //p')
+        ext=$([ "$RUNNER_OS" = Windows ] && echo .exe || true)
+        mkdir -p src-tauri/binaries
+        cp "$RUNNER_TEMP/wchisp/bin/wchisp$ext" "src-tauri/binaries/wchisp-$triple$ext"
