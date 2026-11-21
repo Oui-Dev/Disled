@@ -45,6 +45,7 @@ const items = computed(() => {
   return [...colors.builtIn, ...colors.custom].map((color) => ({
     value: color.slot,
     label: color.name,
+    hex: color.hex,
     // The custom colors start a row of their own, under a line across the popover.
     class:
       color.slot === firstCustom
@@ -55,10 +56,7 @@ const items = computed(() => {
 
 /** Saves the color of the calls, and closes the popover unless the arrow
  * keys moved the choice, as "My colors" does. */
-function choose(slot: unknown): void {
-  if (typeof slot !== 'number') {
-    return;
-  }
+function choose(slot: number): void {
   if (closes()) {
     open.value = false;
   }
@@ -102,7 +100,7 @@ function choose(slot: unknown): void {
         />
 
         <template #content>
-          <div role="dialog" :aria-label="t('calls.popoverLabel')" v-bind="listeners">
+          <div v-bind="listeners">
             <div class="flex h-6 items-center justify-between gap-2 px-1 text-xs font-medium">
               <span class="text-highlighted">{{ t('calls.popoverTitle') }}</span>
               <span class="truncate text-muted">{{ callColor?.name }}</span>
@@ -128,7 +126,7 @@ function choose(slot: unknown): void {
                   aria-hidden="true"
                   :title="item.label"
                   class="swatch swatch-ring block size-7"
-                  :style="{ background: colors.color(Number(item.value))?.hex }"
+                  :style="{ background: item.hex }"
                 />
               </template>
             </URadioGroup>
