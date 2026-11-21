@@ -512,7 +512,6 @@ async fn open_diagnostics(app: AppHandle) {
 /// Async for the same reason as `open_diagnostics`.
 #[tauri::command]
 async fn open_lamp_update(app: AppHandle) {
-    firmware::clear_result(&app);
     windows::open_lamp_update(&app);
 }
 
@@ -525,7 +524,6 @@ async fn open_integrations(app: AppHandle) {
 /// Async for the same reason as `open_diagnostics`.
 #[tauri::command]
 async fn open_lamp_install(app: AppHandle) {
-    firmware::clear_result(&app);
     windows::open_lamp_install(&app);
 }
 
@@ -652,9 +650,7 @@ fn main() {
             let locale = Locale::of(settings.language);
             handle.state::<LocaleState>().replace(locale);
             tray::create(&handle, locale)?;
-            windows::hide_popup_on_blur_or_close(&handle);
-            #[cfg(target_os = "macos")]
-            windows::make_popup_a_panel(&handle);
+            windows::create_popup(&handle)?;
             app.manage(DeviceHandle::spawn(handle.clone()));
             plugins::start(&handle);
             // A new version most often follows an update, whose restart keeps
