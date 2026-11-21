@@ -6,15 +6,17 @@ export const PROTOCOL_MAJOR = 2;
 
 /**
  * The built-in colors, by palette slot (0 to 3): the key of their name
- * under `lamp.colors`, and their swatch. The swatches show the lamp colors
- * as the tray icon of src-tauri/src/tray.rs does, close to the LEDs whatever
- * the color mode.
+ * under `lamp.colors`, and their swatch, whatever the color mode, as the
+ * tray icon of src-tauri/src/tray.rs shows them. Green, orange and red use
+ * the LED's own primaries, more saturated than any screen: their swatches
+ * are the nearest sRGB colors of the same hue. Warm white is 2700 K: the
+ * lamp shows its swatch through its calibration, as it does a custom color.
  */
 export const BUILT_IN_COLORS = [
-  { key: 'green', swatch: '#2ecc71' },
-  { key: 'orange', swatch: '#f39c12' },
-  { key: 'red', swatch: '#e74c3c' },
-  { key: 'warm_white', swatch: '#ffe2b8' },
+  { key: 'green', swatch: '#00ffa2' },
+  { key: 'orange', swatch: '#ff6f00' },
+  { key: 'red', swatch: '#ff001c' },
+  { key: 'warm_white', swatch: '#ffad59' },
 ] as const;
 
 /**

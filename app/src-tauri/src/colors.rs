@@ -34,7 +34,8 @@ pub struct CustomColor {
     /// `BUILT_IN` to `LAST_CUSTOM_SLOT`, the same number on the lamp.
     pub slot: u8,
     pub name: String,
-    /// `#RRGGBB` in upper case, as the user typed it, never black.
+    /// `#RRGGBB` in upper case, the color the lamp shows, so its largest
+    /// channel is FF (`light_hex`).
     pub hex: String,
 }
 
@@ -102,7 +103,12 @@ fn valid_hex(hex: &str) -> Option<String> {
 impl Palette {
     /// Reads a saved palette part by part: a name, a custom color or a slot
     /// of the cycle that is not valid drops alone, past the fifth custom color
-    /// the rest drops, and a cycle left empty is the default one.
+    /// the rest drops, and a cycle left empty is the default one. A custom
+    /// color takes the color that the lamp shows for its code (`light_hex`):
+    /// app 2.1 kept the codes as the user typed them, such as a brown, which
+    /// the lamp lights as amber. The start of the app saves the palette so,
+    /// once, and the lamp gets it at its next connection, its light barely
+    /// changed.
     pub fn from_value(value: &Value) -> Self {
         let mut palette = Palette::default();
         if let Some(names) = value.get("names").and_then(Value::as_array) {
@@ -125,7 +131,7 @@ impl Palette {
                     .get("name")
                     .and_then(Value::as_str)
                     .and_then(valid_name);
-                let hex = color.get("hex").and_then(Value::as_str).and_then(valid_hex);
+                let hex = color.get("hex").and_then(Value::as_str).and_then(light_hex);
                 if let (Some(slot), Some(name), Some(hex)) = (slot, name, hex) {
                     palette.custom.push(CustomColor { slot, name, hex });
                 }
@@ -208,7 +214,32 @@ pub fn led_of(hex: &str) -> Option<LinearRgb> {
     })
 }
 
-/// Reads a color code as the user types it: 3 or 6 hexadecimal digits, with
+/// The light a lamp reports, linear, back to sRGB for the screen: the
+/// encoding that `led_of` undoes.
+pub fn srgb_of(light: LinearRgb) -> [u8; 3] {
+    [light.r, light.g, light.b].map(|channel| {
+        let value = f64::from(channel) / 65535.0;
+        let encoded = if value <= 0.003_130_8 {
+            value * 12.92
+        } else {
+            1.055 * value.powf(1.0 / 2.4) - 0.055
+        };
+        (encoded * 255.0).round() as u8
+    })
+}
+
+/// The color the lamp shows for a code, as `#RRGGBB`: its light, back to
+/// sRGB. The lamp lights every color with its largest channel at full, the
+/// brightness being set apart, so a code whose largest channel is FF stays
+/// as it is, and a darker one becomes its bright version, as a brown becomes
+/// amber. The app keeps and shows the custom colors so, which the lamp then
+/// shows as they are. `None` for a code that `led_of` refuses.
+pub fn light_hex(hex: &str) -> Option<String> {
+    let [r, g, b] = srgb_of(led_of(hex)?);
+    Some(format!("#{r:02X}{g:02X}{b:02X}"))
+}
+
+/// Reads a color code that a window sends: 3 or 6 hexadecimal digits, with
 /// or without "#". It gives the same color as `#RRGGBB` in upper case, and
 /// refuses black, which has no light.
 pub fn parse_hex(input: &str) -> Option<String> {
@@ -256,9 +287,13 @@ impl Palette {
     }
 
     /// Adds a custom color, for no `slot`, or changes one. Returns its slot.
+    /// It keeps the color that the lamp shows for the code: the editor sends
+    /// such codes only, and any other turns into one.
     pub fn save_custom(&mut self, slot: Option<u8>, name: &str, hex: &str) -> Result<u8, String> {
         let name = valid_name(name).ok_or("a name has 1 to 16 characters")?;
-        let hex = parse_hex(hex).ok_or("not a color code")?;
+        let hex = parse_hex(hex)
+            .and_then(|hex| light_hex(&hex))
+            .ok_or("not a color code")?;
         match slot {
             None => {
                 let slot = self.free_slot().ok_or("five custom colors at most")?;
@@ -370,7 +405,8 @@ impl Palette {
     /// Takes a shared palette in place of this one: every custom color goes
     /// first, with the fallbacks of a deletion, then the colors of the code
     /// take the slots from `BUILT_IN` on, in their order, and the names and
-    /// the cycle follow.
+    /// the cycle follow. The colors come as `read_share_code` gives them,
+    /// each the color the lamp shows.
     pub fn import(&self, shared: &Palette, around: &Around) -> PaletteChange {
         let mut change = PaletteChange {
             palette: self.clone(),
@@ -567,7 +603,10 @@ pub fn read_share_code(text: &str) -> Option<Palette> {
     }
 }
 
-/// The palette of a share code, if every part of it holds.
+/// The palette of a share code, if every part of it holds. Its custom colors
+/// take the color that the lamp shows for their codes, as those of the file
+/// do, since an app 2.1 may have shared a darker one: the import preview and
+/// the import both read them here.
 fn decode_share(code: &str) -> Option<Palette> {
     let bytes = URL_SAFE_NO_PAD
         .decode(code.strip_prefix(SHARE_PREFIX)?)
@@ -590,7 +629,7 @@ fn decode_share(code: &str) -> Option<Palette> {
         palette.custom.push(CustomColor {
             slot: BUILT_IN + rank as u8,
             name: valid_name(name)?,
-            hex: valid_hex(&format!("#{hex}"))?,
+            hex: light_hex(&format!("#{hex}"))?,
         });
     }
     palette.set_cycle(&shared.t).ok()?;
@@ -632,12 +671,84 @@ mod tests {
     }
 
     #[test]
+    fn light_hex_is_the_color_the_lamp_shows() {
+        // A darker code shows as its bright version, a grey as white.
+        assert_eq!(light_hex("#704214").as_deref(), Some("#FF9D3B"));
+        assert_eq!(light_hex("#808080").as_deref(), Some("#FFFFFF"));
+        assert_eq!(light_hex("#010101").as_deref(), Some("#FFFFFF"));
+        assert_eq!(light_hex("#9b59f6").as_deref(), Some("#A15DFF"));
+        // With a channel at FF, a code is its light already.
+        for full in [
+            "#FF9D3B", "#FFFFFF", "#FF0000", "#0000FF", "#00FFA2", "#EDF5FF", "#FF0001",
+        ] {
+            assert_eq!(light_hex(full).as_deref(), Some(full), "{full}");
+        }
+        for refused in ["#000000", "#12345", "#GGGGGG", "704214"] {
+            assert_eq!(light_hex(refused), None, "{refused}");
+        }
+    }
+
+    #[test]
+    fn light_hex_keeps_the_codes_it_gives() {
+        // A grid of 18 steps per channel, both ends included: a code with a
+        // channel at FF keeps itself, any other gets one, and a second pass
+        // changes nothing. A check of all 16,777,215 codes, once, found the
+        // same, but takes too long for a test.
+        let steps: Vec<u8> = (0..=255).step_by(15).collect();
+        for &r in &steps {
+            for &g in &steps {
+                for &b in &steps {
+                    let hex = format!("#{r:02X}{g:02X}{b:02X}");
+                    let Some(light) = light_hex(&hex) else {
+                        assert_eq!(hex, "#000000");
+                        continue;
+                    };
+                    if [r, g, b].contains(&255) {
+                        assert_eq!(light, hex);
+                    }
+                    let channels = [&light[1..3], &light[3..5], &light[5..7]];
+                    assert!(channels.contains(&"FF"), "{hex} gives {light}");
+                    assert_eq!(light_hex(&light).as_deref(), Some(light.as_str()), "{hex}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_code_saved_darker_loads_as_the_color_the_lamp_shows() {
+        // App 2.1 kept "#704214", a brown that the lamp lights as amber. The
+        // palette now holds the amber, which the lamp gets at its next
+        // connection, its light within 0.3 % of the one it had.
+        let palette = Palette::from_value(&json!({
+            "custom": [{ "slot": 4, "name": "Marron", "hex": "#704214" }],
+            "cycle": [0, 4]
+        }));
+        assert_eq!(palette.custom[0].hex, "#FF9D3B");
+        let before = led_of("#704214").expect("light");
+        let after = led_of("#FF9D3B").expect("light");
+        assert_eq!(
+            palette.commands()[0],
+            Command::SetColor {
+                slot: 4,
+                rgb: after
+            }
+        );
+        let channels = |light: LinearRgb| [light.r, light.g, light.b];
+        for (old, new) in channels(before).into_iter().zip(channels(after)) {
+            assert!(
+                f64::from(old.abs_diff(new)) / 65535.0 < 0.003,
+                "{before:?} to {after:?}"
+            );
+        }
+    }
+
+    #[test]
     fn a_saved_palette_keeps_every_valid_part() {
         let palette = Palette::from_value(&json!({
             "schema": 1,
             "names": [null, "  Libre  ", "", "Une phrase bien trop longue"],
             "custom": [
-                { "slot": 4, "name": "Musique", "hex": "#9b59f6" },
+                { "slot": 4, "name": "Musique", "hex": "#a15dff" },
                 { "slot": 4, "name": "Doublon", "hex": "#FF0000" },
                 { "slot": 9, "name": "Trop loin", "hex": "#FF0000" },
                 { "slot": 5, "name": "Noir", "hex": "#000000" },
@@ -648,7 +759,7 @@ mod tests {
         assert_eq!(palette.names, [None, Some("Libre".into()), None, None]);
         let slots: Vec<u8> = palette.custom.iter().map(|c| c.slot).collect();
         assert_eq!(slots, [4, 6]);
-        assert_eq!(palette.custom[0].hex, "#9B59F6");
+        assert_eq!(palette.custom[0].hex, "#A15DFF");
         assert_eq!(palette.cycle, [0, 4, 2, 6]);
     }
 
@@ -662,7 +773,7 @@ mod tests {
     #[test]
     fn the_palette_goes_to_the_lamp_colors_first_then_the_cycle_then_black() {
         let palette = Palette::from_value(&json!({
-            "custom": [{ "slot": 5, "name": "Musique", "hex": "#9B59F6" }],
+            "custom": [{ "slot": 5, "name": "Musique", "hex": "#A15DFF" }],
             "cycle": [0, 5, 1]
         }));
         let commands = palette.commands();
@@ -672,8 +783,8 @@ mod tests {
             Command::SetColor {
                 slot: 5,
                 rgb: LinearRgb {
-                    r: 23309,
-                    g: 7104,
+                    r: 23357,
+                    g: 7174,
                     b: 65535
                 }
             }
@@ -700,8 +811,8 @@ mod tests {
         Palette::from_value(&json!({
             "names": [null, "Libre", null, null],
             "custom": [
-                { "slot": 4, "name": "Musique", "hex": "#9B59F6" },
-                { "slot": 5, "name": "Focus", "hex": "#3B82F6" }
+                { "slot": 4, "name": "Musique", "hex": "#A15DFF" },
+                { "slot": 5, "name": "Focus", "hex": "#3E87FF" }
             ],
             "cycle": [0, 5, 1, 2]
         }))
@@ -775,6 +886,25 @@ mod tests {
         );
         assert_eq!(palette.custom[0].name, "Seize lettres!");
         assert!(palette.save_custom(Some(5), "Absente", "#FF0000").is_err());
+    }
+
+    #[test]
+    fn a_saved_color_keeps_the_color_the_lamp_shows() {
+        // The editor sends only codes with a channel at FF; any other code
+        // turns into one all the same.
+        let mut palette = Palette::default();
+        let slot = palette
+            .save_custom(None, "Marron", "#704214")
+            .expect("saved");
+        assert_eq!(palette.custom[0].hex, "#FF9D3B");
+        palette
+            .save_custom(Some(slot), "Gris", "888")
+            .expect("saved");
+        assert_eq!(palette.custom[0].hex, "#FFFFFF");
+        palette
+            .save_custom(Some(slot), "Ambre", "#ff9d3b")
+            .expect("saved");
+        assert_eq!(palette.custom[0].hex, "#FF9D3B");
     }
 
     #[test]
@@ -901,7 +1031,7 @@ mod tests {
             .expect("deleted")
             .palette;
         palette
-            .save_custom(None, "Lecture", "#F6D32D")
+            .save_custom(None, "Lecture", "#FFDC2E")
             .expect("saved");
         palette.set_cycle(&[0, 5, 4]).expect("cycle");
         let code = palette.share_code();
@@ -913,7 +1043,7 @@ mod tests {
             .iter()
             .map(|c| (c.name.as_str(), c.hex.as_str(), c.slot))
             .collect();
-        assert_eq!(colors, [("Focus", "#3B82F6", 4), ("Lecture", "#F6D32D", 5)]);
+        assert_eq!(colors, [("Focus", "#3E87FF", 4), ("Lecture", "#FFDC2E", 5)]);
         assert_eq!(read.cycle, [0, 4, 5]);
     }
 
@@ -983,7 +1113,7 @@ mod tests {
     #[test]
     fn an_import_replaces_everything_with_the_fallbacks() {
         let mut shared = Palette::default();
-        shared.save_custom(None, "Sport", "#22D3EE").expect("saved");
+        shared.save_custom(None, "Sport", "#26E2FF").expect("saved");
         shared.set_cycle(&[4, 0]).expect("cycle");
         // The lamp shows Focus, also the call color.
         let around = Around {
@@ -995,7 +1125,7 @@ mod tests {
         assert_eq!(change.palette, shared);
         assert_eq!(change.call_color, SLOT_RED);
         assert_eq!(change.lamp, Some(0));
-        let sport = led_of("#22D3EE").expect("light");
+        let sport = led_of("#26E2FF").expect("light");
         assert_eq!(
             change.commands,
             [
@@ -1011,5 +1141,26 @@ mod tests {
                 cycle(&[4, 0]),
             ]
         );
+    }
+
+    #[test]
+    fn an_imported_color_is_the_color_the_lamp_shows() {
+        // An app 2.1 may share a darker code: the preview reads it as the
+        // color the lamp shows, and the import keeps that color.
+        let code = code_of(json!({
+            "v": 1,
+            "n": [null, null, null, null],
+            "c": [["Marron", "704214"]],
+            "t": [4, 0]
+        }));
+        let shared = read_share_code(&code).expect("read");
+        assert_eq!(shared.custom[0].hex, "#FF9D3B");
+        let change = two_colors().import(&shared, &Around::default());
+        assert_eq!(change.palette.custom[0].hex, "#FF9D3B");
+        let amber = Command::SetColor {
+            slot: 4,
+            rgb: led_of("#FF9D3B").expect("light"),
+        };
+        assert!(change.commands.contains(&amber));
     }
 }
