@@ -8,7 +8,8 @@
 -->
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app';
-import { computed, onMounted, ref } from 'vue';
+import { computedAsync } from '@vueuse/core';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { ColorMode } from '@/bindings/ColorMode';
 import type { Language } from '@/bindings/Language';
@@ -20,10 +21,7 @@ const lamp = useLampStore();
 const settingsStore = useSettingsStore();
 const settings = computed(() => settingsStore.settings);
 
-const appVersion = ref('');
-onMounted(async () => {
-  appVersion.value = await getVersion();
-});
+const appVersion = computedAsync(() => getVersion(), '');
 const versions = computed(() =>
   t('settings.versions', { app: appVersion.value, firmware: lamp.info?.firmware_version ?? '–' }),
 );

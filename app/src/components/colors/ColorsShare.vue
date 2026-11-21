@@ -7,7 +7,8 @@
   the clipboard. A code that reads opens the preview of the import.
 -->
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { refAutoReset } from '@vueuse/core';
+import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { Palette } from '@/bindings/Palette';
 import { colorsCopyCode, colorsReadCode, colorsShareCode } from '@/ipc/commands';
@@ -24,31 +25,25 @@ const colors = useColorsStore();
 const errors = useErrorStore();
 
 const code = ref('');
-const copied = ref(false);
+const copied = refAutoReset(false, COPIED_MS);
 const received = ref('');
 const unreadable = ref(false);
-let copiedTimer: ReturnType<typeof setTimeout> | undefined;
 
 async function loadCode(): Promise<void> {
   code.value = await colorsShareCode();
 }
-onMounted(loadCode);
-// The code follows the colors, changed here or in another window.
-watch(() => colors.palette, loadCode, { deep: true });
+// The code follows the colors, changed here or in another window, which
+// the store replaces whole.
+watch(() => colors.palette, loadCode, { immediate: true });
 
 async function copy(): Promise<void> {
   try {
     await colorsCopyCode();
     copied.value = true;
-    clearTimeout(copiedTimer);
-    copiedTimer = setTimeout(() => {
-      copied.value = false;
-    }, COPIED_MS);
   } catch (error) {
     errors.reportFailure(error);
   }
 }
-onBeforeUnmount(() => clearTimeout(copiedTimer));
 
 /** The field is read at every change; an empty one says nothing. */
 async function read(text: string): Promise<void> {
