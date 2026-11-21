@@ -312,10 +312,14 @@ pub async fn check(app: &AppHandle) {
 }
 
 /// Downloads the release build, checks it and writes it to a file for
-/// wchisp.
+/// wchisp. A local test build is only opened, so that a wrong path stops the
+/// update before the flash erases the lamp.
 async fn download(app: &AppHandle, release: &Release) -> Result<PathBuf, String> {
     let (hex, signature) = match &release.source {
-        Source::Local(path) => return Ok(path.clone()),
+        Source::Local(path) => {
+            std::fs::File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
+            return Ok(path.clone());
+        }
         Source::GitHub { hex, signature } => (hex, signature),
     };
     let data = get_at_most(app, hex, MAX_HEX).await?;
