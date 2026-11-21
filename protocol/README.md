@@ -276,7 +276,7 @@ protocol major.
 | 5 | 1 | board revision |
 | 6 | 12 | chip unique ID, most significant byte first (also the USB serial number) |
 | 18 | 4 | capabilities, see below |
-| 22 | 1 | reset cause: 0 unknown, 1 power-on, 2 reset pin, 3 software, 4 watchdog, 5 window watchdog, 6 low power |
+| 22 | 1 | reset cause: 0 unknown, 1 power-on, 2 reset pin, 3 software, 4 watchdog; 5 and 6 reserved |
 | 23 | 1 | flags: bit 0 debug build, bit 1 a fault occurred before the last reset |
 | 24 | 4 | fault `mcause` (0 without fault) |
 | 28 | 4 | fault `mepc` (0 without fault) |

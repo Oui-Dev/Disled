@@ -134,8 +134,6 @@ wire_enum!(ResetCause {
     Pin = 2,
     Software = 3,
     Watchdog = 4,
-    WindowWatchdog = 5,
-    LowPower = 6,
 });
 wire_enum!(TouchState { Calibrating = 0, Idle = 1, Pressed = 2 });
 wire_enum!(
