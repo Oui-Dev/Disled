@@ -69,16 +69,16 @@ fn files(folder: &Path) -> Result<Vec<(String, PathBuf, Metadata)>, Reason> {
     let mut pending = vec![(String::new(), folder.to_owned())];
     let mut bytes = 0;
     while let Some((prefix, dir)) = pending.pop() {
-        let entries = fs::read_dir(&dir).map_err(|_| Reason::Missing)?;
+        let entries = fs::read_dir(&dir).map_err(|_| Reason::Io)?;
         for entry in entries {
-            let entry = entry.map_err(|_| Reason::Missing)?;
+            let entry = entry.map_err(|_| Reason::Io)?;
             let name = entry.file_name().to_string_lossy().into_owned();
             let relative = if prefix.is_empty() {
                 name
             } else {
                 format!("{prefix}/{name}")
             };
-            let metadata = fs::symlink_metadata(entry.path()).map_err(|_| Reason::Missing)?;
+            let metadata = fs::symlink_metadata(entry.path()).map_err(|_| Reason::Io)?;
             if is_link(&metadata) {
                 return Err(Reason::Link { path: relative });
             }
@@ -103,9 +103,7 @@ fn files(folder: &Path) -> Result<Vec<(String, PathBuf, Metadata)>, Reason> {
 pub fn fingerprint(folder: &Path, cache: &mut Cache) -> Result<String, Reason> {
     let mut list = Sha256::new();
     for (relative, path, metadata) in files(folder)? {
-        let digest = cache
-            .digest(&path, &metadata)
-            .map_err(|_| Reason::Missing)?;
+        let digest = cache.digest(&path, &metadata).map_err(|_| Reason::Io)?;
         list.update(format!("{relative}\0{}\0{digest}\n", metadata.len()));
     }
     Ok(hex(&list.finalize()))
@@ -144,11 +142,11 @@ impl Unpacked {
     pub fn install(self) -> Result<String, Reason> {
         let destination = self.folder.with_file_name(&self.id);
         if destination.exists() {
-            fs::remove_dir_all(&destination).map_err(|_| Reason::Missing)?;
+            fs::remove_dir_all(&destination).map_err(|_| Reason::Io)?;
         }
         fs::rename(&self.folder, &destination).map_err(|_| {
             let _ = fs::remove_dir_all(&self.folder);
-            Reason::Missing
+            Reason::Io
         })?;
         Ok(self.id)
     }
@@ -157,11 +155,11 @@ impl Unpacked {
 /// Unpacks the plugin of a zip file, whose `plugin.json` sits at its root or
 /// in its only folder, after checking every path, and reads its manifest.
 pub fn unpack(zip: impl Read + Seek, plugins: &Path) -> Result<Unpacked, Reason> {
-    let mut archive = zip::ZipArchive::new(zip).map_err(|_| Reason::Missing)?;
+    let mut archive = zip::ZipArchive::new(zip).map_err(|_| Reason::Io)?;
     // First the names, checked before anything is written.
     let mut names = Vec::with_capacity(archive.len());
     for index in 0..archive.len() {
-        let entry = archive.by_index(index).map_err(|_| Reason::Missing)?;
+        let entry = archive.by_index(index).map_err(|_| Reason::Io)?;
         let raw = entry
             .name()
             .map(|name| name.into_owned())
@@ -180,12 +178,8 @@ pub fn unpack(zip: impl Read + Seek, plugins: &Path) -> Result<Unpacked, Reason>
     let root = root(&names)?;
 
     let target = import_folder(plugins);
-    let extracted = extract(&mut archive, &names, &root, &target).and_then(|()| {
-        let text = fs::read_to_string(target.join(manifest::FILE)).map_err(|_| Reason::Missing)?;
-        let value =
-            serde_json::from_str(&text).map_err(|error| Reason::Json { line: error.line() })?;
-        Manifest::from_value(&value, None)
-    });
+    let extracted = extract(&mut archive, &names, &root, &target)
+        .and_then(|()| Manifest::from_value(&manifest::read_json(&target)?, None));
     match extracted {
         Ok(manifest) => Ok(Unpacked {
             folder: target,
@@ -228,7 +222,7 @@ fn extract<R: Read + Seek>(
     root: &Path,
     target: &Path,
 ) -> Result<(), Reason> {
-    fs::create_dir_all(target).map_err(|_| Reason::Missing)?;
+    fs::create_dir_all(target).map_err(|_| Reason::Io)?;
     let mut bytes = 0;
     for (index, (path, dir)) in names.iter().enumerate() {
         let Ok(inside) = path.strip_prefix(root) else {
@@ -239,24 +233,24 @@ fn extract<R: Read + Seek>(
         }
         let destination = target.join(inside);
         if *dir {
-            fs::create_dir_all(&destination).map_err(|_| Reason::Missing)?;
+            fs::create_dir_all(&destination).map_err(|_| Reason::Io)?;
             continue;
         }
         if let Some(parent) = destination.parent() {
-            fs::create_dir_all(parent).map_err(|_| Reason::Missing)?;
+            fs::create_dir_all(parent).map_err(|_| Reason::Io)?;
         }
-        let mut entry = archive.by_index(index).map_err(|_| Reason::Missing)?;
-        let mut file = File::create(&destination).map_err(|_| Reason::Missing)?;
+        let mut entry = archive.by_index(index).map_err(|_| Reason::Io)?;
+        let mut file = File::create(&destination).map_err(|_| Reason::Io)?;
         // The sizes count while the files come out, whatever the archive
         // says of them.
         let left = MAX_BYTES - bytes;
         let copied =
-            io::copy(&mut (&mut entry).take(left + 1), &mut file).map_err(|_| Reason::Missing)?;
+            io::copy(&mut (&mut entry).take(left + 1), &mut file).map_err(|_| Reason::Io)?;
         bytes += copied;
         if bytes > MAX_BYTES {
             return Err(Reason::Size);
         }
-        file.flush().map_err(|_| Reason::Missing)?;
+        file.flush().map_err(|_| Reason::Io)?;
     }
     Ok(())
 }
@@ -424,6 +418,8 @@ mod tests {
             &[("a/plugin.json", MANIFEST), ("b/plugin.json", MANIFEST)],
         );
         assert_eq!(import(&archive, &plugins), Err(Reason::Missing));
+        fs::write(&archive, "not a zip").expect("write");
+        assert_eq!(import(&archive, &plugins), Err(Reason::Io));
         zip(&archive, &[("plugin.json", "{ \"api\": 1 }")]);
         assert_eq!(
             import(&archive, &plugins),

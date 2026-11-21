@@ -1021,7 +1021,7 @@ pub fn remove(app: &AppHandle, id: &str) -> Result<(), String> {
 /// Imports the plugin of a zip file, in place of the plugin of the same id,
 /// whose token and colors stay. Returns its id; the approval follows.
 pub fn import(app: &AppHandle, zip: &Path) -> Result<String, Reason> {
-    let zip = File::open(zip).map_err(|_| Reason::Missing)?;
+    let zip = File::open(zip).map_err(|_| Reason::Io)?;
     put_in_place(app, unpack(app, zip)?)
 }
 
@@ -1045,7 +1045,7 @@ fn import_reviewed(
 /// Unpacks a zip file in the folder of the plugins, under a name that no
 /// plugin takes until it is put in place.
 fn unpack(app: &AppHandle, zip: impl Read + Seek) -> Result<scan::Unpacked, Reason> {
-    let folder = read(app, |host| host.folder.clone()).ok_or(Reason::Missing)?;
+    let folder = read(app, |host| host.folder.clone()).ok_or(Reason::Io)?;
     let _ = std::fs::create_dir_all(&folder);
     scan::unpack(zip, &folder)
 }
