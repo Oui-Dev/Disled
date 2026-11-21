@@ -7,27 +7,8 @@
  */
 #include <unity.h>
 
+#include "test_support.h"
 #include "touch_detector.h"
-
-#define BASELINE 2000u
-/* A touch lowers the reading by 5 % (50 per mille). */
-#define TOUCHED 1900u
-
-static const touch_config_t config = {
-    .window_samples = 20,
-    .calibration_windows = 8,
-    .baseline_shift = 6,
-    .press_permille = 40,
-    .release_permille = 25,
-    .press_rise_permille = 18,
-    .proximity_permille = 10,
-    .debounce_ms = 60,
-    .rearm_ms = 100,
-    .long_press_ms = 2000,
-    .object_ms = 10000,
-    .inverted_permille = 30,
-    .inverted_ms = 1000,
-};
 
 static touch_detector_t td;
 static uint32_t now_ms;
@@ -79,7 +60,7 @@ void setUp(void)
 {
     now_ms = 0;
     reset_counts();
-    touch_detector_init(&td, &config);
+    touch_detector_init(&td, &touch_config);
     hold(BASELINE, 200); /* 8 calibration windows take 160 ms */
 }
 
@@ -191,7 +172,7 @@ static void test_baseline_follows_slow_drift(void)
 
 static void test_finger_at_power_up_recalibrates(void)
 {
-    touch_detector_init(&td, &config);
+    touch_detector_init(&td, &touch_config);
     hold(TOUCHED, 200);   /* calibrated with the finger on the lid */
     hold(BASELINE, 1500); /* finger lifted: reading above the baseline */
     TEST_ASSERT_EQUAL_UINT(0, short_presses + long_presses);
@@ -385,7 +366,7 @@ static void hold_desk_noise(uint32_t duration_ms)
 
 static void test_no_correction_keeps_the_configured_thresholds(void)
 {
-    const touch_config_t *const configs[] = { &config, &board_config };
+    const touch_config_t *const configs[] = { &touch_config, &board_config };
     for (size_t i = 0; i < sizeof configs / sizeof configs[0]; i++) {
         const touch_config_t *cfg = configs[i];
         touch_detector_init(&td, cfg);
@@ -449,14 +430,14 @@ static void check_every_correction(const touch_config_t *cfg)
 static void test_every_correction_keeps_the_hysteresis_above_the_noise(void)
 {
     check_every_correction(&board_config);
-    check_every_correction(&config);
+    check_every_correction(&touch_config);
 }
 
 static void test_the_release_floor_bounds_the_most_sensitive_corrections(void)
 {
     /* Release 25 and proximity 10: from +43 % on, the release would fall
      * under 15, so +50 acts as +42. */
-    start(&config, 50);
+    start(&touch_config, 50);
     TEST_ASSERT_EQUAL_INT8(42, touch_detector_sensitivity(&td));
     assert_thresholds(23, 15, 10);
 

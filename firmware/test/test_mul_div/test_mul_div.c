@@ -8,6 +8,7 @@
 #include <unity.h>
 
 #include "mul_div.h"
+#include "test_support.h"
 
 void setUp(void)
 {
@@ -48,15 +49,6 @@ static void test_saturates_beyond_32_bits(void)
     TEST_ASSERT_EQUAL_UINT32(UINT32_MAX, mul_div(0x20000, 0xFFFF, 1));
     TEST_ASSERT_EQUAL_UINT32(UINT32_MAX, mul_div(0x1FFFF, 0xFFFF, 1));
     TEST_ASSERT_EQUAL_UINT32(UINT32_MAX, mul_div(131075, 0xFFFF, 2));
-}
-
-static uint32_t next_random(uint32_t *state)
-{
-    /* xorshift32: the same sequence on every run. */
-    *state ^= *state << 13;
-    *state ^= *state >> 17;
-    *state ^= *state << 5;
-    return *state;
 }
 
 static void test_matches_64_bit_arithmetic(void)

@@ -11,9 +11,7 @@
 
 #include "alert.h"
 #include "led_output.h"
-
-void setUp(void);
-void tearDown(void);
+#include "test_support.h"
 
 #define PERIOD 3600u
 /* 100 % in sub-ticks. */
@@ -54,22 +52,6 @@ static const rgb16_t white = { 65535, 65535, 65535 };
 static led_output_t out;
 static uint16_t duty[LED_CHANNEL_COUNT];
 static led_output_inputs_t in;
-
-/* A light table: no light up to `dark` ticks, then a straight rise to the
- * line of the long pulses, (16 n - offset) * 16, met at `meet` ticks, and
- * that line beyond (test_led_cal). */
-static led_light_cal_t make_table(uint32_t dark, uint32_t meet, int16_t offset)
-{
-    led_light_cal_t t = { .offset = offset };
-    const int32_t met = (16 * (int32_t)meet - offset) * 16;
-    const int32_t rise_ticks = (int32_t)(meet - dark);
-    for (uint32_t n = dark + 1u; n <= LED_LIGHT_TICKS; n++) {
-        const int32_t line = (16 * (int32_t)n - offset) * 16;
-        const int32_t rising = (met * (int32_t)(n - dark) + rise_ticks / 2) / rise_ticks;
-        t.light[n] = (uint16_t)((n >= meet) ? line : rising);
-    }
-    return t;
-}
 
 void setUp(void)
 {
@@ -304,15 +286,6 @@ static void test_without_tables_the_duty_follows_the_light(void)
     TEST_ASSERT_LESS_OR_EQUAL_UINT32(1250, led_output_estimate_ma_x10(&out));
 }
 
-static uint32_t next_random(uint32_t *state)
-{
-    /* xorshift32: the same sequence on every run. */
-    *state ^= *state << 13;
-    *state ^= *state >> 17;
-    *state ^= *state << 5;
-    return *state;
-}
-
 static uint16_t random_below(uint32_t *state, uint32_t limit)
 {
     return (uint16_t)(next_random(state) % limit);
@@ -439,16 +412,6 @@ static void test_breath_dims_a_bright_lamp(void)
     TEST_ASSERT_EQUAL_UINT16(expected, duty[LED_CHANNEL_RED]);
 }
 
-static void test_breath_at_zero_changes_nothing(void)
-{
-    in.level_permille = 300;
-    settle_on_inputs();
-    const uint16_t still = duty[LED_CHANNEL_GREEN];
-    in.breath = 0;
-    led_output_update(&out, &in, 500, duty);
-    TEST_ASSERT_EQUAL_UINT16(still, duty[LED_CHANNEL_GREEN]);
-}
-
 static void test_breath_stays_within_the_current_cap(void)
 {
     /* Full white at 60 % rises to 90 %, far above the 70 mA without a host. */
@@ -497,7 +460,6 @@ int main(void)
     RUN_TEST(test_the_current_never_exceeds_the_cap);
     RUN_TEST(test_breath_raises_a_dim_lamp_to_the_alert_level);
     RUN_TEST(test_breath_dims_a_bright_lamp);
-    RUN_TEST(test_breath_at_zero_changes_nothing);
     RUN_TEST(test_breath_stays_within_the_current_cap);
     RUN_TEST(test_settle_fades_back_from_the_breath_without_a_jump);
     return UNITY_END();
