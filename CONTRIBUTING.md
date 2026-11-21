@@ -112,7 +112,7 @@ sensor, USB sleep. [docs/bringup.md](docs/bringup.md) lists the checks.
 
 - The checks enforce the formatting: clang-format for the firmware, Biome
   for the front end, rustfmt for Rust, and [`.editorconfig`](.editorconfig)
-  for the rest.
+  for the rest. Biome also checks the Tailwind classes.
 - The project is named Disled. The name stays in capitals only in the
   identifiers written in capitals, such as `DISLED_FIRMWARE_HEX`, in the
   `DISLED2-` prefix of the share codes and in the changelogs.

@@ -17,7 +17,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <div class="flex flex-col gap-2 pt-1 text-sm text-default">
+  <div class="text-default flex flex-col gap-2 pt-1 text-sm">
     <p v-if="flash.step === 'downloading'" class="text-muted">
       {{ t('lampUpdate.downloading', { version }) }}
     </p>

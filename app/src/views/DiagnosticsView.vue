@@ -42,9 +42,9 @@ const tabs = computed<TabsItem[]>(() => [
 
 <template>
   <main class="flex h-screen flex-col">
-    <DiagnosticsHeader class="shrink-0 border-b border-default px-5 py-3" />
+    <DiagnosticsHeader class="border-default shrink-0 border-b px-5 py-3" />
 
-    <p v-if="lockedLine" class="p-5 text-sm text-muted">{{ lockedLine }}</p>
+    <p v-if="lockedLine" class="text-muted p-5 text-sm">{{ lockedLine }}</p>
     <div v-else class="flex min-h-0 flex-1">
       <!-- As wide as the popup, so that the tiles and their names lay out as
            they do there. The border goes to the telemetry, so that it takes
@@ -76,7 +76,7 @@ const tabs = computed<TabsItem[]>(() => [
         <template #self-test><DiagnosticsSelfTest /></template>
       </UTabs>
 
-      <DiagnosticsTelemetry class="min-w-0 flex-1 border-s border-default" />
+      <DiagnosticsTelemetry class="border-default min-w-0 flex-1 border-s" />
     </div>
   </main>
 </template>

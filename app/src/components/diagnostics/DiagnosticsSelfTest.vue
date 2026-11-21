@@ -54,12 +54,12 @@ const checks = computed(() => {
 </script>
 
 <template>
-  <p v-if="!lamp.connection.connected" class="text-sm text-muted">
+  <p v-if="!lamp.connection.connected" class="text-muted text-sm">
     {{ t('diagnostics.noLamp') }}
   </p>
   <div v-else class="flex flex-col gap-4">
-    <p class="text-sm text-muted">{{ t('selfTest.instructions') }}</p>
-    <ul aria-live="polite" class="flex flex-col divide-y divide-default">
+    <p class="text-muted text-sm">{{ t('selfTest.instructions') }}</p>
+    <ul aria-live="polite" class="divide-default flex flex-col divide-y">
       <li v-for="check in checks" :key="check.label" class="flex items-center gap-2.5 py-2 text-sm">
         <UIcon
           :name="STATUS[check.status].icon"
@@ -68,7 +68,7 @@ const checks = computed(() => {
         />
         <span>{{ check.label }}</span>
         <span class="sr-only">{{ t(`selfTest.${check.status}`) }}</span>
-        <span class="ms-auto text-end text-xs text-muted tabular-nums">{{ check.detail }}</span>
+        <span class="text-muted ms-auto text-end text-xs tabular-nums">{{ check.detail }}</span>
       </li>
     </ul>
     <UButton

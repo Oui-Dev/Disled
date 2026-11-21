@@ -52,17 +52,17 @@ const figures = computed(() => {
     <div
       v-for="figure in figures"
       :key="figure.label"
-      class="flex flex-col gap-0.5 rounded-lg border border-default px-3.5 py-3"
+      class="border-default flex flex-col gap-0.5 rounded-lg border px-3.5 py-3"
     >
-      <dt class="flex items-center gap-1.5 text-xs text-muted">
+      <dt class="text-muted flex items-center gap-1.5 text-xs">
         <UIcon :name="figure.icon" class="size-3.5 shrink-0" />
         {{ figure.label }}
       </dt>
       <!-- Tabular figures, since the values change with every sample. -->
-      <dd class="text-lg font-semibold text-highlighted tabular-nums first-letter:uppercase">
+      <dd class="text-highlighted text-lg font-semibold tabular-nums first-letter:uppercase">
         {{ figure.value }}
       </dd>
-      <dd class="text-xs text-muted tabular-nums">{{ figure.detail }}</dd>
+      <dd class="text-muted text-xs tabular-nums">{{ figure.detail }}</dd>
     </div>
   </dl>
 </template>

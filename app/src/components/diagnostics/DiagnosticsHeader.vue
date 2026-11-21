@@ -34,7 +34,7 @@ function restart(): Promise<void> {
     <div class="flex items-start justify-between gap-4">
       <div class="flex min-w-0 flex-col gap-1">
         <div class="flex flex-wrap items-center gap-3">
-          <h1 class="text-lg font-bold tracking-wide text-highlighted">Disled</h1>
+          <h1 class="text-highlighted text-lg font-bold tracking-wide">Disled</h1>
           <UBadge
             :color="connected ? 'primary' : 'neutral'"
             variant="subtle"
@@ -42,7 +42,7 @@ function restart(): Promise<void> {
             :label="connected ? t('diagnostics.connected') : t('status.noLamp')"
           />
           <template v-if="connected">
-            <span class="text-sm text-muted">
+            <span class="text-muted text-sm">
               {{ t('diagnostics.firmware', { version: lamp.info?.firmware_version ?? '…' }) }}
             </span>
             <!-- Neutral text, because amber text on its tint is not readable; the icon carries the color. -->
@@ -56,7 +56,7 @@ function restart(): Promise<void> {
             />
           </template>
         </div>
-        <p v-if="connected" class="text-xs text-muted">
+        <p v-if="connected" class="text-muted text-xs">
           {{ t('diagnostics.serial', { serial: lamp.connection.serial ?? '?' }) }}
           <template v-if="lamp.info">
             ·

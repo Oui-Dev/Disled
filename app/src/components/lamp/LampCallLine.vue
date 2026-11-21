@@ -68,17 +68,17 @@ function choose(slot: number): void {
   <template v-if="shown && calls">
     <p
       v-if="back"
-      class="in-call -mx-1.5 flex h-7 items-center gap-1.5 rounded-md px-1.5 text-xs whitespace-nowrap text-muted"
+      class="in-call text-muted -mx-1.5 flex h-7 items-center gap-1.5 rounded-md px-1.5 text-xs whitespace-nowrap"
       :style="{ '--call': callColor?.hex }"
       :title="t('calls.detected')"
     >
       <UIcon name="i-lucide-mic" class="size-3.5 shrink-0 text-(--call)" />
       <span class="sr-only">{{ t('calls.micPrefix') }} </span>
-      <b class="font-semibold text-highlighted">{{ t('calls.inCall') }}</b>
+      <b class="text-highlighted font-semibold">{{ t('calls.inCall') }}</b>
       {{ ' ' }}
       <span class="truncate">{{ t('calls.then', { name: back.name }) }}</span>
     </p>
-    <div v-else class="flex h-7 min-w-0 items-center gap-1.5 text-xs whitespace-nowrap text-muted">
+    <div v-else class="text-muted flex h-7 min-w-0 items-center gap-1.5 text-xs whitespace-nowrap">
       <UIcon name="i-lucide-phone" class="size-3.5 shrink-0" />
       <span>{{ t('calls.during') }}</span>
       <UPopover
@@ -95,7 +95,7 @@ function choose(slot: number): void {
           trailing-icon="i-lucide-chevron-down"
           :disabled="lamp.locked"
           :aria-label="t('calls.colorLabel', { name: callColor?.name ?? '' })"
-          class="min-w-0 gap-0.5 p-0 text-highlighted"
+          class="text-highlighted min-w-0 gap-0.5 p-0"
           :ui="{ trailingIcon: 'size-3.5 text-muted' }"
         />
 
@@ -103,7 +103,7 @@ function choose(slot: number): void {
           <div v-bind="listeners">
             <div class="flex h-6 items-center justify-between gap-2 px-1 text-xs font-medium">
               <span class="text-highlighted">{{ t('calls.popoverTitle') }}</span>
-              <span class="truncate text-muted">{{ callColor?.name }}</span>
+              <span class="text-muted truncate">{{ callColor?.name }}</span>
             </div>
             <URadioGroup
               :model-value="calls.color"

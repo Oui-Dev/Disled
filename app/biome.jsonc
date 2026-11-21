@@ -34,7 +34,15 @@
     // the `fit` of the popup for a focused test.
     "domains": { "test": "none" },
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      // Nursery rules: a Biome update may rename them, which `biome migrate --write` follows.
+      "nursery": {
+        "noTailwindLegacyUtilities": "error",
+        "noTailwindRawColors": "error",
+        "useTailwindShorthandClasses": "error",
+        "useTailwindStaticClassStrings": "error",
+        "useTailwindVariablesShorthand": "error"
+      }
     }
   },
   "overrides": [
@@ -72,7 +80,8 @@
     "enabled": true,
     "actions": {
       "source": {
-        "organizeImports": "on"
+        "organizeImports": "on",
+        "noDuplicateClasses": "on"
       }
     }
   }

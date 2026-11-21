@@ -39,9 +39,9 @@ const hint = computed(() => `${t('settings.touch.hint')} · ${correction.phrase(
 
 <template>
   <fieldset class="flex min-w-0 flex-col gap-2">
-    <legend class="mb-2 text-sm font-medium text-default">{{ t('settings.touch.title') }}</legend>
+    <legend class="text-default mb-2 text-sm font-medium">{{ t('settings.touch.title') }}</legend>
     <div class="flex h-5 items-center gap-2.5">
-      <span class="shrink-0 text-xs text-muted">{{ t('settings.touch.less') }}</span>
+      <span class="text-muted shrink-0 text-xs">{{ t('settings.touch.less') }}</span>
       <USlider
         :model-value="value"
         :min="TOUCH_SENSITIVITY_MIN"
@@ -56,8 +56,8 @@ const hint = computed(() => `${t('settings.touch.hint')} · ${correction.phrase(
         @update:model-value="move"
         @change="release"
       />
-      <span class="shrink-0 text-xs text-muted">{{ t('settings.touch.more') }}</span>
+      <span class="text-muted shrink-0 text-xs">{{ t('settings.touch.more') }}</span>
     </div>
-    <p id="touch-sensitivity-hint" class="text-xs text-muted">{{ hint }}</p>
+    <p id="touch-sensitivity-hint" class="text-muted text-xs">{{ hint }}</p>
   </fieldset>
 </template>

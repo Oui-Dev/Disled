@@ -84,7 +84,7 @@ async function remove(): Promise<void> {
       />
       <div class="flex min-w-0 flex-1 flex-col gap-0.5">
         <div class="flex flex-wrap items-center gap-2">
-          <h2 class="truncate text-base font-semibold text-highlighted">{{ plugin.name }}</h2>
+          <h2 class="text-highlighted truncate text-base font-semibold">{{ plugin.name }}</h2>
           <UBadge
             v-if="driving"
             color="primary"
@@ -93,7 +93,7 @@ async function remove(): Promise<void> {
             :label="t('integrations.driving')"
           />
         </div>
-        <p v-if="plugin.version" class="text-sm text-muted">
+        <p v-if="plugin.version" class="text-muted text-sm">
           {{ t('integrations.meta', { version: plugin.version, author: plugin.author ?? '' }) }}
         </p>
       </div>
@@ -105,7 +105,7 @@ async function remove(): Promise<void> {
       />
     </div>
 
-    <p v-if="plugin.description" class="text-sm text-default">{{ plugin.description }}</p>
+    <p v-if="plugin.description" class="text-default text-sm">{{ plugin.description }}</p>
 
     <!-- On the baseline, the chip sits level with the lower case letters,
          below the middle of the line, and beside the first line of a long text. -->
@@ -130,15 +130,15 @@ async function remove(): Promise<void> {
     <IntegrationsNote v-if="!fresh && plugin.note" :plugin="plugin" />
 
     <section v-if="!plugin.unreadable" class="flex flex-col gap-3">
-      <h3 class="text-sm font-semibold text-highlighted">{{ t('integrations.can') }}</h3>
+      <h3 class="text-highlighted text-sm font-semibold">{{ t('integrations.can') }}</h3>
       <IntegrationsPermissions :plugin="plugin" />
     </section>
 
     <IntegrationsColors v-if="!fresh && plugin.capabilities.color" :plugin="plugin" />
 
-    <footer class="mt-auto flex items-center gap-4 border-t border-default pt-4">
+    <footer class="border-default mt-auto flex items-center gap-4 border-t pt-4">
       <template v-if="!fresh && !plugin.unreadable && plugin.capabilities.events">
-        <span class="text-xs text-muted">{{ t('integrations.tokenOwn') }}</span>
+        <span class="text-muted text-xs">{{ t('integrations.tokenOwn') }}</span>
         <UButton color="neutral" variant="link" size="sm" class="p-0" @click="regenerating = true">
           {{ t('integrations.regenerate') }}
         </UButton>

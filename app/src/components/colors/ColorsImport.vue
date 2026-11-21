@@ -46,13 +46,13 @@ defineExpose({ apply });
     <h2
       data-page-heading
       tabindex="-1"
-      class="text-sm font-semibold text-highlighted focus:outline-none"
+      class="text-highlighted text-sm font-semibold focus:outline-none"
     >
       {{ t('colors.import.title') }}
     </h2>
 
     <section v-for="group in groups" :key="group.title" class="flex flex-col gap-1.5">
-      <h3 class="text-xs font-semibold text-muted">{{ group.title }}</h3>
+      <h3 class="text-muted text-xs font-semibold">{{ group.title }}</h3>
       <ul class="flex flex-wrap gap-x-4 gap-y-1.5">
         <li
           v-for="color in group.colors"
@@ -66,8 +66,8 @@ defineExpose({ apply });
     </section>
 
     <section class="flex flex-col gap-1.5">
-      <h3 class="text-xs font-semibold text-muted">{{ t('colors.import.cycle') }}</h3>
-      <p class="text-xs text-default">{{ cycleText }}</p>
+      <h3 class="text-muted text-xs font-semibold">{{ t('colors.import.cycle') }}</h3>
+      <p class="text-default text-xs">{{ cycleText }}</p>
     </section>
 
     <UAlert

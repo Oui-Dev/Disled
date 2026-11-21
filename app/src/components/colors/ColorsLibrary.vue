@@ -88,11 +88,11 @@ const groups = computed(() => [colors.builtIn, colors.custom].filter((group) => 
       <h2
         data-page-heading
         tabindex="-1"
-        class="flex-1 text-sm font-semibold text-highlighted focus:outline-none"
+        class="text-highlighted flex-1 text-sm font-semibold focus:outline-none"
       >
         {{ t('colors.library.title') }}
       </h2>
-      <span aria-hidden="true" class="w-6 text-center text-[11px] text-muted">
+      <span aria-hidden="true" class="text-muted w-6 text-center text-[11px]">
         {{ t('colors.library.touch') }}
       </span>
       <span aria-hidden="true" class="w-6" />
@@ -108,7 +108,7 @@ const groups = computed(() => [colors.builtIn, colors.custom].filter((group) => 
               class="swatch size-5 shrink-0"
               :style="{ background: color.hex }"
             />
-            <span class="min-w-0 flex-1 truncate text-sm text-default" :title="color.name">
+            <span class="text-default min-w-0 flex-1 truncate text-sm" :title="color.name">
               {{ color.name }}
             </span>
             <!-- Filled with its rank in the cycle, dashed outside it. -->
@@ -116,7 +116,7 @@ const groups = computed(() => [colors.builtIn, colors.custom].filter((group) => 
               color="neutral"
               :variant="place(color.slot) ? 'solid' : 'ghost'"
               class="size-6 shrink-0 justify-center rounded-full p-0 text-[11px] font-semibold tabular-nums"
-              :class="{ 'border border-dashed border-accented text-muted': !place(color.slot) }"
+              :class="{ 'border-accented text-muted border border-dashed': !place(color.slot) }"
               :aria-pressed="place(color.slot) > 0"
               :title="
                 place(color.slot) ? t('colors.cycle.removeTitle') : t('colors.cycle.addTitle')
@@ -156,7 +156,7 @@ const groups = computed(() => [colors.builtIn, colors.custom].filter((group) => 
       >
         <span
           aria-hidden="true"
-          class="flex size-5 shrink-0 items-center justify-center rounded-[20%] border border-dashed border-accented"
+          class="border-accented flex size-5 shrink-0 items-center justify-center rounded-[20%] border border-dashed"
         >
           <UIcon name="i-lucide-plus" class="size-3.5" />
         </span>
@@ -164,14 +164,14 @@ const groups = computed(() => [colors.builtIn, colors.custom].filter((group) => 
       </UButton>
     </div>
 
-    <p class="flex items-start gap-2 text-xs text-default">
-      <UIcon name="i-lucide-repeat" class="mt-0.5 size-3.5 shrink-0 text-muted" />
+    <p class="text-default flex items-start gap-2 text-xs">
+      <UIcon name="i-lucide-repeat" class="text-muted mt-0.5 size-3.5 shrink-0" />
       <span>
         <span class="sr-only">{{ t('colors.library.cycle') }}</span>
         {{ cycleText }}
       </span>
     </p>
-    <p class="flex items-start gap-2 text-xs text-muted">
+    <p class="text-muted flex items-start gap-2 text-xs">
       <UIcon name="i-lucide-info" class="mt-0.5 size-3.5 shrink-0" />
       <span>{{ t('colors.library.appOnly') }}</span>
     </p>
@@ -182,7 +182,7 @@ const groups = computed(() => [colors.builtIn, colors.custom].filter((group) => 
       icon="i-lucide-share-2"
       :label="t('colors.library.share')"
       trailing-icon="i-lucide-chevron-right"
-      class="flex w-full gap-2 px-0 py-1 text-start text-sm font-normal text-default"
+      class="text-default flex w-full gap-2 px-0 py-1 text-start text-sm font-normal"
       :ui="{ leadingIcon: 'size-4 text-muted', label: 'flex-1', trailingIcon: 'size-4 text-muted' }"
       @click="emit('share')"
     />

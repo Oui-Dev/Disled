@@ -51,8 +51,8 @@ function install(): void {
 <template>
   <main class="flex min-h-screen flex-col gap-5 p-6">
     <header class="flex flex-col gap-1">
-      <h1 class="text-lg font-bold text-highlighted">{{ t('lampUpdate.title') }}</h1>
-      <p class="text-sm text-muted">{{ summary }}</p>
+      <h1 class="text-highlighted text-lg font-bold">{{ t('lampUpdate.title') }}</h1>
+      <p class="text-muted text-sm">{{ summary }}</p>
     </header>
 
     <i18n-t
