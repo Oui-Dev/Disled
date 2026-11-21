@@ -62,12 +62,12 @@ the top of its range.
 **Sleep.** When the computer sleeps, the lamp turns off. It comes back when
 the computer wakes up.
 
-**On Windows, keep the app running.** Windows puts a USB device to sleep
-a second or two after the last program that uses it lets it go. So
-when Disled is not running, as after **Quit**, the lamp turns off and its
-touch does nothing, as when the computer sleeps. It comes back as soon as
-Disled starts again. The app starts with your session, unless you turned
-that setting off. On a phone charger, the lamp keeps working on its own.
+**On Windows, keep the app running.** Windows puts a USB device to sleep a
+second or two after the last program that uses it lets it go. So when
+Disled is not running, as after **Quit**, the lamp turns off and its touch
+does nothing, as when the computer sleeps. It comes back as soon as Disled
+starts again. The app starts with your session, unless you turned that
+setting off. On a phone charger, the lamp keeps working on its own.
 
 ## Install the app
 
@@ -91,9 +91,8 @@ once:
   password.
 - **Linux.** The package also installs a rule that lets the app use the
   lamp without root privileges. It applies at once, without unplugging the
-  lamp.
-  The calls need `libpulse0`, which most desktops have and the package
-  recommends.
+  lamp. The calls need `libpulse0`, which most desktops have and the
+  package recommends.
 
 From then on the app starts with your session, unless you turn that setting
 off. It lives in the notification area on Windows, the menu bar on macOS
@@ -311,11 +310,11 @@ off stays off.
 
 Unless you turn off **Check for updates every day**, the app looks for a
 new version when it starts, then once a day. When there is one,
-**Settings** turns green at the bottom of
-the popup, and the settings page says "Disled X.Y.Z is available." with
-**Install and restart**. The app then downloads the update, installs it and
-starts again by itself, its popup open. Updates are signed, so the app
-installs only versions published by the Disled project.
+**Settings** turns green at the bottom of the popup, and the settings page
+says "Disled X.Y.Z is available." with **Install and restart**. The app
+then downloads the update, installs it and starts again by itself, its
+popup open. Updates are signed, so the app installs only versions published
+by the Disled project.
 
 ### The lamp
 
@@ -374,8 +373,8 @@ as above. It works with or without a lamp connected, so a lamp that no
 longer starts gets its firmware back through its update mode.
 
 **Back to Disled v1.** The window lists firmware 2.x only. To go back to
-Disled v1, flash firmware 1.0.0 by hand ([flashing guide](flashing.md#flash)),
-then install Disled 1.1.2 from its
+Disled v1, flash firmware 1.0.0 by hand
+([flashing guide](flashing.md#flash)), then install Disled 1.1.2 from its
 [release](https://github.com/Oui-Dev/Disled/releases/tag/app-v1.1.2). It
 will offer Disled v2 again: turn off **Check for updates every day** to
 silence it.

@@ -268,22 +268,21 @@ spectrum, inside the middle of its range:
 - The camera's color matrix clips negative values: blue light reads 0 in
   its red channel. So lights of different spectra do not add up in the
   camera, and a sum of channels cannot be read.
-- Its response curve comes from lights in exact ratios. One pulse of 2048
-  ticks every K periods, K from 1 to 32 (`pat`), read at every exposure that
-  keeps it in range, fits the curve of each camera channel together with
-  the exposure steps. Large K keeps the LED cold.
+- Its response curve comes from lights in exact ratios. One pulse of
+  2048 ticks every K periods, K from 1 to 32 (`pat`), read at every
+  exposure that keeps it in range, fits the curve of each camera channel
+  together with the exposure steps. Large K keeps the LED cold.
 
 **Light tables.** For each channel alone and each pulse length (every tick
 up to 32, then up to 3600), one pulse every K periods, with K and the
 exposure chosen so that the reading lands in range. A reference pattern
 read every six points corrects any drift. The lights of long pulses (128 to
-1024 ticks) fit a line, whose intercept is the offset: −12.5 to −14.4
-ticks, the light outlasting the duty. Below 128 ticks, the table
+1024 ticks) fit a line, whose intercept is the offset: −12.5 to
+−14.4 ticks, the light outlasting the duty. Below 128 ticks, the table
 keeps the measured lights, with the efficiency (light over the line)
-smoothed from 12 ticks on, and joins the line over its last 24 ticks.
-Below 8 ticks the light is too weak for the camera even at its longest
-exposure: those entries are approximate, and almost no light comes out
-below 5 ticks.
+smoothed from 12 ticks on, and joins the line over its last 24 ticks. Below
+8 ticks the light is too weak for the camera even at its longest exposure:
+those entries are approximate, and almost no light comes out below 5 ticks.
 
 **Colors.** No camera sees the narrow primaries of an LED as the eye does:
 through its color filters, the webcam put the green LED at xy (0.26,

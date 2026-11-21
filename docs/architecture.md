@@ -95,11 +95,11 @@ nests.
   development, 1.7 ms on the suspend clock: well within that second.
 - **Faults are reported.** A crash or a failed `DISLED_ASSERT` leaves its
   cause in the backup registers, then the chip resets. A failed assertion
-  shows as `mcause` 0x0A55nnnn, nnnn being its source line. The next boot reports
-  the fault in `INFO` and in `DIAGNOSTICS`. `DIAGNOSTICS`
-  also counts boots, watchdog resets and faults since power-up, and gives
-  the smallest stack margin (the boot fills the stack with a pattern) and
-  error counters.
+  shows as `mcause` 0x0A55nnnn, nnnn being its source line. The next boot
+  reports the fault in `INFO` and in `DIAGNOSTICS`. `DIAGNOSTICS` also
+  counts boots, watchdog resets and faults since power-up, and gives the
+  smallest stack margin (the boot fills the stack with a pattern) and error
+  counters.
 - **Crystal failure.** The firmware detects a failed crystal. It then keeps
   USB off, since the clock would be out of tolerance, and still runs the
   lamp locally.
@@ -127,7 +127,8 @@ leaves under 3 KB of flash.
 ### Configuration
 
 Every tunable lives in `src/app/app_config.h` or `src/app/app_config.c`,
-with the reason for its value. [bringup.md](bringup.md) checks them on a new board.
+with the reason for its value. [bringup.md](bringup.md) checks them on a
+new board.
 
 ### LED output
 
@@ -143,10 +144,10 @@ The slow gate edges (note N4 of
 short pulses give more light per tick than long ones, and the shortest
 none, so a measured table per channel (`led_cal`) turns light into duty.
 The table holds the measured light of every pulse length up to 128 ticks,
-and a straight line beyond. The dithering mixes two
-neighbouring lengths linearly, so the table inverts exactly. The fade mixes
-light, the alert breath scales it, and the current cap scales the three
-channels alike, from a bound that the duties cannot exceed.
+and a straight line beyond. The dithering mixes two neighbouring lengths
+linearly, so the table inverts exactly. The fade mixes light, the alert
+breath scales it, and the current cap scales the three channels alike, from
+a bound that the duties cannot exceed.
 
 The palette (`palette`) holds the four built-in colors and the custom ones
 that the host sets, all at full brightness; the level then scales their
