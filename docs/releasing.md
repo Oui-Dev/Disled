@@ -10,12 +10,17 @@ changelog. The maintainers release the hardware by hand
 | Firmware | `firmware/` | `fw-vX.Y.Z` | [firmware/CHANGELOG.md](../firmware/CHANGELOG.md) | the tag (`scripts/version.py`); `version.txt` only tracks it for release-please |
 | Desktop app | `app/` | `app-vX.Y.Z` | [app/CHANGELOG.md](../app/CHANGELOG.md) | `app/package.json`, read by `tauri.conf.json` |
 
+The firmware build, the lamp updates of the app and the release workflow
+rely on these tag names, which `component`, `include-component-in-tag` and
+`tag-separator` make in `release-please-config.json`.
+
 ## Flow
 
 1. Work on a branch and merge it into `main` with a pull request. The
    commit types decide what gets released
    ([CONTRIBUTING.md](../CONTRIBUTING.md#commit-messages)), and
-   `changelog-sections` in `release-please-config.json` lists them.
+   `changelog-sections` in `release-please-config.json` lists the types
+   that release.
 2. On each push to `main`, the `release` workflow opens or updates a single
    release pull request. It bumps only the components that have releasable
    commits, with their next version, computed from the commits, and their

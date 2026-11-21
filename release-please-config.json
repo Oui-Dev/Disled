@@ -3,7 +3,6 @@
   "include-component-in-tag": true,
   "tag-separator": "-",
   "separate-pull-requests": false,
-  "bump-minor-pre-major": true,
   "draft": true,
   "force-tag-creation": true,
   "changelog-sections": [
@@ -11,24 +10,16 @@
     { "type": "fix", "section": "🩹 Fixes" },
     { "type": "perf", "section": "🔥 Performance" },
     { "type": "refactor", "section": "💅 Refactors" },
-    { "type": "revert", "section": "⏪ Reverts" },
-    { "type": "docs", "section": "📖 Documentation", "hidden": true },
-    { "type": "style", "section": "🎨 Styles", "hidden": true },
-    { "type": "build", "section": "📦 Build", "hidden": true },
-    { "type": "chore", "section": "🏡 Chore", "hidden": true },
-    { "type": "test", "section": "✅ Tests", "hidden": true },
-    { "type": "ci", "section": "🤖 CI", "hidden": true }
+    { "type": "revert", "section": "⏪ Reverts" }
   ],
   "packages": {
     "firmware": {
       "release-type": "simple",
-      "component": "fw",
-      "initial-version": "0.1.0"
+      "component": "fw"
     },
     "app": {
       "release-type": "node",
-      "component": "app",
-      "initial-version": "0.1.0"
+      "component": "app"
     }
   }
 }
