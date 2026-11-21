@@ -169,7 +169,7 @@
         "events": "Événements de {name}"
       },
       "error": {
-        "network": "Impossible de joindre le catalogue. Vérifiez la connexion à Internet.",
+        "network": "Impossible de joindre le catalogue. Vérifiez la connexion à Internet. Erreur : {detail}",
         "signature": "Le catalogue n’est pas signé avec sa clé : Disled n’en montre rien.",
         "index": "Cette version de Disled ne sait pas lire le catalogue : mettez l’app à jour.",
         "missing": "Le catalogue ne propose plus ce plugin.",

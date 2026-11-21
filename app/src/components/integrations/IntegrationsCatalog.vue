@@ -25,7 +25,7 @@ const { reason } = usePluginTexts();
 function errorText(error: CatalogError): string {
   switch (error.kind) {
     case 'network':
-      return t('integrations.catalog.error.network');
+      return t('integrations.catalog.error.network', { detail: error.detail });
     case 'signature':
       return t('integrations.catalog.error.signature');
     case 'index':
@@ -128,18 +128,18 @@ async function install(entry: CatalogView): Promise<void> {
               </p>
             </div>
             <UButton
-              v-if="entry.installed === null || entry.update"
+              v-if="!entry.installed || entry.update"
               size="sm"
               class="shrink-0"
-              :icon="entry.installed === null ? 'i-lucide-download' : 'i-lucide-refresh-cw'"
+              :icon="entry.installed ? 'i-lucide-refresh-cw' : 'i-lucide-download'"
               :loading="plugins.installing === entry.id"
               :disabled="plugins.installing !== null"
               @click="install(entry)"
             >
               {{
-                entry.installed === null
-                  ? t('integrations.catalog.install')
-                  : t('integrations.catalog.update', { version: entry.version })
+                entry.installed
+                  ? t('integrations.catalog.update', { version: entry.version })
+                  : t('integrations.catalog.install')
               }}
             </UButton>
             <UBadge

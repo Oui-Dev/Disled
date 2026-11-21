@@ -21,6 +21,8 @@ pub mod states;
 pub mod tokens;
 
 use std::collections::{BTreeMap, HashMap};
+use std::fs::File;
+use std::io::{Read, Seek};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread;
@@ -1042,51 +1044,50 @@ pub fn remove(app: &AppHandle, id: &str) -> Result<(), String> {
 /// Imports the plugin of a zip file, in place of the plugin of the same id,
 /// whose token and colors stay. Returns its id; the approval follows.
 pub fn import(app: &AppHandle, zip: &Path) -> Result<String, Reason> {
-    let folder = read(app, |host| host.folder.clone()).ok_or(Reason::Missing)?;
-    let _ = std::fs::create_dir_all(&folder);
-    let unpacked = scan::unpack(zip, &folder)?;
-    put_in_place(app, &folder, unpacked)
+    let zip = File::open(zip).map_err(|_| Reason::Missing)?;
+    put_in_place(app, unpack(app, zip)?)
 }
 
 /// Imports a plugin of the catalog, as `import` does, once its zip proved to
 /// hold the plugin `id` with the files of `fingerprint`, those of the index.
 fn import_reviewed(
     app: &AppHandle,
-    zip: &Path,
+    zip: impl Read + Seek,
     id: &str,
     fingerprint: &str,
 ) -> Result<String, catalog::CatalogError> {
     let unreadable = |reason| catalog::CatalogError::Unreadable { reason };
-    let folder = read(app, |host| host.folder.clone()).ok_or(unreadable(Reason::Missing))?;
-    let _ = std::fs::create_dir_all(&folder);
-    let unpacked = scan::unpack(zip, &folder).map_err(unreadable)?;
+    let unpacked = unpack(app, zip).map_err(unreadable)?;
     if unpacked.id() != id || unpacked.fingerprint().as_deref() != Ok(fingerprint) {
         unpacked.discard();
         return Err(catalog::CatalogError::Mismatch);
     }
-    put_in_place(app, &folder, unpacked).map_err(unreadable)
+    put_in_place(app, unpacked).map_err(unreadable)
+}
+
+/// Unpacks a zip file in the folder of the plugins, under a name that no
+/// plugin takes until it is put in place.
+fn unpack(app: &AppHandle, zip: impl Read + Seek) -> Result<scan::Unpacked, Reason> {
+    let folder = read(app, |host| host.folder.clone()).ok_or(Reason::Missing)?;
+    let _ = std::fs::create_dir_all(&folder);
+    scan::unpack(zip, &folder)
 }
 
 /// Puts an unpacked plugin in place of the plugin of its id, whose program
 /// stops first, since its files go.
-fn put_in_place(
-    app: &AppHandle,
-    folder: &Path,
-    unpacked: scan::Unpacked,
-) -> Result<String, Reason> {
+fn put_in_place(app: &AppHandle, unpacked: scan::Unpacked) -> Result<String, Reason> {
     let id = unpacked.id().to_owned();
     with(app, |host, outbox| {
         if let Some(program) = host.programs.remove(&id) {
             outbox.stop.push(program);
         }
     });
-    let result = unpacked.install(folder);
+    let result = unpacked.install();
     with(app, |host, outbox| host.rescan(app, outbox));
     result
 }
 
-/// The plugins of the folder, read again: their version, while they read,
-/// and their fingerprint, for the catalog.
+/// The plugins of the folder, read again, for the catalog.
 fn installed(app: &AppHandle) -> catalog::Installed {
     with(app, |host, outbox| {
         host.rescan(app, outbox);
@@ -1098,7 +1099,7 @@ fn installed(app: &AppHandle) -> catalog::Installed {
                     .as_ref()
                     .ok()
                     .map(|manifest| manifest.version.clone());
-                (id.clone(), (version, plugin.fingerprint.clone()))
+                (id.clone(), version.zip(plugin.fingerprint.clone()))
             })
             .collect()
     })

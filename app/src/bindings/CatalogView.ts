@@ -14,18 +14,9 @@ needs: string | null,
  */
 from: string | null, 
 /**
- * Bytes of its zip file.
+ * A plugin of this id is installed, readable or not.
  */
-size: number, 
-/**
- * Its page in the catalog repository.
- */
-source: string, 
-/**
- * The version installed, empty while the plugin installed cannot be
- * read, none when the plugin is not installed.
- */
-installed: string | null, 
+installed: boolean, 
 /**
  * The plugin installed holds the files of this version.
  */

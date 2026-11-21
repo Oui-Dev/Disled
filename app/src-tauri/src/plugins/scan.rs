@@ -8,7 +8,7 @@
 
 use std::collections::HashMap;
 use std::fs::{self, File, Metadata};
-use std::io::{self, Read, Write};
+use std::io::{self, Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
@@ -141,8 +141,8 @@ impl Unpacked {
     }
 
     /// Puts the plugin in `plugins/<id>`, in place of the plugin of that id.
-    pub fn install(self, plugins: &Path) -> Result<String, Reason> {
-        let destination = plugins.join(&self.id);
+    pub fn install(self) -> Result<String, Reason> {
+        let destination = self.folder.with_file_name(&self.id);
         if destination.exists() {
             fs::remove_dir_all(&destination).map_err(|_| Reason::Missing)?;
         }
@@ -156,9 +156,8 @@ impl Unpacked {
 
 /// Unpacks the plugin of a zip file, whose `plugin.json` sits at its root or
 /// in its only folder, after checking every path, and reads its manifest.
-pub fn unpack(zip: &Path, plugins: &Path) -> Result<Unpacked, Reason> {
-    let mut archive = zip::ZipArchive::new(File::open(zip).map_err(|_| Reason::Missing)?)
-        .map_err(|_| Reason::Missing)?;
+pub fn unpack(zip: impl Read + Seek, plugins: &Path) -> Result<Unpacked, Reason> {
+    let mut archive = zip::ZipArchive::new(zip).map_err(|_| Reason::Missing)?;
     // First the names, checked before anything is written.
     let mut names = Vec::with_capacity(archive.len());
     for index in 0..archive.len() {
@@ -223,7 +222,7 @@ fn root(names: &[(PathBuf, bool)]) -> Result<PathBuf, Reason> {
     }
 }
 
-fn extract<R: Read + io::Seek>(
+fn extract<R: Read + Seek>(
     archive: &mut zip::ZipArchive<R>,
     names: &[(PathBuf, bool)],
     root: &Path,
@@ -273,9 +272,9 @@ mod tests {
         "run": { "default": ["demo"] }
     }"#;
 
-    /// Imports a zip into `plugins/<id>`, as the host does.
+    /// Imports a zip file into `plugins/<id>`, as the host does.
     fn import(zip: &Path, plugins: &Path) -> Result<String, Reason> {
-        unpack(zip, plugins)?.install(plugins)
+        unpack(File::open(zip).expect("zip"), plugins)?.install()
     }
 
     fn write(path: &Path, text: &str) {
