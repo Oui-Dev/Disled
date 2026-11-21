@@ -12,7 +12,7 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, Wry};
 
-use crate::colors::{ColorsState, PREVIEW_SLOT, Palette, srgb_of};
+use crate::colors::{ColorsState, PREVIEW_SLOT, Palette, parse_hex, srgb_of};
 use crate::device::DeviceHandle;
 use crate::i18n::{Locale, LocaleState};
 use crate::windows;
@@ -27,7 +27,7 @@ const CORNER: f32 = 8.0;
 
 /// The built-in colors, by palette slot: the key of their default name, and
 /// their color on screen, as the swatches of the popup (`app/src/utils/lamp.ts`).
-pub const BUILT_IN_COLORS: [(&str, [u8; 3]); 4] = [
+const BUILT_IN_COLORS: [(&str, [u8; 3]); 4] = [
     ("green", [0x00, 0xff, 0xa2]),
     ("orange", [0xff, 0x6f, 0x00]),
     ("red", [0xff, 0x00, 0x1c]),
@@ -75,16 +75,6 @@ pub fn default_name(slot: u8, locale: Locale) -> Option<String> {
     Some(locale.t(&format!("lamp.colors.{key}")))
 }
 
-/// `#RRGGBB` as three bytes, black for anything else.
-fn rgb_of_hex(hex: &str) -> [u8; 3] {
-    let byte = |at: usize| {
-        hex.get(at..at + 2)
-            .and_then(|pair| u8::from_str_radix(pair, 16).ok())
-            .unwrap_or(0)
-    };
-    [byte(1), byte(3), byte(5)]
-}
-
 /// A slot as the user sees it: its color on screen and its name. A built-in
 /// color shows its swatch and the name the user gave it, or its default one;
 /// a custom color its own code and name; any other slot `light`, the light
@@ -102,14 +92,17 @@ pub fn color_of(
         return (*rgb, name);
     }
     if let Some(color) = palette.custom.iter().find(|color| color.slot == slot) {
-        return (rgb_of_hex(&color.hex), Some(color.name.clone()));
+        return (
+            parse_hex(&color.hex).unwrap_or_default(),
+            Some(color.name.clone()),
+        );
     }
     (srgb_of(light), None)
 }
 
 /// The look of a lamp state, in the color and under the name of
-/// `color_of`, "More" for a slot without a name. The preview slot of the
-/// editor changes eight times a second, so the icon keeps its look: `None`.
+/// `color_of`, "More" for a slot without a name. The preview slot changes
+/// at every move in the editor, so the icon keeps its look: `None`.
 pub fn look_of(state: &State, palette: &Palette, locale: Locale) -> Option<Look> {
     if !state.on {
         return Some(Look::Off);
