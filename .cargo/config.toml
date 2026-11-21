@@ -5,5 +5,6 @@
 # ts-rs when the tests run (`cargo test`, or `npm run bindings` in app/).
 [env]
 TS_RS_EXPORT_DIR = { value = "app/src/bindings", relative = true }
-# The only 64-bit integers that cross are timestamps in seconds.
+# The 64-bit integers that cross, such as timestamps in seconds, stay far
+# below 2^53.
 TS_RS_LARGE_INT = "number"

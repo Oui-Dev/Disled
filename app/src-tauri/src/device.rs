@@ -838,7 +838,7 @@ mod tests {
             written,
             written + Duration::from_secs(60)
         ));
-        // Its own bytes, which annex A fixes.
+        // Its own bytes: a SET_STATE that selects only the touch mode.
         assert_eq!(
             heartbeat().encode(7)[..9],
             [0x03, 7, 0x06, 0x10, 0, 0, 0, 0, 1]

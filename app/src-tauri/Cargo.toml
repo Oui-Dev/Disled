@@ -37,8 +37,9 @@ rustls = { version = "^0.23.46", default-features = false, features = ["ring", "
 semver.workspace = true
 # The languages of the system, for the "System" language setting.
 sys-locale = "^0.3.2"
-# The share codes of the colors, in base64url, and "Copy the code", which
-# writes the clipboard from Rust only.
+# The share codes of the colors, in base64url, and the Copy buttons of the
+# share code and of the plugin notes, which write the clipboard from Rust
+# only.
 base64.workspace = true
 tauri-plugin-clipboard-manager = "^2.5.0"
 # The plugins: the local server of the plugins with events on the runtime of
