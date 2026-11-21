@@ -56,10 +56,6 @@ A program tells whether the lamp follows its own plugin by comparing
 
 ## Presses
 
-```json
-{"jsonrpc":"2.0","method":"touch","params":{"press":"short"}}
-```
-
 A short press is a press on the lid released before 2 s. The program hears
 of every one, whatever the lamp does with it:
 

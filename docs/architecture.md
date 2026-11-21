@@ -31,10 +31,8 @@ call, the app chooses its color.
 | Board support | `src/bsp/` | SDK | pin map, clocks, time base, watchdog, unique ID, faults |
 | Core | `lib/disled_core/` | C library only | all decisions: state machine, palette and touch cycle, touch detection and its gate during an alert, alert breathing, brightness, color, power cap, PWM dithering, self-test, protocol codec, STATE notifications and telemetry pace, scheduler, formatter, assertions |
 
-Only `src/bsp/ch32.h` includes the vendor device header. Includes are
-relative to `src/` (`#include "drivers/led_pwm.h"`), so every include shows
-the layer it reaches into. The core never includes an SDK header, so it
-builds natively and runs under Unity in CI.
+Only `src/bsp/ch32.h` includes the vendor device header. The core never
+includes an SDK header, so it builds natively and runs under Unity in CI.
 
 ### Data flow
 
@@ -139,13 +137,13 @@ whole ticks would make dim fades step and the color drift. The TIM3 update
 interrupt spreads the fraction over 16 periods (`pwm_dither`).
 
 The output chain (`led_output`) works on the light of each channel, a
-fraction of its light at 100 % duty, and turns it into a duty at the end
-through a light table per channel (`led_cal`). The gates of the MOSFETs
-charge through 100 Ω, so a pulse of 4 ticks or less gives almost no light,
-the next ticks give up to 1.4 times the light of those of a long pulse, and
-a long pulse gives about 13 ticks more light than its duty, its edges
-outlasting it. The table holds the measured light of every pulse length up
-to 128 ticks, and a straight line beyond. The dithering mixes two
+fraction of its light at 100 % duty, and turns it into a duty at the end.
+The slow gate edges (note N4 of
+[hardware/README.md](../hardware/README.md#found-after-production)) make
+short pulses give more light per tick than long ones, and the shortest
+none, so a measured table per channel (`led_cal`) turns light into duty.
+The table holds the measured light of every pulse length up to 128 ticks,
+and a straight line beyond. The dithering mixes two
 neighbouring lengths linearly, so the table inverts exactly. The fade mixes
 light, the alert breath scales it, and the current cap scales the three
 channels alike, from a bound that the duties cannot exceed.

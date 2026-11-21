@@ -90,19 +90,14 @@ app installs ([user guide](../user-guide.md#updates)).
 
 ## While you write it
 
-Disled keeps the fingerprint of the files that the user approved: once a
-file of the plugin changes, the plugin turns off. Turn it on again in the
-integrations window, which asks again, to run the new files. The folder is
-read again whenever the window gets the focus.
+Any change to a file turns the plugin off ([approval](#approval)): turn it
+on again to run the new files. The folder is read again whenever the
+window gets the focus.
 
 - Add `$schema` to `plugin.json`, as above: editors that read JSON Schema,
   such as VS Code, then complete the fields and underline the mistakes.
-- A manifest that breaks a rule makes the plugin unreadable, and the
-  integrations window gives the field and the reason.
 - What the program writes on its error output goes to its log, with the
   lines of its output that Disled refused ([programs](programs.md#log)).
-- A plugin never writes into its own folder, since that would change its
-  fingerprint: `DISLED_PLUGIN_DATA` names a folder of its own for its data.
 
 ## Where plugins live
 
@@ -119,8 +114,6 @@ configuration:
 a plugin** takes a zip file whose `plugin.json` sits at its root or in its
 only folder, and the **Catalog** tab installs the plugins of the
 [catalog](sharing.md). Folders whose name starts with a dot are ignored.
-Under `tauri dev`, the app uses the same folder as the installed app, since
-both have the same identifier.
 
 On Windows the folder follows the roaming profile, and uninstalling with
 "delete the app data" also deletes the plugins.
