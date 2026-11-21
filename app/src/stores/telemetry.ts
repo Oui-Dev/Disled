@@ -5,6 +5,7 @@
 // samples for the charts, and CSV recordings.
 
 import { save } from '@tauri-apps/plugin-dialog';
+import { formatDate } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef, watch } from 'vue';
 import type { Telemetry } from '@/bindings/Telemetry';
@@ -80,12 +81,11 @@ export const useTelemetryStore = defineStore('telemetry', () => {
     recording.value = false;
   }
 
-  /** Asks where to save the recording, with a dialog of this title. */
+  /** Asks where to save the recording, with a dialog of this title, named after the local time. */
   async function exportRecording(dialogTitle: string): Promise<void> {
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
     const path = await save({
       title: dialogTitle,
-      defaultPath: `disled-${stamp}.csv`,
+      defaultPath: `disled-${formatDate(new Date(), 'YYYY-MM-DD-HH-mm-ss')}.csv`,
       filters: [{ name: 'CSV', extensions: ['csv'] }],
     });
     if (path === null) {
