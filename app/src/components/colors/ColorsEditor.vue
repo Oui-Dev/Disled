@@ -3,22 +3,30 @@
   SPDX-FileCopyrightText: 2026 The Disled contributors
 
   The editor of a custom color: its name, seven suggestions, a square with
-  the hues across and the vividness up and down, and the preview on the
-  lamp. The lamp lights every color with its largest channel at full, the
-  brightness being set apart, so the square makes only such full colors,
-  which the lamp shows as they are. The draft keeps the code of the color
-  until the thumb moves or a suggestion is picked. The page saves through
-  `save`, which the popup footer calls.
+  the hues across and the vividness up and down, at full brightness, and
+  the preview on the lamp. The lamp shows such full colors as they are
+  (light_hex in src-tauri/src/colors.rs). The draft keeps the code of the
+  color until the thumb moves or a suggestion is picked. The page saves
+  through `save`, which the popup footer calls.
 -->
 <script setup lang="ts">
-import { type Color, ColorAreaArea, ColorAreaRoot, ColorAreaThumb } from 'reka-ui';
+import {
+  type Color,
+  ColorAreaArea,
+  ColorAreaRoot,
+  ColorAreaThumb,
+  colorToHex,
+  convertToHsb,
+  type HSBColor,
+  parseColor,
+} from 'reka-ui';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { colorsPreview } from '@/ipc/commands';
 import { useColorsStore } from '@/stores/colors';
 import { useLampStore } from '@/stores/lamp';
 import { useSettingsStore } from '@/stores/settings';
-import { hexOf, hueAndVividness } from '@/utils/color';
+import { MOVE_UPDATE_MS } from '@/utils/lamp';
 
 const props = defineProps<{
   /** The color to change, or null for a new one. */
@@ -28,24 +36,16 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ done: [] }>();
 
-/**
- * The suggestions of app 2.1, whose codes the comments keep, made full: the
- * light the lamp makes of each (light_hex in src-tauri/src/colors.rs), then
- * the code of its hue and vividness (hexOf of hueAndVividness). The square
- * makes these codes exactly, so the thumb lands on them.
- */
+/** Codes that the square makes: the thumb back on one checks it again. */
 const SUGGESTIONS = [
-  { key: 'yellow', hex: '#FFDC2E' }, // #F6D32D
-  { key: 'cyan', hex: '#26E2FF' }, // #22D3EE
-  { key: 'blue', hex: '#3D87FF' }, // #3B82F6
-  { key: 'violet', hex: '#9061FF' }, // #8B5CF6
-  { key: 'magenta', hex: '#FF45FF' }, // #E83FE8
-  { key: 'pink', hex: '#FF70BA' }, // #FB6FB7
-  { key: 'coolWhite', hex: '#EDF5FF' }, // #EEF5FF
+  { key: 'yellow', hex: '#FFDC2E' },
+  { key: 'cyan', hex: '#26E2FF' },
+  { key: 'blue', hex: '#3D87FF' },
+  { key: 'violet', hex: '#9061FF' },
+  { key: 'magenta', hex: '#FF45FF' },
+  { key: 'pink', hex: '#FF70BA' },
+  { key: 'coolWhite', hex: '#EDF5FF' },
 ] as const;
-
-/** The preview follows the draft at most this often, as the brightness does. */
-const PREVIEW_MS = 120;
 
 const { t, n } = useI18n();
 const colors = useColorsStore();
@@ -59,29 +59,26 @@ const nameInput = useTemplateRef<{ inputRef: HTMLInputElement | null }>('nameInp
 onMounted(() => nameInput.value?.inputRef?.focus());
 
 /**
- * The code that the square makes at the hue and vividness of a code. A
- * color saved from a suggestion of app 2.1 loads as its light, a step from
- * the code of the suggestion here, and lands on it so.
+ * The thumb on a code, at full brightness, as HSB: Reka reads the
+ * saturation of a code in HSL, where every full color is at 100 %. A grey
+ * or a white stands at hue 0, at the bottom.
  */
-function squareCode(code: string): string {
-  const shade = hueAndVividness(code);
-  return hexOf(shade.hue ?? 0, shade.vivid);
+function pointOf(code: string): HSBColor {
+  const { h, s } = convertToHsb(parseColor(code));
+  return { space: 'hsb', h: Math.round(h) % 360, s: Math.round(s), b: 100, alpha: 1 };
 }
-/** A new color starts on the first suggestion that no color of the user has on the square. */
+
+/** A new color starts on the first suggestion that no color of the user has. */
 const start =
   existing?.hex
   ?? (
-    SUGGESTIONS.find(
-      (suggestion) => !colors.custom.some((color) => squareCode(color.hex) === suggestion.hex),
-    ) ?? SUGGESTIONS[0]
+    SUGGESTIONS.find((suggestion) => !colors.custom.some((color) => color.hex === suggestion.hex))
+    ?? SUGGESTIONS[0]
   ).hex;
-/** A grey or a white has no hue: its thumb stands at hue 0, at the bottom. */
-const startShade = hueAndVividness(start);
 
 const name = ref(existing?.name ?? '');
 const hex = ref(start);
-const hue = ref(startShade.hue ?? 0);
-const vivid = ref(startShade.vivid);
+const point = ref(pointOf(start));
 const canSave = computed(() => name.value.trim().length > 0);
 const suggestion = computed(
   () => SUGGESTIONS.find((candidate) => candidate.hex === hex.value)?.hex,
@@ -95,23 +92,11 @@ const suggestions = computed<{ value: string | null; label: string }[]>(() =>
   })),
 );
 
-/**
- * The thumb of the square, for Reka: the hue and the vividness at full
- * brightness, in its HSB. A code would not place it, since Reka reads the
- * saturation of a code in HSL, where every full color is at 100 %.
- */
-const point = computed<Color>(() => ({
-  space: 'hsb',
-  h: hue.value,
-  s: vivid.value,
-  b: 100,
-  alpha: 1,
-}));
 /** What screen readers say of the thumb, as "Hue 210 degrees, vividness 60%". */
 const valueText = computed(() =>
   t('colors.editor.square.value', {
-    hue: n(hue.value, 'degrees'),
-    vivid: n(vivid.value / 100, 'percent'),
+    hue: n(point.value.h, 'degrees'),
+    vivid: n(point.value.s / 100, 'percent'),
   }),
 );
 
@@ -121,27 +106,22 @@ function pick(code: unknown): void {
     return;
   }
   hex.value = code;
-  const shade = hueAndVividness(code);
-  hue.value = shade.hue ?? 0;
-  vivid.value = shade.vivid;
+  point.value = pointOf(code);
 }
 
 /**
- * The thumb moved, under the pointer or a key. Reka gives its point as a
- * color whose `h` and `s` are the values of the two axes as they are, in
- * HSL for these channels whatever the color space, so its own code is not
- * this color. The draft rounds them, so that its code is always one that
- * hexOf makes, as the suggestions are, at full brightness. The hue runs to
- * 360 at the right edge, red again: hue 0.
+ * The thumb moved, under the pointer or a key. Reka emits the axes as the
+ * `h` and `s` of an HSL color, so its code is not this color: the draft
+ * takes the rounded axes, the right edge (hue 360) being hue 0.
  */
 function move(color: Color): void {
   // Never RGB, for a hue and a saturation.
   if (color.space === 'rgb') {
     return;
   }
-  hue.value = Math.round(color.h) % 360;
-  vivid.value = Math.round(color.s);
-  hex.value = hexOf(hue.value, vivid.value);
+  const h = Math.round(color.h) % 360;
+  point.value = { space: 'hsb', h, s: Math.round(color.s), b: 100, alpha: 1 };
+  hex.value = colorToHex(point.value).toUpperCase();
 }
 
 // The preview on the lamp: with the setting on and a lamp the app drives.
@@ -149,6 +129,11 @@ const previewing = computed(() => (settings.settings?.color_preview ?? true) && 
 let lastSent = 0;
 let pending: ReturnType<typeof setTimeout> | undefined;
 
+/**
+ * Shows a code on the lamp, at most every MOVE_UPDATE_MS, or ends the
+ * preview with null. Not useThrottleFn: a pending call must be dropped when
+ * the preview ends or the color is saved.
+ */
 function preview(code: string | null): void {
   clearTimeout(pending);
   pending = undefined;
@@ -156,7 +141,7 @@ function preview(code: string | null): void {
     void colorsPreview(null);
     return;
   }
-  const wait = lastSent + PREVIEW_MS - Date.now();
+  const wait = lastSent + MOVE_UPDATE_MS - Date.now();
   if (wait > 0) {
     pending = setTimeout(() => preview(code), wait);
     return;
@@ -170,12 +155,7 @@ watch(hex, (code) => {
     preview(code);
   }
 });
-watch(previewing, (on) => preview(on ? hex.value : null));
-onMounted(() => {
-  if (previewing.value) {
-    preview(hex.value);
-  }
-});
+watch(previewing, (on) => preview(on ? hex.value : null), { immediate: true });
 // Cancel, Escape and a hidden popup all leave the page: the lamp goes back
 // to its color. After a save, the backend has ended the preview already.
 onBeforeUnmount(() => preview(null));
@@ -257,32 +237,15 @@ defineExpose({ save, canSave });
       </template>
     </URadioGroup>
 
-    <!-- The square: the color area of Reka UI, hue 0 to 360 from left to
-         right, both edges red, and vividness 100 at the top to 0 at the
-         bottom. Reka moves the thumb with the pointer, which it keeps past
-         the edges, and with the keys: the arrows by a degree or a percent,
-         by ten with Shift, and Page Up, Page Down, Home and End by ten. Its
-         texts for screen readers are in English, so ours replace them: Vue
-         gives an attribute set here the last word over the one the part sets
-         on its own element. The background is ours, below. The square has a
-         height of its own, the thumb being out of the flow, and the thumb
-         overflows only into the gaps around. -->
-    <ColorAreaRoot
-      :model-value="point"
-      color-space="hsb"
-      x-channel="hue"
-      y-channel="saturation"
-      @update:color="move"
-    >
+    <!-- Reka's screen-reader texts are English: the attributes set here
+         replace them. The background is ours (style below): Reka's, for
+         these axes, turns grey at the bottom. -->
+    <ColorAreaRoot :model-value="point" x-channel="hue" y-channel="saturation" @update:color="move">
       <ColorAreaArea
         :aria-roledescription="t('colors.editor.square.role')"
         class="color-square relative h-36 rounded-md ring ring-accented select-none"
       >
-        <!-- As the thumbs of the earlier sliders, a disc of the draft color
-             in a 2px ring: white here, with a thin dark line, so that it
-             shows on vivid and pale points alike, and past the edges in both
-             themes. The focus ring keeps a band of the page color inside,
-             which makes it show on every color too. -->
+        <!-- A white ring with a dark line shows on every point, in both themes. -->
         <ColorAreaThumb
           :aria-roledescription="t('colors.editor.square.thumb')"
           :aria-label="t('colors.editor.square.label')"
@@ -304,13 +267,9 @@ defineExpose({ save, canSave });
 
 <style scoped>
 /*
- * Every point shows hexOf(hue, vivid): the six hues across, under white
- * that goes from transparent at the top to opaque at the bottom. CSS mixes
- * these legacy colors in gamma-encoded sRGB, so a point at vividness s is
- * s * hue + (1 - s) * white, the HSV formula at value 100 % of hexOf.
- * Checked against hexOf: within one code step at every pixel, but for the
- * faint noise that the browser adds to gradients against banding. Reka's
- * own background for these axes is made for HSL, grey at the bottom.
+ * The hues across, under white from transparent to opaque downwards. CSS
+ * mixes these colors in gamma-encoded sRGB, so a point at vividness s
+ * shows s * hue + (1 - s) * white: the code that the square makes there.
  */
 .color-square {
   background:
