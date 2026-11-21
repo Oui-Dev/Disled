@@ -305,6 +305,7 @@ mod tests {
         ]
     }
 
+    /// PulseAudio reaches the same rule through libpulse.
     #[test]
     fn the_rule_of_gnome_on_pipewire() {
         let sources = pipewire_sources();
@@ -371,46 +372,6 @@ mod tests {
         assert_eq!(super::streams(&all, &sources, OWN), Reading::Busy);
         assert_eq!(super::streams(&all[1..], &sources, OWN), Reading::Free);
         assert_eq!(super::streams(&[], &sources, OWN), Reading::Free);
-    }
-
-    #[test]
-    fn the_rule_of_gnome_on_pulseaudio() {
-        let sources = [
-            source(
-                0,
-                false,
-                is_monitor(
-                    None,
-                    "alsa_output.pci-0000_00_1f.3.analog-stereo.monitor",
-                    Some("monitor"),
-                ),
-            ),
-            source(1, true, false),
-        ];
-        let streams = [
-            // Zoom records the USB microphone.
-            (stream(None, true, false, 1, 7100), true),
-            // A loopback module: no client.
-            (
-                Stream {
-                    app_id: None,
-                    client: false,
-                    corked: false,
-                    source: 1,
-                    pid: None,
-                },
-                false,
-            ),
-            (
-                stream(Some("org.PulseAudio.pavucontrol"), true, false, 1, 7200),
-                false,
-            ),
-            // OBS on the monitor of the output.
-            (stream(None, true, false, 0, 7300), false),
-        ];
-        for (stream, counted) in &streams {
-            assert_eq!(counts(stream, &sources, OWN), *counted, "{stream:?}");
-        }
     }
 
     #[test]
