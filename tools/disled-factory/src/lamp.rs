@@ -7,8 +7,7 @@
 use std::time::{Duration, Instant};
 
 use disled_protocol::{
-    self as protocol, Command, DecodeError, Message, PAYLOAD_SIZE, REPORT_ID_COMMAND,
-    REPORT_ID_MESSAGE, USB_VENDOR_ID,
+    self as protocol, Command, DecodeError, Message, PAYLOAD_SIZE, USB_VENDOR_ID,
 };
 use hidapi::{DeviceInfo, HidApi, HidDevice};
 
@@ -49,13 +48,9 @@ impl Lamp {
 
     /// Sends a command; returns the sequence number its replies carry.
     pub fn send(&mut self, command: &Command) -> Result<u8, String> {
-        // 0 marks unsolicited messages, so a request never uses it.
-        self.seq = if self.seq == u8::MAX { 1 } else { self.seq + 1 };
-        let mut report = [0u8; PAYLOAD_SIZE + 1];
-        report[0] = REPORT_ID_COMMAND;
-        report[1..].copy_from_slice(&command.encode(self.seq));
+        self.seq = protocol::next_seq(self.seq);
         self.device
-            .write(&report)
+            .write(&command.report(self.seq))
             .map_err(|e| format!("the lamp is gone ({e})"))?;
         Ok(self.seq)
     }
@@ -76,13 +71,10 @@ impl Lamp {
                 .device
                 .read_timeout(&mut buffer, READ_SLICE_MS)
                 .map_err(|e| format!("the lamp is gone ({e})"))?;
-            if length == 0 || buffer[0] != REPORT_ID_MESSAGE {
-                continue;
-            }
-            match protocol::decode_message(&buffer[1..length]) {
-                Ok(frame) if frame.seq == seq => return Ok(frame.message),
-                Ok(_) | Err(DecodeError::UnknownType(_)) => {}
-                Err(error) => return Err(format!("unreadable message: {error}")),
+            match protocol::decode_report(&buffer[..length]) {
+                Some(Ok(frame)) if frame.seq == seq => return Ok(frame.message),
+                None | Some(Ok(_) | Err(DecodeError::UnknownType(_))) => {}
+                Some(Err(error)) => return Err(format!("unreadable message: {error}")),
             }
         }
         Err("the lamp did not answer".into())
