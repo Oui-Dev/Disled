@@ -166,7 +166,7 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// The rules of the Claude Code plugin of annex D.
+    /// Rules like those of the Claude Code plugin of the catalog.
     fn claude_code() -> Vec<Rule> {
         let rules = json!([
             { "when": { "/hook_event_name": "SessionEnd" }, "clear": true },

@@ -297,8 +297,9 @@ pub(super) mod tests {
         assert_ne!(fingerprint(&plugin, &mut cache), Ok(first));
     }
 
+    /// The lines that docs/plugins/README.md#approval gives.
     #[test]
-    fn the_lines_of_the_fingerprint_are_those_of_annex_d() {
+    fn the_fingerprint_has_the_lines_of_the_plugin_docs() {
         let folder = tempfile::tempdir().expect("folder");
         write(&folder.path().join("b.txt"), "b");
         write(&folder.path().join("a/c.txt"), "");
