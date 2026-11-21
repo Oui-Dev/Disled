@@ -93,21 +93,13 @@ function restart(): Promise<void> {
     />
     <ErrorAlert :ui="alert" />
 
-    <UModal
+    <ConfirmModal
       v-model:open="confirmingRestart"
       :title="t('diagnostics.restartTitle')"
       :description="t('diagnostics.restartDescription')"
-    >
-      <template #footer>
-        <div class="flex w-full justify-end gap-2">
-          <UButton color="neutral" variant="outline" @click="confirmingRestart = false">
-            {{ t('common.cancel') }}
-          </UButton>
-          <UButton icon="i-lucide-rotate-ccw" @click="restart">
-            {{ t('diagnostics.restart') }}
-          </UButton>
-        </div>
-      </template>
-    </UModal>
+      :action="t('diagnostics.restart')"
+      icon="i-lucide-rotate-ccw"
+      @confirm="restart"
+    />
   </header>
 </template>

@@ -19,7 +19,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <UModal
+  <ConfirmModal
     v-model:open="open"
     :title="plugin ? t('integrations.approve.title', { name: plugin.name }) : ''"
     :description="
@@ -30,7 +30,9 @@ const { t } = useI18n();
           })
         : ''
     "
-    :close="{ 'aria-label': t('common.close') }"
+    :action="t('integrations.approve.action')"
+    :disabled="!plugin?.fingerprint"
+    @confirm="plugin?.fingerprint && emit('approve', plugin.id, plugin.fingerprint)"
   >
     <template #body>
       <div v-if="plugin" class="flex flex-col gap-4 text-sm text-default">
@@ -42,18 +44,5 @@ const { t } = useI18n();
         <p class="text-muted">{{ t('integrations.approve.trust') }}</p>
       </div>
     </template>
-    <template #footer>
-      <div class="flex w-full justify-end gap-2">
-        <UButton color="neutral" variant="outline" @click="open = false">
-          {{ t('common.cancel') }}
-        </UButton>
-        <UButton
-          :disabled="!plugin?.fingerprint"
-          @click="plugin?.fingerprint && emit('approve', plugin.id, plugin.fingerprint)"
-        >
-          {{ t('integrations.approve.action') }}
-        </UButton>
-      </div>
-    </template>
-  </UModal>
+  </ConfirmModal>
 </template>
