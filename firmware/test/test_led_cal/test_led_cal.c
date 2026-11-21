@@ -40,15 +40,17 @@ static const led_color_cal_t cal = {
             { -1800, 28967, 2000 },
             { -500, 1200, 12000 },
         },
-    /* The row sums, 27500, 29167 and 12700, scaled to 65535. */
-    .white = { 61789, 65535, 28535 },
 };
+
+/* The drive of the sRGB white: the row sums, 27500, 29167 and 12700, scaled
+ * to 65535. */
+static const rgb16_t white_drive = { 61789, 65535, 28535 };
 
 /* led_cal_drive keeps 15 significant bits of the matrix product, which puts
  * every channel within 2^-14 of the largest one, 4 of 65535, before the last
  * rounding. Adding white multiplies that error by up to (white[i] +
- * white[m]) / white[m], 3.3 with this white, and rounds the large products
- * to 16 bits once more. */
+ * white[m]) / white[m], 3.3 with the row sums of this matrix, and rounds the
+ * large products to 16 bits once more. */
 #define DRIVE_TOLERANCE_INSIDE  5u
 #define DRIVE_TOLERANCE_OUTSIDE 16u
 
@@ -59,30 +61,33 @@ typedef struct {
 } reference_t;
 
 /* led_cal_drive in exact integers: the matrix product d; outside the gamut,
- * white[m] * (d + k * white), k = -d[m] / white[m] being the largest over
- * the negative channels; then the largest channel to 65535. The products
- * stay below 2^48, since |d| <= 32767 * 65535 and white <= 65535, so the
- * last one fits 64 bits. */
+ * white[m] * (d + k * white), the white being the row sums and k = -d[m] /
+ * white[m] the largest over the negative channels; then the largest channel
+ * to 65535. The products stay below 2^47, since |d| <= 32767 * 65535 and
+ * white <= 32767, so the last one fits 64 bits. */
 static reference_t reference_drive(const led_color_cal_t *c, rgb16_t srgb)
 {
     const int64_t in[3] = { srgb.r, srgb.g, srgb.b };
     int64_t d[LED_CHANNEL_COUNT];
+    int64_t white[LED_CHANNEL_COUNT];
     for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
         d[i] = 0;
+        white[i] = 0;
         for (size_t j = 0; j < 3u; j++) {
             d[i] += c->matrix[i][j] * in[j];
+            white[i] += c->matrix[i][j];
         }
     }
     size_t m = LED_CHANNEL_COUNT;
     for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
-        if (d[i] < 0 && (m == LED_CHANNEL_COUNT || -d[i] * c->white[m] > -d[m] * c->white[i])) {
+        if (d[i] < 0 && (m == LED_CHANNEL_COUNT || -d[i] * white[m] > -d[m] * white[i])) {
             m = i;
         }
     }
     uint64_t e[LED_CHANNEL_COUNT];
     uint64_t top = 0;
     for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
-        const int64_t v = (m == LED_CHANNEL_COUNT) ? d[i] : d[i] * c->white[m] - d[m] * c->white[i];
+        const int64_t v = (m == LED_CHANNEL_COUNT) ? d[i] : d[i] * white[m] - d[m] * white[i];
         e[i] = (uint64_t)v;
         if (e[i] > top) {
             top = e[i];
@@ -136,11 +141,10 @@ static void test_drive_keeps_black(void)
 
 static void test_a_grey_of_any_level_gives_the_white_drive(void)
 {
-    const rgb16_t white = { cal.white[0], cal.white[1], cal.white[2] };
     const uint16_t levels[] = { 65535, 32768, 1000, 3, 1 };
     for (size_t i = 0; i < sizeof levels / sizeof levels[0]; i++) {
         const rgb16_t grey = { levels[i], levels[i], levels[i] };
-        assert_drive_within(DRIVE_TOLERANCE_INSIDE, white, led_cal_drive(&cal, grey));
+        assert_drive_within(DRIVE_TOLERANCE_INSIDE, white_drive, led_cal_drive(&cal, grey));
     }
 }
 
@@ -233,7 +237,6 @@ static void test_srgb_primaries_change_nothing(void)
      * allow: a color shows as it is, normalized. */
     static const led_color_cal_t same = {
         .matrix = { { 32767, 0, 0 }, { 0, 32767, 0 }, { 0, 0, 32767 } },
-        .white = { 65535, 65535, 65535 },
     };
     const rgb16_t colors[] = {
         { 65535, 65535, 65535 },
@@ -566,7 +569,7 @@ static void test_color_valid_guards_the_products(void)
     TEST_ASSERT_FALSE(led_cal_color_valid(&c));
 
     c = cal;
-    c.white[2] = 0; /* the white outside the gamut */
+    c.matrix[2][2] = -700; /* the blue row adds up to 0: the white outside the gamut */
     TEST_ASSERT_FALSE(led_cal_color_valid(&c));
 }
 

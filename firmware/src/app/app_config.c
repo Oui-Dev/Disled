@@ -94,15 +94,13 @@ const rgb16_t app_builtin_colors[LAMP_COLOR_COUNT] = {
  * were matched by eye, by A/B choices, against the screen of a Galaxy S23 in
  * its Natural (sRGB) mode, the only calibrated reference at hand: no camera
  * sees narrow LED primaries as the eye does. Their dominant wavelengths are
- * 619, 521 and 458 nm as the matches see them, and the white needs drives
- * 0.564, 1 and 0.214. */
+ * 619, 521 and 458 nm as the matches see them. */
 const led_color_cal_t app_led_color_cal = {
     .matrix = {
         {  11785,   6713,     -3 },
         {   1466,  29585,   1714 },
         {     95,    -66,   6982 },
     },
-    .white = { 36993, 65535, 14023 },
 };
 
 /* Light of a pulse of each length in whole ticks, measured with a camera

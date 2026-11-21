@@ -34,11 +34,9 @@
 typedef struct {
     /* Linear sRGB to drive: one row per LED channel, one column per input
      * channel r, g, b. The magnitudes of each row add up to 32767 at most,
-     * so that no product overflows 32 bits. */
+     * so that no product overflows 32 bits. Each row adds up to more than 0:
+     * the sRGB white, the matrix times (1, 1, 1), lies inside the LED gamut. */
     int16_t matrix[LED_CHANNEL_COUNT][3];
-    /* The drive of the sRGB white, the matrix times (1, 1, 1), its largest
-     * entry at 65535. No entry is 0: the white lies inside the LED gamut. */
-    uint16_t white[LED_CHANNEL_COUNT];
 } led_color_cal_t;
 
 typedef struct {
@@ -78,8 +76,8 @@ uint16_t led_cal_excess(const led_light_cal_t *cal, uint16_t full);
  * offset is in range. */
 bool led_cal_light_valid(const led_light_cal_t *cal);
 
-/* The magnitudes of each row of the matrix add up to 32767 at most, and no
- * entry of the white is 0: what led_cal_drive needs. */
+/* The magnitudes of each row of the matrix add up to 32767 at most, and each
+ * row adds up to more than 0: what led_cal_drive needs. */
 bool led_cal_color_valid(const led_color_cal_t *cal);
 
 #endif /* DISLED_LED_CAL_H */
