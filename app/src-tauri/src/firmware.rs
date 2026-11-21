@@ -38,8 +38,6 @@ const RELEASE_PAGE: &str = "https://github.com/Oui-Dev/Disled/releases/tag/fw-v"
 
 /// The firmware line this app drives: 2.x speaks protocol 2.
 const LINE: u64 = 2;
-/// The line of Disled v1, whose last version is offered to go back to it.
-const V1_LINE: u64 = 1;
 
 const LAMP_TIMEOUT: Duration = Duration::from_secs(60);
 
@@ -73,42 +71,17 @@ struct GitHubAsset {
     browser_download_url: String,
 }
 
-/// The firmware a check found.
-#[derive(Debug, PartialEq, Eq)]
-struct Offer {
-    /// Newest first.
-    releases: Vec<Release>,
-    /// The one the update buttons install.
-    latest: Option<Version>,
-}
-
-impl Offer {
-    /// What GitHub publishes: every signed 2.x, newest first, then the last
-    /// signed 1.x, to go back to Disled v1. Never a pre-release, nor a 0.x.
-    fn of(releases: &[GitHubRelease]) -> Self {
-        let mut signed: Vec<Release> = releases.iter().filter_map(signed).collect();
-        signed.sort_by(|a, b| b.version.cmp(&a.version));
-        signed.dedup_by(|a, b| a.version == b.version);
-        let v1 = signed
-            .iter()
-            .find(|release| release.version.major == V1_LINE)
-            .cloned();
-        let mut releases: Vec<Release> = signed
-            .into_iter()
-            .filter(|release| release.version.major == LINE)
-            .collect();
-        let latest = releases.first().map(|release| release.version.clone());
-        releases.extend(v1);
-        Self { releases, latest }
-    }
-
-    /// A local file, in development builds: the newest firmware, alone.
-    fn local(release: Release) -> Self {
-        Self {
-            latest: Some(release.version.clone()),
-            releases: vec![release],
-        }
-    }
+/// What GitHub publishes for this app: every signed 2.x, newest first,
+/// never a pre-release.
+fn offer(releases: &[GitHubRelease]) -> Vec<Release> {
+    let mut offered: Vec<Release> = releases
+        .iter()
+        .filter_map(signed)
+        .filter(|release| release.version.major == LINE)
+        .collect();
+    offered.sort_by(|a, b| b.version.cmp(&a.version));
+    offered.dedup_by(|a, b| a.version == b.version);
+    offered
 }
 
 /// A published firmware release whose release build is signed.
@@ -198,10 +171,8 @@ pub enum Flash {
 pub struct FirmwareStatus {
     /// A check is running.
     pub checking: bool,
-    /// The newest firmware 2.x, which the update buttons install.
-    pub latest: Option<String>,
-    /// The firmware the app can install, newest first: the signed 2.x, then
-    /// the last 1.x, to go back to Disled v1.
+    /// The signed firmware 2.x, newest first. The update buttons install
+    /// the first.
     pub versions: Vec<String>,
     /// Why the last check failed; cleared by the next success.
     pub error: Option<String>,
@@ -280,7 +251,8 @@ fn flasher() -> Result<Wchisp, String> {
 }
 
 /// The releases on GitHub, from every page: the API mixes the releases of
-/// every component, so that fw-v1.0.0 leaves the first page one day.
+/// every component, so that the oldest firmware 2.x leave the first page
+/// one day.
 async fn github_releases(app: &AppHandle) -> Result<Vec<GitHubRelease>, String> {
     let mut releases = Vec::new();
     let mut url = RELEASES_URL.to_owned();
@@ -313,25 +285,23 @@ pub async fn check(app: &AppHandle) {
         return;
     }
     let result = match local_release() {
-        Some(release) => Ok(Offer::local(release)),
+        Some(release) => Ok(vec![release]),
         None => github_releases(app)
             .await
-            .map(|releases| Offer::of(&releases)),
+            .map(|releases| offer(&releases)),
     };
     let state = app.state::<FirmwareState>();
     match result {
-        Ok(offer) => {
-            let versions = offer
-                .releases
+        Ok(releases) => {
+            let versions = releases
                 .iter()
                 .map(|release| release.version.to_string())
                 .collect();
             if let Ok(mut kept) = state.releases.lock() {
-                *kept = offer.releases;
+                *kept = releases;
             }
             change(app, |s| {
                 s.checking = false;
-                s.latest = offer.latest.map(|version| version.to_string());
                 s.versions = versions;
                 s.error = None;
                 s.checked_at = Some(now());
@@ -383,7 +353,9 @@ pub fn install(app: &AppHandle) -> Result<(), String> {
     let latest = app
         .state::<FirmwareState>()
         .status()
-        .latest
+        .versions
+        .into_iter()
+        .next()
         .ok_or("no firmware to install: check for updates first")?;
     install_manual(app, &latest)
 }
@@ -573,16 +545,15 @@ mod tests {
         )
     }
 
-    fn versions(offer: &Offer) -> Vec<String> {
-        offer
-            .releases
+    fn versions(offered: &[Release]) -> Vec<String> {
+        offered
             .iter()
             .map(|release| release.version.to_string())
             .collect()
     }
 
     #[test]
-    fn every_signed_2x_then_the_last_1x() {
+    fn every_signed_2x_newest_first() {
         let releases = [
             release("app-v2.0.0", &["Disled_2.0.0_x64-setup.exe", "latest.json"]),
             signed("2.0.0"),
@@ -603,35 +574,24 @@ mod tests {
             // A firmware this app cannot drive.
             signed("3.0.0"),
         ];
-        let offer = Offer::of(&releases);
-        assert_eq!(versions(&offer), ["2.1.0", "2.0.1", "2.0.0", "1.0.0"]);
-        assert_eq!(offer.latest, Some(Version::new(2, 1, 0)));
+        let offered = offer(&releases);
+        assert_eq!(versions(&offered), ["2.1.0", "2.0.1", "2.0.0"]);
         assert_eq!(
-            offer.releases[0].source,
+            offered[0].source,
             Source::GitHub {
                 hex: "https://example.com/fw-v2.1.0/disled-fw-2.1.0.hex".into(),
                 signature: "https://example.com/fw-v2.1.0/disled-fw-2.1.0.hex.sig".into(),
             }
         );
-    }
-
-    #[test]
-    fn only_the_last_1x_goes_back_to_v1() {
-        let releases = [signed("1.0.0"), signed("1.0.1"), signed("2.0.0")];
-        assert_eq!(versions(&Offer::of(&releases)), ["2.0.0", "1.0.1"]);
         // Before the first firmware 2.x, the update buttons have nothing to
         // install.
-        let offer = Offer::of(&[signed("1.0.0")]);
-        assert_eq!(versions(&offer), ["1.0.0"]);
-        assert_eq!(offer.latest, None);
+        assert!(offer(&[signed("1.0.0")]).is_empty());
     }
 
     #[test]
     fn versions_compare_as_numbers() {
         let releases = [signed("2.9.0"), signed("2.10.0"), signed("2.2.9")];
-        let offer = Offer::of(&releases);
-        assert_eq!(versions(&offer), ["2.10.0", "2.9.0", "2.2.9"]);
-        assert_eq!(offer.latest, Some(Version::new(2, 10, 0)));
+        assert_eq!(versions(&offer(&releases)), ["2.10.0", "2.9.0", "2.2.9"]);
     }
 
     #[test]
@@ -644,26 +604,7 @@ mod tests {
                 "SHA256SUMS",
             ],
         )];
-        assert_eq!(
-            Offer::of(&releases),
-            Offer {
-                releases: Vec::new(),
-                latest: None
-            }
-        );
-    }
-
-    #[test]
-    fn a_local_file_stands_alone_for_the_newest() {
-        for name in ["disled-fw-2.1.0.hex", "disled-fw-1.0.0.hex"] {
-            let version = files::version_of(name).expect("a version");
-            let offer = Offer::local(Release {
-                version: version.clone(),
-                source: Source::Local(name.into()),
-            });
-            assert_eq!(versions(&offer), [version.to_string()]);
-            assert_eq!(offer.latest, Some(version));
-        }
+        assert!(offer(&releases).is_empty());
     }
 
     #[test]
@@ -679,7 +620,7 @@ mod tests {
             ]
         }]"#;
         let releases: Vec<GitHubRelease> = serde_json::from_str(answer).expect("releases");
-        assert_eq!(Offer::of(&releases).latest, Some(Version::new(2, 0, 0)));
+        assert_eq!(versions(&offer(&releases)), ["2.0.0"]);
     }
 
     #[test]
