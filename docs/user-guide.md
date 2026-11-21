@@ -155,7 +155,7 @@ plug the lamp in. The popup hides when you click elsewhere or press Escape.
 - **Start Disled when I log in**, **Check for updates every day**.
 - **Touch sensitivity.** From **Less sensitive** to **More sensitive**
   (−50 to +50 %, in steps of 5 %). The lamp calibrates its touch by itself,
-  and this shifts it. At +40 % or more, a hand held just above the lid may
+  and this shifts it. At +25 % or more, a hand held just above the lid may
   count as a touch, and can turn the lamp off.
 - **Appearance.** System, Light or Dark.
 - **Language.** System, English or Français.

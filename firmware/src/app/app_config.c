@@ -20,7 +20,7 @@
  * tells them apart. A 60 ms debounce misses light taps over the ring's hole.
  * The touch sensitivity setting of the desktop app scales press, release and
  * rise from 50 to 150 %, and never takes the release under 1.5 times the
- * proximity band. */
+ * proximity band. test_app_config plays these touches through the settings. */
 const tkey_config_t app_tkey_config = {
     .charge_time = 3,
     .discharge_time = 8,
@@ -79,7 +79,8 @@ const brightness_config_t app_brightness_config = {
  * Built-in colors, as LED drives: green, orange and red are the LED's own
  * primaries, more saturated than any sRGB color and kept so; their app
  * swatches are the nearest sRGB colors (#00FFA2, #FF6F00, #FF001C). The warm
- * white is 2700 K (#FFAD59) through the color calibration below. */
+ * white is 2700 K (#FFAD59) through the color calibration below, which the
+ * native suite test_app_config checks, with the tables of this file. */
 /* clang-format off */
 const rgb16_t app_builtin_colors[LAMP_COLOR_COUNT] = {
     [LAMP_COLOR_GREEN] = {     0, 65535,     0 }, /* the green LED alone */

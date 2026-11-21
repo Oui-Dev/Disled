@@ -45,6 +45,12 @@ static inline led_light_cal_t make_table(uint32_t dark, uint32_t meet, int16_t o
 #define BASELINE 2000u
 #define TOUCHED  1900u
 
+/* The reading `permille` below BASELINE. */
+static inline uint16_t dropped(uint32_t permille)
+{
+    return (uint16_t)(BASELINE - (BASELINE * permille) / 1000u);
+}
+
 /* Detector settings for that signal. */
 static const touch_config_t touch_config = {
     .window_samples = 20,
