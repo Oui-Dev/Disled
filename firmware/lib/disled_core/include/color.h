@@ -11,15 +11,7 @@
 
 #include <stdint.h>
 
-#include "disled_types.h"
-
 #define COLOR_LINEAR_MAX 65535u
-
-typedef struct {
-    /* Each built-in color as LED drive (led_cal.h), its largest channel at
-     * COLOR_LINEAR_MAX. */
-    rgb16_t palette[LAMP_COLOR_COUNT];
-} color_config_t;
 
 /* Perceived brightness (per mille of L*) to linear light, 0 to 65535. */
 uint16_t color_perceived_to_linear(uint16_t level_permille);
