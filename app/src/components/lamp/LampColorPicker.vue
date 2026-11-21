@@ -13,9 +13,8 @@
   included, takes the lamp back to the manual mode.
 -->
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useTileNames } from '@/composables/useTileNames';
 import { useColorsStore } from '@/stores/colors';
 import { useControlStore } from '@/stores/control';
 import { useLampStore } from '@/stores/lamp';
@@ -66,19 +65,6 @@ const selected = computed<Choice | undefined>(() => {
   return state.color < BUILT_IN_COLORS.length ? state.color : 'other';
 });
 
-const row = useTemplateRef<HTMLElement>('row');
-const narrow = useTileNames(
-  row,
-  computed(() => [
-    ...items.value.map((item) => item.label),
-    current.value?.name ?? t('lamp.colors.more'),
-  ]),
-);
-
-function narrowAt(choice: Choice): boolean {
-  return narrow.value[items.value.findIndex((item) => item.value === choice)] ?? false;
-}
-
 async function select(choice: Choice): Promise<void> {
   if (choice === 'other') {
     return;
@@ -99,7 +85,7 @@ async function select(choice: Choice): Promise<void> {
     <span aria-hidden="true" class="text-highlighted text-sm font-semibold">
       {{ t('lamp.colors.title') }}
     </span>
-    <div ref="row" class="-mx-2 flex">
+    <div class="-mx-2 flex">
       <!-- A radio group mounted without a value keeps its own selection for
            good, through Reka's passive v-model. It mounts again once the state
            is known, so a command the lamp did not apply never shows as chosen.
@@ -130,12 +116,11 @@ async function select(choice: Choice): Promise<void> {
             :class="{ 'swatch-off': item.value === 'off' }"
             :style="{ background: item.hex }"
           />
-          <LampTileName :name="item.label" :narrow="narrowAt(item.value)" :named="false" />
+          <LampTileName :name="item.label" :named="false" />
         </template>
       </URadioGroup>
       <LampMyColors
         :standalone="standalone"
-        :narrow="narrow[items.length] ?? false"
         :current="current"
         @manage="emit('manage')"
         @create="emit('create')"

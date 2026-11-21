@@ -57,15 +57,3 @@ export async function fitName(name: string, box: number, locale: Locale): Promis
   const hyphenate = await hyphenator(locale);
   return words.map((word) => (width(word) > box ? hyphenate(word) : word)).join(' ');
 }
-
-/** The widths of the lines of a text element, in order. */
-export function lineWidths(element: HTMLElement): number[] {
-  const range = document.createRange();
-  range.selectNodeContents(element);
-  const lines = new Map<number, number>();
-  for (const rect of range.getClientRects()) {
-    const top = Math.round(rect.top);
-    lines.set(top, (lines.get(top) ?? 0) + rect.width);
-  }
-  return [...lines.entries()].sort(([a], [b]) => a - b).map(([, width]) => width);
-}
