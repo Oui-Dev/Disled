@@ -19,7 +19,6 @@ import { useSettingsStore } from '@/stores/settings';
 import { fitName } from '@/utils/tileName';
 
 const props = withDefaults(defineProps<{ name: string; narrow?: boolean; named?: boolean }>(), {
-  narrow: false,
   named: true,
 });
 

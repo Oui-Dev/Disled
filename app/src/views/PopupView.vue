@@ -152,7 +152,7 @@ const back = computed<Page | null>(() => {
         <p v-if="!lamp.connection.connected" class="text-xs text-muted">
           {{ t('lamp.unplugged') }}
         </p>
-        <LampV1Warning />
+        <LampLockAlert />
         <!-- An integration picks the color: only the switch and its card stay. -->
         <LampIntegrationRow v-if="control.status.mode" />
         <div v-else class="flex flex-col gap-2">
@@ -173,7 +173,7 @@ const back = computed<Page | null>(() => {
           </h2>
           <PopupMenu />
         </div>
-        <LampV1Warning />
+        <LampLockAlert />
         <PopupUpdates />
         <PopupSettings />
       </section>

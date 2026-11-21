@@ -21,7 +21,7 @@ import { follow } from '@/ipc/events';
 import { BUILT_IN_COLORS } from '@/utils/lamp';
 import { useErrorStore } from './errors';
 
-/** Most custom colors (D3). */
+/** Most custom colors, as CUSTOM_MAX of src-tauri/src/colors.rs. */
 export const CUSTOM_MAX = 5;
 
 /** A color as the windows show it: its slot, the name the user sees, its code on screen. */
@@ -62,7 +62,7 @@ export const useColorsStore = defineStore('colors', () => {
       builtIn: false,
     })),
   );
-  const cycle = computed(() => palette.value?.cycle ?? [0, 1, 2]);
+  const cycle = computed(() => palette.value?.cycle ?? []);
   const full = computed(() => custom.value.length >= CUSTOM_MAX);
 
   function color(slot: number): ShownColor | undefined {
