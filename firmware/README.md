@@ -47,7 +47,7 @@ Both are pid.codes test PIDs
 |---|---|
 | `src/`, `lib/disled_core/` | the layers of [architecture.md](../docs/architecture.md#layers) |
 | `lib/tinyusb/` | TinyUSB (submodule `upstream/`, at a release tag) and its build description |
-| `test/` | Unity tests, one folder per core module, `test_app_config` for the shipped configuration, and the fixtures they share (`test_support.h`) |
+| `test/` | Unity tests, one folder per core module, `test_app_config` for the shipped configuration, and the fixtures and checks they share (`test_support.h`) |
 | `scripts/` | version from git, Intel HEX, protocol vectors to C |
 | `pyproject.toml`, `uv.lock` | build and check tools (PlatformIO, clang-format) for uv, kept up to date by Dependabot |
 | `tools/touch_replay/` | replays touch recordings through the detector on the build machine |

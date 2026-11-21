@@ -218,6 +218,11 @@ static void test_the_shipped_thresholds_keep_the_whole_range(void)
     TEST_ASSERT_EQUAL_INT8(50, touch_detector_sensitivity(&td));
 }
 
+static void test_every_correction_keeps_the_hysteresis_above_the_noise(void)
+{
+    check_every_correction(&app_touch_config);
+}
+
 static void test_a_weak_tap_counts_from_plus_30(void)
 {
     /* 45 per mille, under the press threshold of 60: a light tap on the
@@ -285,100 +290,6 @@ static void test_the_ends_of_the_range_on_the_measured_board(void)
     TEST_ASSERT_EQUAL_UINT(1, short_presses);
 }
 
-static void test_a_correction_while_idle_applies_at_once_and_keeps_the_baseline(void)
-{
-    start(0);
-    hold(dropped(5), 2000); /* a baseline that moved a little */
-    const uint16_t baseline = touch_detector_baseline(&td);
-    touch_detector_set_sensitivity(&td, 30);
-    assert_thresholds(42, 24, 35);
-    TEST_ASSERT_EQUAL_UINT16(baseline, touch_detector_baseline(&td));
-    TEST_ASSERT_EQUAL(TOUCH_STATE_IDLE, touch_detector_state(&td));
-    TEST_ASSERT_EQUAL_UINT16(0, touch_detector_recalibrations(&td));
-
-    /* A tap of about 48 per mille below that baseline, under 60, counts at once. */
-    hold(dropped(5), 100);
-    hold(dropped(50), 150);
-    hold(dropped(5), 500);
-    TEST_ASSERT_EQUAL_UINT(1, short_presses);
-
-    /* A recalibration, as after a USB suspend, keeps the correction. */
-    touch_detector_recalibrate(&td);
-    TEST_ASSERT_EQUAL_INT8(30, touch_detector_sensitivity(&td));
-    assert_thresholds(42, 24, 35);
-}
-
-static void test_a_correction_during_a_press_waits_for_its_release(void)
-{
-    /* A light press at 65 per mille that relaxes to 45, the finger still down. */
-    start(0);
-    hold(dropped(65), 300);
-    hold(dropped(45), 200);
-    TEST_ASSERT_EQUAL(TOUCH_STATE_PRESSED, touch_detector_state(&td));
-
-    /* Applied now, a release of 51 would end the press, finger down, with a
-     * short press. It waits. */
-    touch_detector_set_sensitivity(&td, -50);
-    TEST_ASSERT_EQUAL_INT8(-50, touch_detector_sensitivity(&td));
-    assert_thresholds(60, 34, 50);
-    hold(dropped(45), 500);
-    TEST_ASSERT_EQUAL(TOUCH_STATE_PRESSED, touch_detector_state(&td));
-    TEST_ASSERT_EQUAL_UINT(0, short_presses + long_presses);
-
-    /* The finger leaves: one short press, then the new thresholds. */
-    hold(BASELINE, 300);
-    TEST_ASSERT_EQUAL_UINT(1, short_presses);
-    assert_thresholds(90, 51, 75);
-    hold(dropped(65), 300);
-    hold(BASELINE, 300);
-    TEST_ASSERT_EQUAL_UINT(1, short_presses);
-
-    /* A long press under way: nothing more until the release, and nothing at it. */
-    start(0);
-    hold(dropped(100), 2100);
-    TEST_ASSERT_EQUAL_UINT(1, long_presses);
-    touch_detector_set_sensitivity(&td, 50);
-    hold(dropped(100), 500);
-    assert_thresholds(60, 34, 50);
-    hold(BASELINE, 300);
-    TEST_ASSERT_EQUAL_UINT(1, long_presses);
-    TEST_ASSERT_EQUAL_UINT(0, short_presses);
-    assert_thresholds(30, 17, 25);
-}
-
-static void test_a_correction_during_a_press_waits_with_the_hand_near_the_lid(void)
-{
-    /* The hand rests 30 per mille down: a press asks for 80, the floor and
-     * the rise, and its release for 55, the floor and half the rise. */
-    start(0);
-    hold(dropped(30), 500);
-    hold(dropped(100), 300);
-    hold(dropped(65), 200); /* the finger relaxes, still down */
-    TEST_ASSERT_EQUAL(TOUCH_STATE_PRESSED, touch_detector_state(&td));
-
-    /* Applied now, -50 would take the release to 67 through the rise (75),
-     * above the finger: a short press, finger down. It waits. */
-    touch_detector_set_sensitivity(&td, -50);
-    hold(dropped(65), 500);
-    TEST_ASSERT_EQUAL(TOUCH_STATE_PRESSED, touch_detector_state(&td));
-    TEST_ASSERT_EQUAL_UINT(0, short_presses + long_presses);
-
-    /* The finger leaves, the hand stays: one short press. */
-    hold(dropped(30), 400);
-    TEST_ASSERT_EQUAL(TOUCH_STATE_IDLE, touch_detector_state(&td));
-    TEST_ASSERT_EQUAL_UINT(1, short_presses);
-
-    /* Then the new thresholds, over the same hand: a press asks for 105, so a
-     * tap of 100 per mille no longer counts, and one of 115 does. */
-    hold(dropped(100), 150);
-    hold(dropped(30), 400);
-    TEST_ASSERT_EQUAL_UINT(1, short_presses);
-    hold(dropped(115), 150);
-    hold(dropped(30), 400);
-    TEST_ASSERT_EQUAL_UINT(2, short_presses);
-    TEST_ASSERT_EQUAL_UINT(0, long_presses);
-}
-
 int main(void)
 {
     UNITY_BEGIN();
@@ -388,11 +299,9 @@ int main(void)
     RUN_TEST(test_the_warm_white_is_its_swatch_through_the_calibration);
     RUN_TEST(test_a_correction_scales_press_release_and_rise);
     RUN_TEST(test_the_shipped_thresholds_keep_the_whole_range);
+    RUN_TEST(test_every_correction_keeps_the_hysteresis_above_the_noise);
     RUN_TEST(test_a_weak_tap_counts_from_plus_30);
     RUN_TEST(test_a_hand_above_the_lid_may_count_from_plus_25);
     RUN_TEST(test_the_ends_of_the_range_on_the_measured_board);
-    RUN_TEST(test_a_correction_while_idle_applies_at_once_and_keeps_the_baseline);
-    RUN_TEST(test_a_correction_during_a_press_waits_for_its_release);
-    RUN_TEST(test_a_correction_during_a_press_waits_with_the_hand_near_the_lid);
     return UNITY_END();
 }
