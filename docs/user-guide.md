@@ -39,9 +39,11 @@ An object laid on the lid acts as one long touch, so the lamp turns off or
 on after 2 s, then ignores the object. Take it away and the touch works
 again.
 
-While the lamp follows an integration, a short touch does nothing, and
-holding for 2 s still turns it off or on ([Integrations](#integrations)).
-While the lamp breathes for an alert, the touch does nothing at all.
+While the lamp follows an integration, a short touch changes nothing on
+the lamp, and holding for 2 s still turns it off or on. While it breathes
+for an alert, the touch changes nothing on the lamp at all. In both cases,
+a plugin that reads the lamp hears of a short touch and may act on it
+([Integrations](#integrations)).
 
 **Brightness.** The lamp reads the room light through a small window on
 the left side of its base, and dims or brightens within a second or two

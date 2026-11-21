@@ -9,12 +9,12 @@ the color and read the lamp, through plugins, and show a color of your
 choice while the microphone is in use during a call
 ([user guide](docs/user-guide.md)).
 
-> **Status.** Released: the board (PCB 1.0.0), the enclosure (1.1.1), the
-> firmware and the tray app 2.0, and the production tool. Still to come: the
-> lamp's own USB ID, requested from pid.codes, and the tests of the LED
-> current and of the heat. Binaries
-> and hardware files are on the
-> [releases page](https://github.com/Oui-Dev/Disled/releases).
+> **Status.** Released: the board, the enclosure, the firmware and the
+> desktop app, with their files on the
+> [releases page](https://github.com/Oui-Dev/Disled/releases); the
+> production tool runs from the repository. Still to come: the lamp's own
+> USB ID, requested from pid.codes, and the tests of the LED current and of
+> the heat.
 
 > [!WARNING]
 > On macOS, the first launch of the app is blocked, because Apple has not

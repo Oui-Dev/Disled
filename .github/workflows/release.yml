@@ -36,8 +36,8 @@ env:
   # production tool read its log lines in crates/disled-flash/src/wchisp.rs:
   # check them against a new version. The version is also named in app.yml
   # (WCHISP_VERSION), the hint of tools/disled-factory/src/main.rs, the
-  # notice in app/src-tauri/third-party/wchisp, CONTRIBUTING.md,
-  # app/README.md, docs/production.md and docs/releasing.md.
+  # notice in app/src-tauri/third-party/wchisp, app/README.md,
+  # docs/production.md and docs/releasing.md.
   WCHISP_VERSION: 0.3.0
 
 jobs:
