@@ -254,7 +254,6 @@ mod tests {
             "lampUpdate.start",
             "lampUpdate.reinstall",
             "lampUpdate.retry",
-            "lampInstall.others",
             "lampInstall.install",
             "lampInstall.reinstall",
             "modes.manual",

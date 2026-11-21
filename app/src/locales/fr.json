@@ -379,7 +379,6 @@
     "notesTitle": "S’ouvre dans le navigateur",
     "recommended": "Recommandée",
     "current": "Actuelle",
-    "others": "Autres versions",
     "install": "Installer {version}",
     "reinstall": "Réinstaller {version}"
   },

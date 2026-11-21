@@ -56,7 +56,6 @@ declare module 'vue' {
     UFormField: typeof import('./../node_modules/@nuxt/ui/dist/runtime/components/FormField.vue')['default']
     UIcon: typeof import('./../node_modules/@nuxt/ui/dist/runtime/vue/components/Icon.vue')['default']
     UInput: typeof import('./../node_modules/@nuxt/ui/dist/runtime/components/Input.vue')['default']
-    UListbox: typeof import('./../node_modules/@nuxt/ui/dist/runtime/components/Listbox.vue')['default']
     UModal: typeof import('./../node_modules/@nuxt/ui/dist/runtime/components/Modal.vue')['default']
     UpdateProgress: typeof import('./components/update/UpdateProgress.vue')['default']
     UpdateStepDetail: typeof import('./components/update/UpdateStepDetail.vue')['default']
