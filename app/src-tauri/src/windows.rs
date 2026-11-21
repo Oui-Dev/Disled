@@ -109,6 +109,12 @@ pub fn create_popup(app: &AppHandle) -> tauri::Result<()> {
         .always_on_top(true)
         .skip_taskbar(true)
         .visible(false)
+        // On Windows a page built focused takes the keyboard at once, even in
+        // a hidden window, and the popup follows the focus of its page there:
+        // the loss of that keyboard hid the popup that the launch had just
+        // shown. Once shown, the window gets the focus and hands it to the
+        // page. On macOS the page stays the first responder of the panel.
+        .focused(!cfg!(target_os = "windows"))
         .build()?;
     let owner = app.clone();
     window.on_window_event(move |event| match event {

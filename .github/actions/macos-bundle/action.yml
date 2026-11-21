@@ -28,6 +28,17 @@ runs:
           exit 1
         fi
 
+    # The app lives in the menu bar, so the bundle must make it an agent app,
+    # with no Dock tile even while it launches (app/src-tauri/Info.plist).
+    - name: An agent app, without a Dock tile
+      shell: bash
+      working-directory: target/release/bundle/macos
+      run: |
+        if [ "$(plutil -extract LSUIElement raw -o - Disled.app/Contents/Info.plist)" != true ]; then
+          echo "::error::Info.plist does not make Disled an agent app (LSUIElement)"
+          exit 1
+        fi
+
     # The disk image window shows its background, with the first-launch
     # steps, only if Finder saved its layout into the image.
     - name: Check the disk image layout

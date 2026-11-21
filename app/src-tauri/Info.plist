@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  SPDX-License-Identifier: GPL-3.0-or-later
+  SPDX-FileCopyrightText: 2026 The Disled contributors
+
+  Tauri merges this file into the Info.plist of the macOS bundle. Disled is
+  an agent app from the start of its process, with no Dock tile even while
+  it launches. main() gives tao the same policy, since the launch would
+  otherwise make the app a regular one again.
+-->
+<plist version="1.0">
+<dict>
+  <key>LSUIElement</key>
+  <true/>
+</dict>
+</plist>
