@@ -361,18 +361,7 @@ impl Host {
                 // Changed files: the program of the old files stops.
                 outbox.stop.push(program);
             }
-            self.plugins.insert(id.clone(), plugin);
-            // An approval was for other files: the plugin waits for a new one.
-            if !self.approved(&id)
-                && self
-                    .stored
-                    .plugins
-                    .get(&id)
-                    .is_some_and(|entry| entry.enabled)
-            {
-                self.entry(&id).enabled = false;
-                self.save(outbox);
-            }
+            self.plugins.insert(id, plugin);
         }
         self.run_programs(app);
     }
