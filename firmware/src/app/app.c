@@ -373,16 +373,6 @@ static scheduler_task_t tasks[] = {
 
 static led_output_config_t output_config; /* led_output keeps a pointer to it */
 
-uint16_t app_alert_depth(void)
-{
-    return output_config.alert_depth_permille;
-}
-
-void app_set_alert_depth(uint16_t depth_permille)
-{
-    output_config.alert_depth_permille = depth_permille;
-}
-
 /* The self-test as configured, its white step being the warm white of the
  * palette at the brightness of the other steps. */
 static self_test_config_t self_test_config;

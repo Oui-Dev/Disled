@@ -85,7 +85,7 @@ static const uint8_t desc_configuration[] = {
                              USB_HID_POLL_INTERVAL_MS),
 #if CFG_TUD_CDC
     TUD_CDC_DESCRIPTOR(USB_ITF_CDC_COMM, STRID_CDC, USB_EP_CDC_NOTIF, 8, USB_EP_CDC_OUT,
-                       USB_EP_CDC_IN, CFG_TUD_CDC_EP_BUFSIZE),
+                       USB_EP_CDC_IN, TUD_EPSIZE_BULK_MAX),
 #endif
 };
 

@@ -25,12 +25,9 @@ typedef struct {
 /* Green, orange, red. */
 void touch_cycle_init(touch_cycle_t *cycle);
 
-/* 1 to TOUCH_CYCLE_MAX colors, each one defined (bit per slot in
- * `defined`), none twice. */
-bool touch_cycle_is_valid(const uint8_t *slots, uint32_t count, uint32_t defined);
-
-/* Replaces the cycle with a valid one. Otherwise returns false and changes
- * nothing. */
+/* Replaces the cycle with `count` colors, 1 to TOUCH_CYCLE_MAX, each one
+ * defined (bit per slot in `defined`) and none twice. Otherwise returns false
+ * and changes nothing. */
 bool touch_cycle_set(touch_cycle_t *cycle, const uint8_t *slots, uint32_t count, uint32_t defined);
 
 /* The color after `color`: the next one in the cycle, the first one after the
