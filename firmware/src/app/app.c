@@ -27,9 +27,14 @@
 #include "drivers/veml7700.h"
 #include "scheduler.h"
 #include "time_utils.h"
+#include "touch_gate.h"
 #include "usb/usb_device.h"
 
 app_context_t app;
+
+static touch_gate_t s_touch_gate; /* no gesture during an alert */
+static uint16_t s_usb_suspends;   /* since boot (diagnostics) */
+static uint8_t s_alert_seq;       /* seq of the ALERT command running */
 
 void app_apply_request(const lamp_request_t *request)
 {
@@ -51,14 +56,9 @@ uint16_t app_level_permille(void)
 
 /* --- Colors and touch cycle (version 2) ------------------------------ */
 
-static uint32_t defined_slots(void)
-{
-    return app.palette.defined;
-}
-
 bool app_set_touch_cycle(const touch_cycle_t *cycle)
 {
-    return touch_cycle_set(&app.cycle, cycle->slots, cycle->count, defined_slots());
+    return touch_cycle_set(&app.cycle, cycle->slots, cycle->count, app.palette.defined);
 }
 
 bool app_set_color(uint32_t slot, rgb16_t color)
@@ -81,7 +81,7 @@ bool app_set_color(uint32_t slot, rgb16_t color)
 
 static void report_alert_end(uint8_t reason)
 {
-    app.alert_done_seq = app.alert_seq;
+    app.alert_done_seq = s_alert_seq;
     app.alert_done_reason = reason;
     app.alert_report = true;
 }
@@ -111,7 +111,7 @@ proto_status_t app_alert(uint8_t seq, uint8_t count, uint16_t period_ms)
         /* Replaced without an ALERT_DONE: the ACK of the new one says it. */
         led_output_settle(&app.output, now_ms);
     }
-    app.alert_seq = seq;
+    s_alert_seq = seq;
     alert_start(&app.alert, count, period_ms, now_ms);
     return PROTO_OK;
 }
@@ -155,8 +155,8 @@ static void enter_suspend(uint32_t now_ms)
     if (app.als.present) {
         (void)veml7700_shutdown();
     }
-    if (app.usb_suspends < UINT16_MAX) {
-        app.usb_suspends++;
+    if (s_usb_suspends < UINT16_MAX) {
+        s_usb_suspends++;
     }
     usb_device_wake_irq(true);
     bsp_power_slow_clock();
@@ -202,7 +202,7 @@ static void task_touch(uint32_t now_ms)
         /* No gesture acts during an alert, nor at the release of a press it
          * covered. The alert ends in task_output(), between two samples. */
         touch_event_t seen = TOUCH_EVENT_NONE;
-        const touch_event_t event = touch_gate_feed(&app.touch_gate, &app.touch, raw, sample_ms,
+        const touch_event_t event = touch_gate_feed(&s_touch_gate, &app.touch, raw, sample_ms,
                                                     alert_running(&app.alert), &seen);
         if (self_test_running(&app.self_test)) {
             continue; /* the self-test watches the touch signal itself */
@@ -330,11 +330,6 @@ static void task_output(uint32_t now_ms)
     led_pwm_set(app.duty);
 }
 
-static uint16_t saturate_u16(uint32_t value)
-{
-    return (value > UINT16_MAX) ? (uint16_t)UINT16_MAX : (uint16_t)value;
-}
-
 void app_diagnostics(proto_diagnostics_t *diagnostics)
 {
     const fault_stats_t stats = bsp_fault_stats();
@@ -349,12 +344,12 @@ void app_diagnostics(proto_diagnostics_t *diagnostics)
         .stack_free_min = bsp_stack_free_min(),
         .i2c_errors = i2c_bus_error_count(),
         .light_sensor_probes = app.als.probes,
-        .touch_samples_lost = saturate_u16(tkey_samples_lost()),
+        .touch_samples_lost = tkey_samples_lost(),
         .touch_recalibrations = touch_detector_recalibrations(&app.touch),
-        .usb_suspends = app.usb_suspends,
+        .usb_suspends = s_usb_suspends,
         .auto_bias = brightness_auto_bias(&app.brightness),
         .flags = (uint8_t)((app.als.present ? PROTO_DIAG_FLAG_LIGHT_SENSOR : 0u) |
-                           (app.crystal_ok ? PROTO_DIAG_FLAG_CRYSTAL : 0u)),
+                           (bsp_crystal_ok() ? PROTO_DIAG_FLAG_CRYSTAL : 0u)),
         .touch_sensitivity = touch_detector_sensitivity(&app.touch),
     };
 }
@@ -379,8 +374,6 @@ static led_output_config_t output_config; /* led_output keeps a pointer to it */
 void app_init(const fault_record_t *fault)
 {
     app.fault = *fault;
-    app.reset_cause = bsp_reset_cause();
-    app.crystal_ok = bsp_crystal_ok();
 
     /* LED first, dark: from here on only led_output drives it, apart from
      * the calibration commands of the debug console. */
@@ -408,11 +401,11 @@ void app_init(const fault_record_t *fault)
     als_probe(&app.als, bsp_time_ms(), APP_ALS_FIRST_RETRY_MS);
 
     touch_detector_init(&app.touch, &app_touch_config);
-    touch_gate_init(&app.touch_gate);
+    touch_gate_init(&s_touch_gate);
     tkey_init(&app_tkey_config);
     tkey_start();
 
-    usb_device_init(app.crystal_ok);
+    usb_device_init(bsp_crystal_ok());
     app.link = usb_device_link();
     app_host_init();
 #if DISLED_DEBUG

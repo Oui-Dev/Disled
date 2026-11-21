@@ -13,6 +13,8 @@
 #include "bsp/ch32.h"
 #include "led_pwm.h"
 
+_Static_assert(TKEY_SAMPLE_1CYCLE5 == ADC_SampleTime_1Cycles5, "the sample time of the SDK");
+
 /* ADC_CTLR1 touch-key bits (WCH TouchKey example, CH32V20x EVT). */
 #define ADC_CTLR1_TKENABLE (1u << 24)
 #define ADC_CTLR1_BUFEN    (1u << 26)
@@ -35,7 +37,7 @@ static uint8_t s_discharge_time;
 static volatile sample_t s_queue[QUEUE_SIZE];
 static volatile uint32_t s_head; /* written by the interrupt */
 static volatile uint32_t s_tail; /* written by the main loop */
-static volatile uint32_t s_lost;
+static volatile uint16_t s_lost; /* written by the interrupt */
 
 void tkey_init(const tkey_config_t *config)
 {
@@ -52,6 +54,14 @@ void tkey_init(const tkey_config_t *config)
     ADC1->RSQR3 = BOARD_TOUCH_ADC_CHANNEL;
 }
 
+/* Saturates, as every diagnostic counter does. */
+static void count_lost(void)
+{
+    if (s_lost < UINT16_MAX) {
+        s_lost++;
+    }
+}
+
 /* Runs in the TIM3 interrupt, at the sample point of the PWM period. */
 static void measure(void)
 {
@@ -62,7 +72,7 @@ static void measure(void)
     uint32_t polls = 0;
     while ((ADC1->STATR & ADC_EOC) == 0u) {
         if (++polls >= MEASURE_MAX_POLLS) {
-            s_lost++;
+            count_lost();
             return;
         }
     }
@@ -70,7 +80,7 @@ static void measure(void)
 
     const uint32_t head = s_head;
     if (head - s_tail >= QUEUE_SIZE) {
-        s_lost++;
+        count_lost();
         return;
     }
     s_queue[head & (QUEUE_SIZE - 1u)] = (sample_t){ value, bsp_time_ms() };
@@ -108,7 +118,7 @@ bool tkey_read(uint16_t *sample, uint32_t *time_ms)
     return true;
 }
 
-uint32_t tkey_samples_lost(void)
+uint16_t tkey_samples_lost(void)
 {
     return s_lost;
 }

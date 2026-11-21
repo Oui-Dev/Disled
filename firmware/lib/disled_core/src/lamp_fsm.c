@@ -77,11 +77,8 @@ bool lamp_request_is_valid(const lamp_request_t *request)
 
 bool lamp_state_equal(const lamp_state_t *a, const lamp_state_t *b)
 {
-    if (a->touch_mode != b->touch_mode) {
-        return false;
-    }
     return a->on == b->on && a->color == b->color && a->brightness_mode == b->brightness_mode &&
-           a->manual_level == b->manual_level;
+           a->manual_level == b->manual_level && a->touch_mode == b->touch_mode;
 }
 
 bool lamp_fsm_apply(lamp_state_t *state, const lamp_request_t *request)

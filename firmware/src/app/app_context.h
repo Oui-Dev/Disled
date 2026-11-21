@@ -23,7 +23,6 @@
 #include "self_test.h"
 #include "touch_cycle.h"
 #include "touch_detector.h"
-#include "touch_gate.h"
 
 typedef struct {
     bool present;
@@ -40,24 +39,18 @@ typedef struct {
     change_source_t source; /* cause of the latest lamp change */
     brightness_t brightness;
     touch_detector_t touch;
-    touch_gate_t touch_gate; /* no gesture during an alert */
     led_output_t output;
     uint16_t duty[LED_CHANNEL_COUNT];
     usb_link_t link;
     app_als_t als;
     uint16_t cap_override_ma; /* debug: lifts the cap for the heat test, 0 = off */
-    reset_cause_t reset_cause;
     fault_record_t fault;
-    bool crystal_ok;
-    uint16_t usb_suspends; /* since boot (diagnostics) */
     self_test_t self_test;
     uint8_t self_test_seq; /* seq of the SELF_TEST command, for the result */
     bool self_test_report; /* a result is waiting to be sent */
     palette_t palette;
     touch_cycle_t cycle;
-    uint32_t host_seen_ms; /* last command, for the touch mode fallback */
     alert_t alert;
-    uint8_t alert_seq;      /* seq of the ALERT command running */
     uint8_t alert_done_seq; /* the ALERT_DONE waiting to be sent: seq and reason */
     uint8_t alert_done_reason;
     bool alert_report;

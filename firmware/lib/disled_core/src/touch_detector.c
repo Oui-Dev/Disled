@@ -128,32 +128,15 @@ static int32_t max_i32(int32_t a, int32_t b)
     return a > b ? a : b;
 }
 
-/* The thresholds in force: those of the configuration, corrected by the
- * sensitivity in force. */
-static uint16_t press_threshold(const touch_detector_t *td)
-{
-    return corrected(td->config->press_permille, td->sensitivity_applied);
-}
-
-static uint16_t release_threshold(const touch_detector_t *td)
-{
-    return corrected(td->config->release_permille, td->sensitivity_applied);
-}
-
-static uint16_t rise_threshold(const touch_detector_t *td)
-{
-    return corrected(td->config->press_rise_permille, td->sensitivity_applied);
-}
-
 /* Hysteresis and debounce. Returns true when the debounced contact flips. */
 static bool update_contact(touch_detector_t *td, uint32_t now_ms)
 {
     const touch_config_t *cfg = td->config;
+    const touch_thresholds_t t = touch_detector_thresholds(td);
     const bool contact = td->state == TOUCH_STATE_PRESSED;
-    const int32_t rise = (int32_t)rise_threshold(td);
-    const int32_t press = max_i32((int32_t)press_threshold(td), (int32_t)recent_floor(td) + rise);
-    const int32_t release =
-        max_i32((int32_t)release_threshold(td), (int32_t)td->press_floor + rise / 2);
+    const int32_t rise = (int32_t)t.rise;
+    const int32_t press = max_i32((int32_t)t.press, (int32_t)recent_floor(td) + rise);
+    const int32_t release = max_i32((int32_t)t.release, (int32_t)td->press_floor + rise / 2);
     bool raw_contact = contact ? (td->delta_permille > release) : (td->delta_permille >= press);
 
     if (td->rearming) {
@@ -327,10 +310,12 @@ int8_t touch_detector_sensitivity(const touch_detector_t *td)
 
 touch_thresholds_t touch_detector_thresholds(const touch_detector_t *td)
 {
+    /* The sensitivity in force: a change waits for the release. */
+    const touch_config_t *cfg = td->config;
     const touch_thresholds_t thresholds = {
-        .press = press_threshold(td),
-        .release = release_threshold(td),
-        .rise = rise_threshold(td),
+        .press = corrected(cfg->press_permille, td->sensitivity_applied),
+        .release = corrected(cfg->release_permille, td->sensitivity_applied),
+        .rise = corrected(cfg->press_rise_permille, td->sensitivity_applied),
     };
     return thresholds;
 }

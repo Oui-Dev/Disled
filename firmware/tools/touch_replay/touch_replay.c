@@ -9,28 +9,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "app/app_config.h"
 #include "touch_detector.h"
 
 #define WINDOW_MS 20u
 
-/* Defaults: a copy of app_touch_config in src/app/app_config.c, which
- * cannot build here (it includes the SDK). Check them before relying on a
- * result, or override them on the command line. */
-static touch_config_t config = {
-    .window_samples = WINDOW_MS,
-    .calibration_windows = 8,
-    .baseline_shift = 8,
-    .press_permille = 60,
-    .release_permille = 34,
-    .press_rise_permille = 50,
-    .proximity_permille = 10,
-    .debounce_ms = 40,
-    .rearm_ms = 100,
-    .long_press_ms = 2000,
-    .object_ms = 10000,
-    .inverted_permille = 30,
-    .inverted_ms = 1000,
-};
+/* The settings of the lamp, app_touch_config, which the command line
+ * overrides one by one. */
+static touch_config_t config;
 
 /* Sensitivity correction in percent, as SET_TOUCH_SENSITIVITY sets it. */
 static int sensitivity;
@@ -71,6 +57,7 @@ static int parse_option(const char *arg)
 
 int main(int argc, char **argv)
 {
+    config = app_touch_config;
     if (argc < 2) {
         fprintf(stderr,
                 "usage: touch_replay <recording> [name=value ...]\n"

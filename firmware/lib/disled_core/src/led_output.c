@@ -22,7 +22,12 @@ static void copy(uint32_t to[LED_CHANNEL_COUNT], const uint32_t from[LED_CHANNEL
 
 static bool same(const uint32_t a[LED_CHANNEL_COUNT], const uint32_t b[LED_CHANNEL_COUNT])
 {
-    return a[0] == b[0] && a[1] == b[1] && a[2] == b[2];
+    for (size_t c = 0; c < LED_CHANNEL_COUNT; c++) {
+        if (a[c] != b[c]) {
+            return false;
+        }
+    }
+    return true;
 }
 
 static uint16_t full_duty(const led_output_config_t *config)
