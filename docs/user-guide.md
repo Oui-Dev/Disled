@@ -116,7 +116,7 @@ the taskbar. Drag it onto the taskbar to keep it in view.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/user-guide/popup-lamp-dark.png">
-  <img alt="The popup: the lamp is connected and green, checked among Off, the four colors and More. The brightness is automatic, at 33 % with no correction" src="images/user-guide/popup-lamp-light.png" width="340">
+  <img alt="The popup: the lamp is connected and green, checked among Off, the four colors and More. The brightness is automatic, at 20 % with no correction" src="images/user-guide/popup-lamp-light.png" width="340">
 </picture>
 
 - **Status.** "Lamp connected", "Connecting…" or "No lamp connected", and
