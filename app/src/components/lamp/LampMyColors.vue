@@ -21,7 +21,6 @@ import { useLampStore } from '@/stores/lamp';
 
 const props = defineProps<{
   standalone?: boolean;
-  narrow?: boolean;
   /** The custom color the lamp shows in manual mode, which the tile takes. */
   current?: ShownColor;
 }>();
@@ -95,7 +94,7 @@ async function choose(slot: number | null): Promise<void> {
           <UIcon name="i-lucide-chevron-down" class="text-muted size-3" />
         </template>
       </UChip>
-      <LampTileName :name="current?.name ?? t('lamp.colors.more')" :narrow="narrow" />
+      <LampTileName :name="current?.name ?? t('lamp.colors.more')" />
     </UButton>
 
     <template #content>
