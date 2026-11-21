@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/Oui-Dev/Disled/compare/app-v2.1.0...app-v2.2.0) (2026-11-21)
+
+
+### 🚀 Enhancements
+
+* **app:** swatches that match the lamp, and a hue and vividness square instead of the color code ([bf5158c](https://github.com/Oui-Dev/Disled/commit/bf5158c635ed7b53a0512116abb0185068c8c4df))
+
 ## [2.1.0](https://github.com/Oui-Dev/Disled/compare/app-v2.0.1...app-v2.1.0) (2026-11-20)
 
 
