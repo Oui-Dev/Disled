@@ -45,9 +45,9 @@ main loop ── touch task ─> touch_gate (closed during an alert) ─> touch_
                              ─> short/long press ─> lamp_fsm: touch cycle, touch mode
           ── ALS task (100 ms) ─> VEML7700 count at one range, every 400 ms
                                      ─> lux ─> brightness
-          ── output task (10 ms) ─> led_output: palette, level, fade, alert
-                                     breath, power cap, pulse loss ─> duties in
-                                     1/16 tick ─> led_pwm
+          ── output task (10 ms) ─> palette, color calibration ─> led_output:
+                                     level, fade, alert breath, power cap,
+                                     light tables ─> duties in 1/16 tick ─> led_pwm
           ── usb task ─> TinyUSB, link state (unconfigured/configured/suspended)
           ── host task ─> commands, STATE notifications, telemetry, end of an
                           alert, normal touch again after 10 s without a command
@@ -126,8 +126,8 @@ flash: the ROM bootloader of WCH, which writes it, lives outside it.
 
 | Build | Flash | RAM (2 KB stack included) |
 |---|---|---|
-| debug (HID + CDC console) | 26.2 KB | 4.9 KB |
-| release (HID) | 20.4 KB | 4.2 KB |
+| debug (HID + CDC console) | 29.4 KB | 5.4 KB |
+| release (HID) | 22.1 KB | 4.2 KB |
 
 ### Configuration
 
@@ -139,23 +139,34 @@ with the reason for its value. [bringup.md](bringup.md) checks them on a new boa
 The PWM runs at 20 kHz with 3600 ticks of 14 ns. Duties are in sixteenths
 of a tick: at the bottom of the range a channel lasts only a few ticks, and
 whole ticks would make dim fades step and the color drift. The TIM3 update
-interrupt spreads the fraction over 16 periods (`pwm_dither`). Each lit
-channel also gets a pulse loss added, the light that the driver edges take
-from every pulse. The gates of the MOSFETs charge through 100 Ω and switch
-in about 100 ns, so a pulse of a few ticks gives no light and the next
-ticks give more light than those of a long pulse: the loss follows the
-light the pulse should give, along a curve of a few points per channel
-(`led_loss_curve_t`). Without it, the 1-tick blue of warm white at 10 %
-gives no light and the white turns yellow.
+interrupt spreads the fraction over 16 periods (`pwm_dither`).
+
+The output chain (`led_output`) works on the light of each channel, a
+fraction of its light at 100 % duty, and turns it into a duty at the end
+through a light table per channel (`led_cal`). The gates of the MOSFETs
+charge through 100 Ω, so a pulse of 4 ticks or less gives almost no light,
+the next ticks give up to 1.4 times the light of those of a long pulse, and
+a long pulse gives about 13 ticks more light than its duty, its edges
+outlasting it. The table holds the measured light of every pulse length up
+to 128 ticks, and a straight line beyond. The dithering mixes two
+neighbouring lengths linearly, so the table inverts exactly. The fade mixes
+light, the alert breath scales it, and the current cap scales the three
+channels alike, from a bound that the duties cannot exceed.
 
 The palette (`palette`) holds the four built-in colors and the custom ones
-that the host sets, all in linear light at full brightness; the level then
-scales them. The built-in colors are tuned by eye through the PLA. A custom
-color comes as a screen shows it, so the lamp first weights its channels by
-the white balance of the LED (`color_balance`), the duties of its white,
-then brings its largest channel back to full scale. An alert (`alert`)
-moves the perceived brightness of the lamp color along a smoothstep, after
-the fade, up from a dim lamp and down from a bright one.
+that the host sets, all at full brightness; the level then scales their
+light, level 1 % showing 3 % of perceived brightness
+(`color_level_shown`). The built-in colors are LED drives: green, orange and red are the
+LED's own primaries, more saturated than any sRGB color, and warm white is
+2700 K. A custom color comes as linear sRGB, as a screen shows it, and a
+3x3 matrix (`led_cal_drive`) turns it into the light of the three LEDs that
+shows that color, the white of `#FFFFFF` being D65. A color outside the
+LED gamut first takes the least white that brings it inside, which keeps
+its hue; the largest channel then goes back to full light. The matrix and
+the tables come from a measured calibration
+([bringup.md](bringup.md#led-calibration)). An alert (`alert`) moves the
+perceived brightness of the lamp color along a smoothstep, after the fade,
+up from a dim lamp and down from a bright one.
 
 ### Touch detection
 
@@ -178,9 +189,10 @@ but passes no gesture, nor the release of a press that outlived the alert.
 - `pio test -e native` runs the core on the build machine (Unity): lamp
   rules, palette, touch cycle and touch modes, touch detection on synthetic
   signals (mains hum, drift, objects, finger at power-up, hand resting near
-  the lid, sensitivity), the touch gate, alerts, brightness, color, power
-  cap, output fades and pulse loss, PWM dithering, self-test, scheduler,
-  formatter and the protocol codec.
+  the lid, sensitivity), the touch gate, alerts, brightness, color, the
+  LED calibration (color matrix, gamut, light tables), power cap, output
+  fades, PWM dithering, self-test, scheduler, formatter and the protocol
+  codec.
 - The protocol tests check the codec byte for byte against
   `protocol/vectors/v2.json`, the same file the app tests use.
 - `pio check` runs cppcheck on `src/` and the core at every severity.

@@ -101,15 +101,19 @@ a color gets `ERROR` (bad value). The 5-byte body of version 1 gets `ERROR`
 The lamp shows one of 16 palette slots:
 
 - 0 to 3 hold the built-in colors, green, orange, red and warm white, a
-  fixed light set by eye. They never change.
+  fixed drive of the LED: green, orange and red use its own primaries,
+  more saturated than any sRGB color, and warm white is 2700 K. They never
+  change.
 - 4 to 15 hold the custom colors that the host defines with `SET_COLOR`.
   They are empty at power-up.
 
 A color is linear light at full brightness, with its largest channel at
 65535; the brightness applies on top of it, and the LED current limit as
-for any color. Hosts send a custom color as a screen shows it, in linear
-light (linear sRGB, for example). The lamp balances it for its LED, so that
-white shows white, and `GET_COLOR` and `STATE` give it back as sent.
+for any color. Hosts send a custom color in linear sRGB, as a screen shows
+it. The lamp shows it through its LED calibration, so that it looks like
+that sRGB color with the white of `#FFFFFF` at D65, and `GET_COLOR` and
+`STATE` give it back as sent. `STATE` gives a built-in color as its LED
+drive.
 
 ### SET_COLOR body (7 bytes)
 

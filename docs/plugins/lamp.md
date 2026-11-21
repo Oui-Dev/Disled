@@ -17,7 +17,7 @@ The program reads one [JSON-RPC 2.0](https://www.jsonrpc.org/specification)
 notification per line, without `id`: it answers none.
 
 ```json
-{"jsonrpc":"2.0","method":"lamp","params":{"connected":true,"on":true,"color":{"slot":2,"name":"Do not disturb","hex":"#E74C3C"},"brightness":{"mode":"auto","level":40},"source":"touch","follows":"hello"}}
+{"jsonrpc":"2.0","method":"lamp","params":{"connected":true,"on":true,"color":{"slot":2,"name":"Do not disturb","hex":"#FF001C"},"brightness":{"mode":"auto","level":40},"source":"touch","follows":"hello"}}
 {"jsonrpc":"2.0","method":"touch","params":{"press":"short"}}
 ```
 
