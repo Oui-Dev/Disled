@@ -21,6 +21,7 @@ use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Manager};
 
 use super::manifest::{Capabilities, Manifest, Reason};
+use super::{process, scan};
 use crate::net;
 
 /// Where the catalog publishes its index and its zip files.
@@ -105,10 +106,6 @@ pub struct CatalogView {
 #[derive(Default)]
 pub struct CatalogState(Mutex<Vec<Published>>);
 
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
-}
-
 /// Checks that `index` is the index of the catalog, signed with `key`:
 /// `signature` is the content of `index.json.sig`.
 fn verify(key: &str, index: &[u8], signature: &str) -> Result<(), CatalogError> {
@@ -187,7 +184,7 @@ fn view(published: &Published, installed: &Installed, language: &str) -> Catalog
         .as_ref()
         .and_then(super::manifest::Run::command)
         .and_then(|command| command.first())
-        .filter(|program| !program.contains('/') && !program.contains('\\'))
+        .filter(|program| !process::is_path(program))
         .cloned();
     CatalogView {
         id: manifest.id.clone(),
@@ -254,7 +251,7 @@ pub async fn install(app: &AppHandle, id: &str) -> Result<String, CatalogError> 
         .await
         .map_err(network)?;
     if u64::try_from(zip.len()).ok() != Some(published.size)
-        || hex(&Sha256::digest(&zip)) != published.sha256
+        || scan::hex(&Sha256::digest(&zip)) != published.sha256
     {
         return Err(CatalogError::Mismatch);
     }

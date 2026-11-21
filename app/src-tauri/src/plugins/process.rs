@@ -25,6 +25,8 @@ use parking_lot::{Condvar, Mutex};
 use serde::Serialize;
 use serde_json::Value;
 
+use super::manifest;
+
 /// A line of the output, at most.
 const MAX_LINE: usize = 64 * 1024;
 /// The log of a plugin, before it moves to its `.1` file.
@@ -50,7 +52,7 @@ pub enum Notification {
 }
 
 /// A line of the output: a JSON-RPC 2.0 notification, or none.
-pub fn parse(line: &str) -> Option<Notification> {
+fn parse(line: &str) -> Option<Notification> {
     let value: Value = serde_json::from_str(line).ok()?;
     if value.get("jsonrpc")? != "2.0" {
         return None;
@@ -82,6 +84,12 @@ fn allowed(path: &Path) -> bool {
         })
 }
 
+/// A program given by its path in the folder of the plugin, rather than by
+/// a name that the PATH finds.
+pub fn is_path(program: &str) -> bool {
+    program.contains(['/', '\\'])
+}
+
 /// Where the program is: a path inside the folder of the plugin, never out
 /// of it, or a name on the PATH. An app started from the Finder does not get
 /// the PATH of the shell, so macOS also looks in the folders of Homebrew, and
@@ -92,7 +100,7 @@ pub fn resolve(
     path: Option<OsString>,
     home: Option<PathBuf>,
 ) -> Option<PathBuf> {
-    if program.contains('/') || program.contains('\\') {
+    if is_path(program) {
         let folder = folder.canonicalize().ok()?;
         let candidate = folder.join(program).canonicalize().ok()?;
         return (candidate.starts_with(&folder) && candidate.is_file() && allowed(&candidate))
@@ -478,17 +486,17 @@ fn launch(
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .env("DISLED_API", "1")
+        .env("DISLED_API", manifest::API.to_string())
         .env("DISLED_PLUGIN_ID", &spec.id)
         .env("DISLED_PLUGIN_DATA", &spec.data)
         .env("DISLED_LANG", &spec.language);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
+        use windows::Win32::System::Threading::CREATE_NO_WINDOW;
         // Without it, a console program started by a GUI app opens a
         // console window.
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        command.creation_flags(CREATE_NO_WINDOW);
+        command.creation_flags(CREATE_NO_WINDOW.0);
     }
     #[cfg(unix)]
     {

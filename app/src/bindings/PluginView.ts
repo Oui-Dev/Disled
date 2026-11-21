@@ -35,9 +35,9 @@ from: string | null, states: Array<StateView>, note: NoteView | null,
  */
 installed: boolean, last_event: LastEvent | null, program: ProgramStatus | null, 
 /**
- * Another program holds the port of the events.
+ * The port of the events, while another program holds it.
  */
-port_taken: boolean, 
+port_taken: number | null, 
 /**
  * Its fingerprint now, which the approval sends back.
  */

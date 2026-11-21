@@ -16,10 +16,12 @@ use sha2::{Digest, Sha256};
 
 use super::manifest::{self, Manifest, Reason};
 
-pub const MAX_FILES: usize = 5_000;
-pub const MAX_BYTES: u64 = 100 * 1024 * 1024;
+const MAX_FILES: usize = 5_000;
+const MAX_BYTES: u64 = 100 * 1024 * 1024;
 
-fn hex(bytes: &[u8]) -> String {
+/// Bytes in lowercase hexadecimal, as the fingerprints and the catalog
+/// write their digests.
+pub(super) fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
@@ -114,14 +116,6 @@ fn import_folder(plugins: &Path) -> PathBuf {
     let mut random = [0u8; 8];
     let _ = getrandom::fill(&mut random);
     plugins.join(format!(".import-{}", hex(&random)))
-}
-
-/// Imports the plugin of a zip file, whose `plugin.json` sits at its root or
-/// in its only folder, into `plugins/<id>`, in place of the plugin of that
-/// id. Returns the id.
-#[cfg(test)]
-pub fn import(zip: &Path, plugins: &Path) -> Result<String, Reason> {
-    unpack(zip, plugins)?.install(plugins)
 }
 
 /// A plugin that came out of its zip file, in a folder that no plugin can
@@ -278,6 +272,11 @@ mod tests {
         "description": "A test plugin.", "capabilities": ["run"],
         "run": { "default": ["demo"] }
     }"#;
+
+    /// Imports a zip into `plugins/<id>`, as the host does.
+    fn import(zip: &Path, plugins: &Path) -> Result<String, Reason> {
+        unpack(zip, plugins)?.install(plugins)
+    }
 
     fn write(path: &Path, text: &str) {
         if let Some(parent) = path.parent() {

@@ -46,6 +46,11 @@ pub struct Rule {
     pub action: Action,
 }
 
+/// A JSON pointer: empty for the whole event, or starting with `/`.
+pub fn is_pointer(text: &str) -> bool {
+    text.is_empty() || text.starts_with('/')
+}
+
 fn scalar(value: &Value) -> bool {
     matches!(value, Value::String(_) | Value::Number(_) | Value::Bool(_))
 }
@@ -105,7 +110,7 @@ pub fn parse(value: &Value, known_state: impl Fn(&str) -> bool) -> Option<Vec<Ru
             let when = when
                 .iter()
                 .map(|(pointer, test)| {
-                    (pointer.is_empty() || pointer.starts_with('/'))
+                    is_pointer(pointer)
                         .then_some(())
                         .and_then(|()| Some((pointer.clone(), condition(test)?)))
                 })

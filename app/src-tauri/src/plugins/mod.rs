@@ -45,8 +45,6 @@ use states::Keys;
 const EVENT_PLUGINS: &str = "plugins-changed";
 const SCHEMA: u64 = 1;
 const MANUAL: &str = "manual";
-/// The address of the events, which the installation notes show.
-const HOOKS_URL: &str = "http://127.0.0.1:47831/v1/hooks/";
 /// How often the states whose time runs out leave.
 const TICK: Duration = Duration::from_secs(1);
 
@@ -165,8 +163,8 @@ pub struct PluginView {
     pub installed: bool,
     pub last_event: Option<LastEvent>,
     pub program: Option<ProgramStatus>,
-    /// Another program holds the port of the events.
-    pub port_taken: bool,
+    /// The port of the events, while another program holds it.
+    pub port_taken: Option<u16>,
     /// Its fingerprint now, which the approval sends back.
     pub fingerprint: Option<String>,
 }
@@ -603,8 +601,10 @@ impl Host {
                 PluginView {
                     id: id.clone(),
                     name: manifest.map_or_else(|| id.clone(), |manifest| manifest.name.clone()),
-                    icon: manifest
-                        .map_or_else(|| "puzzle".into(), |manifest| manifest.icon.clone()),
+                    icon: manifest.map_or_else(
+                        || manifest::DEFAULT_ICON.into(),
+                        |manifest| manifest.icon.clone(),
+                    ),
                     version: manifest.map(|manifest| manifest.version.to_string()),
                     author: manifest.map(|manifest| manifest.author.clone()),
                     description: manifest
@@ -656,8 +656,9 @@ impl Host {
                         }),
                     }),
                     program: plugin.program.clone(),
-                    port_taken: port_taken
-                        && manifest.is_some_and(|manifest| manifest.capabilities.events),
+                    port_taken: (port_taken
+                        && manifest.is_some_and(|manifest| manifest.capabilities.events))
+                    .then_some(http::PORT),
                     fingerprint: plugin.fingerprint.clone(),
                 }
             })
@@ -912,7 +913,7 @@ pub fn list(app: &AppHandle) -> Vec<PluginView> {
 pub fn note(app: &AppHandle, id: &str) -> Option<FilledBlock> {
     read(app, |host| {
         let block = host.manifest(id)?.note.as_ref()?.block.as_ref()?.text();
-        let url = format!("{HOOKS_URL}{id}");
+        let url = http::hook_url(id);
         let token = host.tokens.get(id).map(str::to_owned);
         let text = block
             .replace("{{url}}", &url)
