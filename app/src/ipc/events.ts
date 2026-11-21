@@ -5,6 +5,7 @@
 
 import type { UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import type { Ref } from 'vue';
 import type { Connection } from '@/bindings/Connection';
 import type { ControlStatus } from '@/bindings/ControlStatus';
 import type { FirmwareStatus } from '@/bindings/FirmwareStatus';
@@ -69,4 +70,19 @@ export async function follow<E extends keyof Events>(
   if (!heard) {
     apply(current);
   }
+}
+
+/** Follows `event` into the window's copy of a backend value, as `follow` does. */
+export function mirror<E extends keyof Events>(
+  copy: Ref<Events[E] | null>,
+  event: E,
+  read: () => Promise<Events[E]>,
+): Promise<void> {
+  return follow(
+    event,
+    (payload) => {
+      copy.value = payload;
+    },
+    read,
+  );
 }

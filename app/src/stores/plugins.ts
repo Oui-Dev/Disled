@@ -27,7 +27,7 @@ import {
   pluginsList,
   pluginsOpenFolder,
 } from '@/ipc/commands';
-import { follow } from '@/ipc/events';
+import { mirror } from '@/ipc/events';
 import { useErrorStore } from './errors';
 
 export const usePluginsStore = defineStore('plugins', () => {
@@ -83,25 +83,11 @@ export const usePluginsStore = defineStore('plugins', () => {
     }
   }
 
-  /** Runs a change; a failure becomes the last error, a success clears it. */
-  async function change(action: () => Promise<void>): Promise<boolean> {
-    try {
-      await action();
-      errors.clear();
-      return true;
-    } catch (error) {
-      errors.reportFailure(error);
-      return false;
-    }
-  }
-
-  /** Runs a change that may give a plugin another token. */
-  async function changeToken(action: () => Promise<void>): Promise<boolean> {
-    const done = await change(action);
-    if (done) {
+  /** A change that may give a plugin another token. */
+  async function changeToken(action: Promise<void>): Promise<void> {
+    if (await errors.attempt(action.then(() => true))) {
       tokenChanges.value += 1;
     }
-    return done;
   }
 
   /** Reads the folder again, as when the window gets the focus. */
@@ -144,22 +130,15 @@ export const usePluginsStore = defineStore('plugins', () => {
     importPlugin,
     loadCatalog,
     install,
-    openSource: (id: string) => change(() => pluginOpenSource(id)),
-    approve: (id: string, fingerprint: string) => changeToken(() => pluginApprove(id, fingerprint)),
-    setEnabled: (id: string, enabled: boolean) => change(() => pluginSetEnabled(id, enabled)),
+    openSource: (id: string) => errors.attempt(pluginOpenSource(id)),
+    approve: (id: string, fingerprint: string) => changeToken(pluginApprove(id, fingerprint)),
+    setEnabled: (id: string, enabled: boolean) => errors.attempt(pluginSetEnabled(id, enabled)),
     setColor: (id: string, state: string, slot: number) =>
-      change(() => pluginSetColor(id, state, slot)),
-    regenerateToken: (id: string) => changeToken(() => pluginRegenerateToken(id)),
-    remove: (id: string) => change(() => pluginRemove(id)),
-    openFolder: () => change(pluginsOpenFolder),
+      errors.attempt(pluginSetColor(id, state, slot)),
+    regenerateToken: (id: string) => changeToken(pluginRegenerateToken(id)),
+    remove: (id: string) => errors.attempt(pluginRemove(id)),
+    openFolder: () => errors.attempt(pluginsOpenFolder()),
     /** Follows the backend events. Call once per window. */
-    start: () =>
-      follow(
-        'plugins-changed',
-        (next) => {
-          plugins.value = next;
-        },
-        pluginsList,
-      ),
+    start: () => mirror(plugins, 'plugins-changed', pluginsList),
   };
 });
