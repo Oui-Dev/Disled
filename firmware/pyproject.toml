@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 The Disled contributors
 #
-# Build and check tools of the firmware, at the versions the CI uses:
-# `uv sync` installs them in .venv, `uv run pio ...` runs them. uv.lock pins
-# every package; Dependabot keeps both files up to date. With no
-# [build-system], uv installs only the tools, never this project. The
-# format requires a version; the firmware version itself comes from git
-# tags (scripts/version.py), not from here.
+# Build and check tools of the firmware (README.md). With no [build-system],
+# uv installs only the tools, never this project. The format requires a
+# version; the firmware version comes from the git tags (scripts/version.py).
+# The floors of requires-python and required-version are security pins:
+# raise them, never lower them.
 
 [project]
 name = "disled-firmware-tools"

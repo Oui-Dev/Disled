@@ -34,18 +34,17 @@
 #define PROTO_HEADER_SIZE   3u
 #define PROTO_MAX_BODY_SIZE (PROTO_REPORT_SIZE - PROTO_HEADER_SIZE)
 
+/* 0x09 and 0x0F, and capability bits 5 and 10, are reserved (protocol/README.md). */
+
 /* From the host to the device. */
-#define PROTO_CMD_GET_INFO      0x01u
-#define PROTO_CMD_GET_STATE     0x02u
-#define PROTO_CMD_SET_STATE     0x03u
-#define PROTO_CMD_SET_TELEMETRY 0x04u
-#define PROTO_CMD_RESET         0x05u
-/* Version 1.1, each announced by a capability bit. */
-#define PROTO_CMD_SET_AUTO_BIAS   0x06u
-#define PROTO_CMD_GET_DIAGNOSTICS 0x07u
-#define PROTO_CMD_SELF_TEST       0x08u
-/* Version 2. 0x09 (ENTER_BOOTLOADER in version 1.1, which no lamp announced)
- * and 0x0F are reserved: unknown commands. */
+#define PROTO_CMD_GET_INFO              0x01u
+#define PROTO_CMD_GET_STATE             0x02u
+#define PROTO_CMD_SET_STATE             0x03u
+#define PROTO_CMD_SET_TELEMETRY         0x04u
+#define PROTO_CMD_RESET                 0x05u
+#define PROTO_CMD_SET_AUTO_BIAS         0x06u
+#define PROTO_CMD_GET_DIAGNOSTICS       0x07u
+#define PROTO_CMD_SELF_TEST             0x08u
 #define PROTO_CMD_SET_COLOR             0x0Au
 #define PROTO_CMD_GET_COLOR             0x0Bu
 #define PROTO_CMD_SET_TOUCH_CYCLE       0x0Cu
@@ -59,19 +58,15 @@
 #define PROTO_MSG_TELEMETRY        0x83u
 #define PROTO_MSG_DIAGNOSTICS      0x84u
 #define PROTO_MSG_SELF_TEST_RESULT 0x85u
-/* Version 2. */
-#define PROTO_MSG_COLOR       0x86u
-#define PROTO_MSG_TOUCH_CYCLE 0x87u
-#define PROTO_MSG_ALERT_DONE  0x88u
-#define PROTO_MSG_ACK         0x8Eu
-#define PROTO_MSG_ERROR       0x8Fu
-/* Version 2.1. */
-#define PROTO_MSG_TOUCH 0x89u
+#define PROTO_MSG_COLOR            0x86u
+#define PROTO_MSG_TOUCH_CYCLE      0x87u
+#define PROTO_MSG_ALERT_DONE       0x88u
+#define PROTO_MSG_TOUCH            0x89u
+#define PROTO_MSG_ACK              0x8Eu
+#define PROTO_MSG_ERROR            0x8Fu
 
-/* Body sizes. Version 2 adds the touch mode to SET_STATE, and the touch mode
- * and the color of the lamp to STATE. */
-#define PROTO_SET_STATE_SIZE 6u
-/* Version 2 sets a touch sensitivity correction, which ends DIAGNOSTICS. */
+/* Body sizes. */
+#define PROTO_SET_STATE_SIZE             6u
 #define PROTO_SET_TOUCH_SENSITIVITY_SIZE 1u
 #define PROTO_DIAGNOSTICS_SIZE           37u
 #define PROTO_SET_TELEMETRY_SIZE         2u
@@ -85,20 +80,17 @@
 #define PROTO_ALERT_SIZE                 3u
 
 /* INFO capabilities. */
-#define PROTO_CAP_TELEMETRY     (1u << 0)
-#define PROTO_CAP_DEBUG_CONSOLE (1u << 1)
-#define PROTO_CAP_AUTO_BIAS     (1u << 2)
-#define PROTO_CAP_DIAGNOSTICS   (1u << 3)
-#define PROTO_CAP_SELF_TEST     (1u << 4)
-/* Version 2. Bits 5 (ENTER_BOOTLOADER in version 1.1, never announced) and
- * 10 are reserved. */
+#define PROTO_CAP_TELEMETRY         (1u << 0)
+#define PROTO_CAP_DEBUG_CONSOLE     (1u << 1)
+#define PROTO_CAP_AUTO_BIAS         (1u << 2)
+#define PROTO_CAP_DIAGNOSTICS       (1u << 3)
+#define PROTO_CAP_SELF_TEST         (1u << 4)
 #define PROTO_CAP_CUSTOM_COLORS     (1u << 6)
 #define PROTO_CAP_TOUCH_CYCLE       (1u << 7)
 #define PROTO_CAP_TOUCH_MODE        (1u << 8)
 #define PROTO_CAP_ALERT             (1u << 9)
 #define PROTO_CAP_TOUCH_SENSITIVITY (1u << 11)
-/* Version 2.1: TOUCH at every short press. */
-#define PROTO_CAP_PRESSES (1u << 12)
+#define PROTO_CAP_PRESSES           (1u << 12) /* TOUCH at every short press */
 
 /* ALERT_DONE reasons. */
 #define PROTO_ALERT_COMPLETED 0u /* every breath shown */
@@ -107,7 +99,7 @@
 #define PROTO_ALERT_CANCELLED 3u /* ALERT with a count of 0 */
 #define PROTO_ALERT_SELF_TEST 4u /* SELF_TEST took the LED */
 
-/* TOUCH presses (version 2.1). */
+/* TOUCH presses. */
 #define PROTO_PRESS_SHORT 0u
 
 /* INFO flags. */
@@ -128,8 +120,8 @@ typedef enum {
     PROTO_ERR_UNKNOWN_COMMAND = 1,
     PROTO_ERR_BAD_LENGTH = 2,
     PROTO_ERR_BAD_VALUE = 3,
-    PROTO_ERR_BUSY = 4,     /* version 1.1 */
-    PROTO_ERR_LAMP_OFF = 5, /* version 2: no alert while the lamp is off */
+    PROTO_ERR_BUSY = 4,
+    PROTO_ERR_LAMP_OFF = 5, /* no alert while the lamp is off */
 } proto_status_t;
 
 typedef struct {
@@ -175,7 +167,9 @@ typedef struct {
     uint8_t applied_percent;
     usb_link_t link;
     change_source_t source;
-    rgb16_t rgb; /* the lamp color at full brightness, linear */
+    /* The color of the slot at full brightness: as the host set it, or the
+     * LED drive of a built-in color. */
+    rgb16_t rgb;
 } proto_state_t;
 
 typedef struct {

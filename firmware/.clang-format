@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 The Disled contributors
-# Code style of the firmware sources (lib/disled_core, src, test).
+# Code style of the firmware sources (lib/disled_core, src, test, tools).
 BasedOnStyle: LLVM
 IndentWidth: 4
 ColumnLimit: 100

@@ -3,8 +3,8 @@
  * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
- * Touch cycle: the default of version 1, custom cycles, their validation,
- * and a color that disappears.
+ * Touch cycle: the default, custom cycles, their validation, and a color
+ * that disappears.
  */
 #include <unity.h>
 
