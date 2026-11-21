@@ -15,9 +15,8 @@ import { useI18n } from 'vue-i18n';
 import { useLampStore } from '@/stores/lamp';
 import { useSettingsStore } from '@/stores/settings';
 import { useSignedPercent } from '@/utils/format';
+import { MOVE_UPDATE_MS } from '@/utils/lamp';
 
-/** How often a moving slider updates the lamp, as the brightness does. */
-const MOVE_UPDATE_MS = 120;
 /** The correction moves by this much, percent. */
 const STEP = 5;
 /** Limits of SET_TOUCH_SENSITIVITY, in percent. */
