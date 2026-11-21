@@ -71,7 +71,6 @@
 /* Body sizes. Version 2 adds the touch mode to SET_STATE, and the touch mode
  * and the color of the lamp to STATE. */
 #define PROTO_SET_STATE_SIZE 6u
-#define PROTO_STATE_SIZE     16u
 /* Version 2 sets a touch sensitivity correction, which ends DIAGNOSTICS. */
 #define PROTO_SET_TOUCH_SENSITIVITY_SIZE 1u
 #define PROTO_DIAGNOSTICS_SIZE           37u

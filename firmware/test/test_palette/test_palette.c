@@ -10,9 +10,6 @@
 
 #include "palette.h"
 
-void setUp(void);
-void tearDown(void);
-
 static const rgb16_t fixed[LAMP_COLOR_COUNT] = {
     { 0, 65535, 0 },
     { 65535, 29000, 0 },

@@ -50,7 +50,7 @@ jobs:
         run: uv sync --locked
 
       - name: Format
-        run: uv run clang-format --dry-run --Werror $(git ls-files 'lib/disled_core/*.[ch]' 'src/*.[ch]' 'test/*.c' 'tools/*.c')
+        run: uv run clang-format --dry-run --Werror $(git ls-files 'lib/disled_core/*.[ch]' 'src/*.[ch]' 'test/*.[ch]' 'tools/*.c')
 
       # Nothing else builds the replay tool, which shares app_config.c.
       - name: Touch replay tool (host)

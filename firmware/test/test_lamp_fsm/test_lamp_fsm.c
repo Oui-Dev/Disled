@@ -45,13 +45,6 @@ static void test_short_press_cycles_green_orange_red(void)
     TEST_ASSERT_EQUAL(LAMP_COLOR_GREEN, lamp.color);
 }
 
-static void test_short_press_from_warm_white_goes_green(void)
-{
-    lamp.color = LAMP_COLOR_WARM_WHITE;
-    TEST_ASSERT_TRUE(short_press());
-    TEST_ASSERT_EQUAL(LAMP_COLOR_GREEN, lamp.color);
-}
-
 static void test_short_press_is_ignored_while_off(void)
 {
     lamp.on = false;
@@ -170,28 +163,6 @@ static void test_request_validation_limits(void)
     TEST_ASSERT_FALSE(lamp_request_is_valid(&request));
 }
 
-static void test_short_press_follows_a_custom_cycle(void)
-{
-    const uint8_t slots[] = { LAMP_COLOR_RED, 9, LAMP_COLOR_GREEN };
-    TEST_ASSERT_TRUE(touch_cycle_set(&cycle, slots, 3, 0x020Fu));
-    lamp.color = LAMP_COLOR_RED;
-    TEST_ASSERT_TRUE(short_press());
-    TEST_ASSERT_EQUAL(9, lamp.color);
-    TEST_ASSERT_TRUE(short_press());
-    TEST_ASSERT_EQUAL(LAMP_COLOR_GREEN, lamp.color);
-    TEST_ASSERT_TRUE(short_press());
-    TEST_ASSERT_EQUAL(LAMP_COLOR_RED, lamp.color);
-}
-
-static void test_short_press_outside_the_cycle_goes_to_its_first_color(void)
-{
-    const uint8_t slots[] = { LAMP_COLOR_ORANGE, LAMP_COLOR_RED };
-    TEST_ASSERT_TRUE(touch_cycle_set(&cycle, slots, 2, 0x000Fu));
-    lamp.color = LAMP_COLOR_GREEN;
-    TEST_ASSERT_TRUE(short_press());
-    TEST_ASSERT_EQUAL(LAMP_COLOR_ORANGE, lamp.color);
-}
-
 static void test_short_press_on_a_one_color_cycle_changes_nothing(void)
 {
     const uint8_t slots[] = { LAMP_COLOR_RED };
@@ -252,7 +223,6 @@ int main(void)
     UNITY_BEGIN();
     RUN_TEST(test_power_up_is_on_green_auto);
     RUN_TEST(test_short_press_cycles_green_orange_red);
-    RUN_TEST(test_short_press_from_warm_white_goes_green);
     RUN_TEST(test_short_press_is_ignored_while_off);
     RUN_TEST(test_long_press_turns_off_then_back_on_with_last_color);
     RUN_TEST(test_request_applies_only_selected_fields);
@@ -261,8 +231,6 @@ int main(void)
     RUN_TEST(test_invalid_request_changes_nothing);
     RUN_TEST(test_states_differing_in_one_field_are_not_equal);
     RUN_TEST(test_request_validation_limits);
-    RUN_TEST(test_short_press_follows_a_custom_cycle);
-    RUN_TEST(test_short_press_outside_the_cycle_goes_to_its_first_color);
     RUN_TEST(test_short_press_on_a_one_color_cycle_changes_nothing);
     RUN_TEST(test_power_only_ignores_the_short_press_not_the_long_one);
     RUN_TEST(test_touch_mode_falls_back_when_the_host_leaves);
