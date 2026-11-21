@@ -76,8 +76,6 @@ of the catalog):
 
 ## Without the catalog
 
-A plugin also travels as a zip file: **Import a plugin**, in the
-integrations window, takes a zip whose `plugin.json` sits at its root or in
-its only folder ([where plugins live](README.md#where-plugins-live)). Its
-approval follows, as for a plugin of the catalog, but no one reviewed it:
+A plugin also travels as a zip file
+([Import a plugin](README.md#where-plugins-live)): no one reviewed it, so
 only import plugins from people you trust.

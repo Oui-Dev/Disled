@@ -3,8 +3,7 @@
 A plugin with the `events` capability gets its events from a program that
 Disled does not run, such as Claude Code: that program sends JSON to a
 local address, and rules of the manifest turn each event into a state or
-an alert. Disled runs nothing of such a plugin, and the approval adds
-"Nothing else: no program, no Internet" when the plugin has no `run`.
+an alert. Disled runs nothing of such a plugin.
 
 ## Rules
 
