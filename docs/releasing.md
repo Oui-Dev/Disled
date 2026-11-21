@@ -10,6 +10,10 @@ changelog. The maintainers release the hardware by hand
 | Firmware | `firmware/` | `fw-vX.Y.Z` | [firmware/CHANGELOG.md](../firmware/CHANGELOG.md) | the tag (`scripts/version.py`); `version.txt` only tracks it for release-please |
 | Desktop app | `app/` | `app-vX.Y.Z` | [app/CHANGELOG.md](../app/CHANGELOG.md) | `app/package.json`, read by `tauri.conf.json` |
 
+The firmware build, the lamp updates of the app and the release workflow
+rely on these tag names, which `component`, `include-component-in-tag` and
+`tag-separator` make in `release-please-config.json`.
+
 ## Flow
 
 1. Work on a branch and merge it into `main` with a pull request. The
@@ -72,7 +76,8 @@ both components release, a failed job of one also holds the other back.
   hand (Actions, release, Run workflow) with the version of the draft. It
   builds the tag again with the workflow of `main`, replaces the files
   already attached and publishes the release as the latest one, so only
-  for the latest app version.
+  for the latest app version. The steps in `.github/actions` come from the
+  tag, not from `main`.
 - If the code must change, fix it on `main`, and the fix goes out with the
   next version. Leave the unpublished draft as it is.
 - Never delete a release or a tag made by release-please. It finds the

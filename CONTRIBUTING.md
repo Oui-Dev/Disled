@@ -89,10 +89,9 @@ Desktop app, from `app/`, then the Rust workspace from the root:
 
 ```sh
 npm ci
-npm run typecheck                    # vue-tsc, French messages included
 npm run check                        # Biome; npm run fix applies the fixes
 npm test                             # Vitest: the logic of the windows
-npm run build
+npm run build                        # vue-tsc, French messages included, then Vite
 cd ..
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
@@ -116,8 +115,7 @@ sensor, USB sleep. [docs/bringup.md](docs/bringup.md) lists the checks.
   for the rest.
 - The project is named Disled. The name stays in capitals only in the
   identifiers written in capitals, such as `DISLED_FIRMWARE_HEX`, in the
-  `DISLED2-` prefix of the share codes and in the changelogs: a check of
-  the pull requests looks for it everywhere else.
+  `DISLED2-` prefix of the share codes and in the changelogs.
 - Every source file starts with an SPDX header
   ([LICENSING.md](LICENSING.md)). The firmware's headers also point to the
   permission for the WCH SDK.
