@@ -328,6 +328,27 @@ fn top_left_under(icon: Edges, screen: Edges, width: f64) -> (f64, f64) {
     (x, icon.bottom.min(screen.top))
 }
 
+/// The top left corner of the popup on macOS, from the frame of the tray icon
+/// and its screen, if any, and the screen in use. Under the icon when it sits
+/// on a screen, or above it in the hidden menu bar of an app in full screen.
+/// Otherwise in the top right corner, where the icons are: at launch, AppKit
+/// has not placed the new icon yet, and its frame would put the popup under
+/// the bottom of the screen.
+#[cfg(any(target_os = "macos", test))]
+fn panel_top_left(
+    icon: Option<(Edges, Option<Edges>)>,
+    in_use: Option<Edges>,
+    width: f64,
+) -> Option<(f64, f64)> {
+    match (icon, in_use) {
+        (Some((icon, Some(screen))), _) => Some(top_left_under(icon, screen, width)),
+        (Some((icon, None)), Some(screen)) if icon.bottom >= screen.top => {
+            Some(top_left_under(icon, screen, width))
+        }
+        (_, screen) => screen.map(|screen| (screen.right - width, screen.top)),
+    }
+}
+
 /// The popup as a panel on macOS. A plain window belongs to a single Space,
 /// and macOS shows none over an app in full screen; giving it the keyboard
 /// also activated the app, upon which macOS can switch to another Space. A
@@ -345,7 +366,7 @@ mod panel {
     use tauri_nspanel::{CollectionBehavior, Panel, StyleMask};
 
     use self::class::PopupPanel;
-    use super::{Edges, top_left_under};
+    use super::{Edges, panel_top_left};
 
     /// The class of the panel, in a module of its own: its macro imports
     /// AppKit names too.
@@ -426,18 +447,13 @@ mod panel {
     }
 
     /// Puts the panel under the tray icon, or in the top right corner of the
-    /// screen in use while the icon has no place in a menu bar.
+    /// screen in use (panel_top_left).
     fn place(panel: &NSWindow, popup: &WebviewWindow, mtm: MainThreadMarker) {
         let width = panel.frame().size.width;
         let in_use = NSScreen::mainScreen(mtm).map(|screen| edges(screen.visibleFrame()));
-        let top_left = match crate::tray::icon_frame(popup.app_handle()) {
-            Some((icon, screen)) => screen
-                .map(edges)
-                .or(in_use)
-                .map(|screen| top_left_under(edges(icon), screen, width)),
-            None => in_use.map(|screen| (screen.right - width, screen.top)),
-        };
-        if let Some((x, y)) = top_left {
+        let icon = crate::tray::icon_frame(popup.app_handle())
+            .map(|(icon, screen)| (edges(icon), screen.map(edges)));
+        if let Some((x, y)) = panel_top_left(icon, in_use, width) {
             panel.setFrameTopLeftPoint(NSPoint::new(x, y));
         }
     }
@@ -516,5 +532,36 @@ mod tests {
             ..icon(1000.0)
         };
         assert_eq!(top_left_under(hidden, SCREEN, POPUP_WIDTH), (845.0, 945.0));
+    }
+
+    #[test]
+    fn the_popup_takes_the_top_right_corner_until_the_icon_has_a_place() {
+        let corner = Some((1512.0 - POPUP_WIDTH, 945.0));
+        // On a screen, or hidden above it in full screen: under the icon.
+        assert_eq!(
+            panel_top_left(
+                Some((icon(1000.0), Some(SCREEN))),
+                Some(SCREEN),
+                POPUP_WIDTH
+            ),
+            Some((845.0, 945.0))
+        );
+        assert_eq!(
+            panel_top_left(Some((icon(1000.0), None)), Some(SCREEN), POPUP_WIDTH),
+            Some((845.0, 945.0))
+        );
+        // At launch, the new icon still has its first frame, at the bottom
+        // of the screen and on none: the corner, not under the screen.
+        let unplaced = Edges {
+            left: 0.0,
+            right: 30.0,
+            bottom: 0.0,
+            top: 37.0,
+        };
+        assert_eq!(
+            panel_top_left(Some((unplaced, None)), Some(SCREEN), POPUP_WIDTH),
+            corner
+        );
+        assert_eq!(panel_top_left(None, Some(SCREEN), POPUP_WIDTH), corner);
     }
 }
