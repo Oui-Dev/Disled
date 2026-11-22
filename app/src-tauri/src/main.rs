@@ -627,11 +627,12 @@ fn main() {
             plugins::start(&handle);
             // A new version most often follows an update, whose restart keeps
             // the arguments, `--autostart` included. It checks again at once
-            // and shows the popup, so that a lamp update shows next.
+            // and shows the popup, so that a lamp update shows next. The popup
+            // shows once its page has loaded, after the launch.
             let new_version = settings::first_launch_of_version(&handle);
             updates::spawn_automatic_checks(handle.clone(), new_version);
             if !started_at_login || new_version {
-                windows::show_popup(&handle);
+                windows::show_popup_on_load(&handle);
             }
             Ok(())
         })

@@ -4,10 +4,12 @@
 //! The windows: the popup under the tray icon for daily use, and four that
 //! open on demand: Diagnostics, the integrations and the two lamp updates.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use disled_protocol::Command;
 use parking_lot::Mutex;
+use tauri::webview::PageLoadEvent;
 use tauri::{
     AppHandle, LogicalSize, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
@@ -52,6 +54,8 @@ const SCREEN_MARGIN: f64 = 48.0;
 #[derive(Default)]
 pub struct PopupState {
     hidden_at: Mutex<Option<Instant>>,
+    /// The launch asked for the popup, which shows once its page has loaded.
+    show_on_load: AtomicBool,
 }
 
 fn popup(app: &AppHandle) -> Option<WebviewWindow> {
@@ -101,6 +105,15 @@ pub fn show_popup(app: &AppHandle) {
     }
 }
 
+/// Shows the popup once its page has loaded, for the launch. Shown from the
+/// setup, while macOS was still launching the app, the panel did not appear
+/// on macOS 27, and the first click on the icon took it for shown and hid it.
+pub fn show_popup_on_load(app: &AppHandle) {
+    app.state::<PopupState>()
+        .show_on_load
+        .store(true, Ordering::Relaxed);
+}
+
 pub fn hide_popup(app: &AppHandle) {
     if let Some(window) = popup(app) {
         let _ = window.hide();
@@ -128,6 +141,16 @@ pub fn create_popup(app: &AppHandle) -> tauri::Result<()> {
         // shown. Once shown, the window gets the focus and hands it to the
         // page. On macOS the page stays the first responder of the panel.
         .focused(!cfg!(target_os = "windows"))
+        .on_page_load(|window, payload| {
+            if matches!(payload.event(), PageLoadEvent::Finished)
+                && window
+                    .state::<PopupState>()
+                    .show_on_load
+                    .swap(false, Ordering::Relaxed)
+            {
+                show_popup(window.app_handle());
+            }
+        })
         .build()?;
     let owner = app.clone();
     window.on_window_event(move |event| match event {
