@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.2.1](https://github.com/Oui-Dev/Disled/compare/app-v2.2.0...app-v2.2.1) (2026-11-22)
+
+
+### 🩹 Fixes
+
+* **app:** on macOS, the launch shows the popup on the screen, so one click closes it ([df62f8b](https://github.com/Oui-Dev/Disled/commit/df62f8b57a2eb852103aa480585555978a7fc8f3))
+* **app:** the popup that the launch shows sits above the taskbar ([0668dcf](https://github.com/Oui-Dev/Disled/commit/0668dcf634b2d71b046228e788923411108db43f))
+
 ## [2.2.0](https://github.com/Oui-Dev/Disled/compare/app-v2.1.0...app-v2.2.0) (2026-11-21)
 
 
