@@ -66,14 +66,27 @@ fn popup(app: &AppHandle) -> Option<WebviewWindow> {
 fn place(window: &WebviewWindow) {
     let (tray, fallback) = if cfg!(target_os = "macos") {
         (Position::TrayBottomCenter, Position::TopRight)
-    } else if cfg!(target_os = "windows") {
-        (Position::TrayCenter, Position::BottomRight)
     } else {
         (Position::TrayCenter, Position::Center)
     };
-    if window.move_window_constrained(tray).is_err() {
-        let _ = window.move_window(fallback);
+    if window.move_window_constrained(tray).is_ok() {
+        return;
     }
+    // The corners of the positioner ignore the taskbar, which then hid the
+    // bottom of the popup that the launch shows. The bottom right corner of
+    // the work area is where the tray sits by default.
+    #[cfg(target_os = "windows")]
+    if let (Ok(Some(monitor)), Ok(size)) = (window.primary_monitor(), window.outer_size()) {
+        let area = monitor.work_area();
+        let right = area.position.x + area.size.width as i32;
+        let bottom = area.position.y + area.size.height as i32;
+        let corner =
+            tauri::PhysicalPosition::new(right - size.width as i32, bottom - size.height as i32);
+        if window.set_position(corner).is_ok() {
+            return;
+        }
+    }
+    let _ = window.move_window(fallback);
 }
 
 pub fn show_popup(app: &AppHandle) {
