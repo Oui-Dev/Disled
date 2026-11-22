@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.2](https://github.com/Oui-Dev/Disled/compare/app-v2.2.1...app-v2.2.2) (2026-11-22)
+
+
+### 🩹 Fixes
+
+* **app:** the launch shows the popup once its page has loaded, after macOS has launched the app ([25baed3](https://github.com/Oui-Dev/Disled/commit/25baed3dab41da2310ef4f42bbf5896944b55375))
+
 ## [2.2.1](https://github.com/Oui-Dev/Disled/compare/app-v2.2.0...app-v2.2.1) (2026-11-22)
 
 
