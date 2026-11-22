@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.3](https://github.com/Oui-Dev/Disled/compare/app-v2.2.2...app-v2.2.3) (2026-11-22)
+
+
+### 🩹 Fixes
+
+* **app:** on macOS, the popup that the launch shows sits right under the menu bar ([c85d7ca](https://github.com/Oui-Dev/Disled/commit/c85d7ca199b41ea3a96f676f0ad2d95045214bfa))
+
 ## [2.2.2](https://github.com/Oui-Dev/Disled/compare/app-v2.2.1...app-v2.2.2) (2026-11-22)
 
 
