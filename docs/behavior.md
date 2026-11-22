@@ -55,8 +55,8 @@ release, and the host does not hear of it.
   that holds a color), brightness mode, manual level (1 to 100 %) and touch
   mode.
 - It defines the custom colors of slots 4 to 15, in linear sRGB as a screen
-  shows them, which the lamp shows through its LED calibration, and empties
-  them. An emptied slot leaves the touch cycle, and a lamp that shows it
+  shows them, which the lamp shows through its LED calibration (the most
+  vivid ones deeper than a screen can), and empties them. An emptied slot leaves the touch cycle, and a lamp that shows it
   takes the first color of the cycle.
 - It sets the touch cycle: 1 to 9 slots that hold a color, none twice.
   Setting the cycle does not change the color shown.

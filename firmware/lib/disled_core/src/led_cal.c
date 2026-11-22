@@ -39,6 +39,41 @@ static int32_t shift_signed(int32_t x, uint32_t shift)
     return (x < 0) ? -(int32_t)m : (int32_t)m;
 }
 
+/* The square root of x, rounded down. */
+static uint32_t isqrt(uint32_t x)
+{
+    uint32_t root = 0;
+    for (uint32_t bit = 1u << 30; bit != 0u; bit >>= 2) {
+        if (x >= root + bit) {
+            x -= root + bit;
+            root = (root >> 1) + bit;
+        } else {
+            root >>= 1;
+        }
+    }
+    return root;
+}
+
+/* How far a color moves toward the LED's own colors, in 1/65536: the square
+ * of its vividness, 0 for a grey and 65536 for a color with a channel at 0.
+ * The vividness is that of the color square of the app, the saturation of
+ * the gamma-encoded color, here with a gamma of 2: 1 - sqrt(smallest /
+ * largest). */
+static uint32_t vivid_weight(const int32_t in[3])
+{
+    const int32_t hi =
+        (in[0] > in[1]) ? ((in[0] > in[2]) ? in[0] : in[2]) : ((in[1] > in[2]) ? in[1] : in[2]);
+    const int32_t lo =
+        (in[0] < in[1]) ? ((in[0] < in[2]) ? in[0] : in[2]) : ((in[1] < in[2]) ? in[1] : in[2]);
+    if (hi == 0) {
+        return 0u;
+    }
+    /* In 1/32768: lo << 15 < 2^31, and the ratio << 15 <= 2^30. */
+    const uint32_t ratio = ((uint32_t)lo << 15) / (uint32_t)hi;
+    const uint32_t vividness = 32768u - isqrt(ratio << 15);
+    return (vividness * vividness) >> 14; /* vividness <= 2^15: at most 2^30 */
+}
+
 rgb16_t led_cal_drive(const led_color_cal_t *cal, rgb16_t srgb)
 {
     const int32_t in[3] = { srgb.r, srgb.g, srgb.b };
@@ -46,7 +81,6 @@ rgb16_t led_cal_drive(const led_color_cal_t *cal, rgb16_t srgb)
     /* The drive of the sRGB white, the matrix times (1, 1, 1), unscaled: 1 to
      * 32767 (led_cal_color_valid). */
     int32_t white[LED_CHANNEL_COUNT];
-    uint32_t largest = 0;
     for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
         /* The magnitudes of a row add up to 32767 at most, and in <= 65535:
          * |sum| < 2^31. */
@@ -57,8 +91,23 @@ rgb16_t led_cal_drive(const led_color_cal_t *cal, rgb16_t srgb)
             white[i] += cal->matrix[i][j];
         }
         d[i] = sum;
-        if (magnitude(sum) > largest) {
-            largest = magnitude(sum);
+    }
+    /* The matrix keeps the sRGB color, which the LED's primaries exceed in
+     * saturation. A vivid color moves toward the drive of the white balance
+     * alone, each LED lit by its own sRGB channel: the matrix and that drive
+     * agree on every grey, and a channel at 0 gives the LED's own color,
+     * such as the red LED alone for #FF0000. */
+    const uint32_t t = cal->vivid ? vivid_weight(in) : 0u;
+    uint32_t largest = 0;
+    for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
+        if (t != 0u) {
+            /* Both ends below 2^31 in magnitude, the step below 2^32. */
+            const int64_t step = (int64_t)white[i] * in[i] - d[i];
+            const uint64_t part = ((uint64_t)((step < 0) ? -step : step) * t) >> 16;
+            d[i] += (step < 0) ? -(int32_t)part : (int32_t)part;
+        }
+        if (magnitude(d[i]) > largest) {
+            largest = magnitude(d[i]);
         }
     }
     if (largest == 0u) {

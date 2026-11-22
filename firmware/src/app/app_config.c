@@ -92,13 +92,16 @@ const rgb16_t app_builtin_colors[LAMP_COLOR_COUNT] = {
 };
 
 /* Linear sRGB to LED drive, with the D65 white of #FFFFFF, from LED
- * primaries matched by eye against an sRGB screen. */
+ * primaries matched by eye against an sRGB screen. A color moves toward the
+ * LED's own colors by the square of its vividness, which nine colors
+ * compared by eye against the screen preferred. */
 const led_color_cal_t app_led_color_cal = {
     .matrix = {
         {  11785,   6713,     -3 },
         {   1466,  29585,   1714 },
         {     95,    -66,   6982 },
     },
+    .vivid = true,
 };
 
 /* Light of a pulse of each length in whole ticks, measured with a camera

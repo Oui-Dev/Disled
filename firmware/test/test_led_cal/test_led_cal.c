@@ -220,6 +220,74 @@ static void test_drive_matches_an_exact_reference(void)
     }
 }
 
+/* --- Toward the LED's own colors -------------------------------------- */
+
+/* The calibration of the tests with the move toward the LED's own colors, as
+ * the lamp ships it. */
+static led_color_cal_t vivid_cal(void)
+{
+    led_color_cal_t vivid = cal;
+    vivid.vivid = true;
+    return vivid;
+}
+
+static void test_a_grey_stays_the_white_drive_when_vivid(void)
+{
+    const led_color_cal_t vivid = vivid_cal();
+    const uint16_t levels[] = { 65535, 1000, 1 };
+    for (size_t i = 0; i < sizeof levels / sizeof levels[0]; i++) {
+        const rgb16_t grey = { levels[i], levels[i], levels[i] };
+        assert_drive_within(DRIVE_TOLERANCE_INSIDE, white_drive, led_cal_drive(&vivid, grey));
+    }
+}
+
+static void test_the_move_is_the_square_of_the_vividness(void)
+{
+    /* Vividness 1 - sqrt(16384 / 65535), one half: the matrix product moves a
+     * quarter of the way to the white balance alone, (1433580000, 389400328,
+     * 183501300) toward (1802212500, 477872128, 208076800). */
+    const led_color_cal_t vivid = vivid_cal();
+    assert_drive_within(DRIVE_TOLERANCE_INSIDE, (rgb16_t){ 65535, 17676, 8146 },
+                        led_cal_drive(&vivid, (rgb16_t){ 65535, 16384, 16384 }));
+}
+
+static void test_full_vividness_lights_each_led_by_its_own_srgb_channel(void)
+{
+    /* A channel at 0: the drive of the white balance alone, each LED at its
+     * share of the row sums 27500, 29167 and 12700. The sRGB red, outside
+     * the gamut of this LED, becomes the red LED alone. */
+    const led_color_cal_t vivid = vivid_cal();
+    static const struct {
+        rgb16_t srgb;
+        rgb16_t drive;
+    } cases[] = {
+        { { 65535, 0, 0 }, { 65535, 0, 0 } },         { { 0, 65535, 0 }, { 0, 65535, 0 } },
+        { { 0, 0, 65535 }, { 0, 0, 65535 } },         { { 65535, 65535, 0 }, { 61789, 65535, 0 } },
+        { { 65535, 0, 65535 }, { 65535, 0, 30266 } },
+    };
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+        assert_drive_within(DRIVE_TOLERANCE_INSIDE, cases[i].drive,
+                            led_cal_drive(&vivid, cases[i].srgb));
+    }
+}
+
+static void test_the_move_grows_with_the_vividness(void)
+{
+    /* A green from grey to full vividness: its red, which the matrix adds to
+     * match the sRGB green, fades to none, and never comes back. */
+    const led_color_cal_t vivid = vivid_cal();
+    uint16_t before = 65535;
+    for (int32_t low = 65535; low >= 0; low -= 255) {
+        const rgb16_t drive =
+            led_cal_drive(&vivid, (rgb16_t){ (uint16_t)low, 65535, (uint16_t)low });
+        if (drive.r > before) {
+            FAIL_AT("green with %ld: red %u after %u", (long)low, drive.r, before);
+        }
+        before = drive.r;
+    }
+    TEST_ASSERT_EQUAL_UINT16(0, before);
+}
+
 static void test_srgb_primaries_change_nothing(void)
 {
     /* An LED with the sRGB primaries, its rows at the 32767 the products
@@ -553,6 +621,10 @@ int main(void)
     RUN_TEST(test_a_primary_inside_the_gamut_gives_its_column);
     RUN_TEST(test_a_color_outside_the_gamut_takes_the_least_white);
     RUN_TEST(test_drive_matches_an_exact_reference);
+    RUN_TEST(test_a_grey_stays_the_white_drive_when_vivid);
+    RUN_TEST(test_the_move_is_the_square_of_the_vividness);
+    RUN_TEST(test_full_vividness_lights_each_led_by_its_own_srgb_channel);
+    RUN_TEST(test_the_move_grows_with_the_vividness);
     RUN_TEST(test_srgb_primaries_change_nothing);
     RUN_TEST(test_tables_of_the_tests_are_valid);
     RUN_TEST(test_light_mixes_the_ticks_and_follows_the_line_beyond);

@@ -198,7 +198,9 @@ slider of the popup sets how bright the lamp shines. With
 **Preview on the lamp**, the lamp shows the color while you change it, and
 goes back to its own color when you leave the editor. **Save** keeps it.
 The lamp is calibrated so that your colors look like their swatch on a
-screen that shows colors faithfully, white included.
+screen that shows colors faithfully, white included. Toward the top of the
+square, the lamp goes further than a screen can: the more vivid the color,
+the deeper it shows, up to the lamp's own colors at the top edge.
 
 **Delete** acts at once, without asking for confirmation. Wherever the
 color was in use, another one takes its place: the first color of the touch

@@ -155,9 +155,12 @@ light, level 1 % showing 3 % of perceived brightness (`color_level_shown`).
 The built-in colors are LED drives. A custom color comes as linear sRGB, as
 a screen shows it, and a 3x3 matrix (`led_cal_drive`) turns it into the
 light of the three LEDs that shows that color, the white of `#FFFFFF` being
-D65. A color outside the LED gamut first takes the least white that brings
-it inside, which keeps its hue; the largest channel then goes back to full
-light. The matrix and the tables come from a measured calibration
+D65. Then, by the square of its vividness (`vivid`), a color moves toward
+the LED's own colors, each LED lit by its own sRGB channel with the white
+balance: a pale color barely moves, a grey never, and the top edge of the
+app's color square is as deep as the built-in colors. A color outside the
+LED gamut then takes the least white that brings it inside, which keeps
+its hue; the largest channel then goes back to full light. The matrix and the tables come from a measured calibration
 ([bringup.md](bringup.md#led-calibration)). An alert (`alert`) moves the
 perceived brightness of the lamp color along a smoothstep, after the fade,
 up from a dim lamp and down from a bright one.

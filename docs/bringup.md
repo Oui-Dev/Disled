@@ -308,7 +308,12 @@ matrix follows: the inverse of the primaries' XYZ times the sRGB matrix,
 scaled so that the magnitudes of each row add up to 32767 at most. The
 built-in green, orange and red stay LED drives, since every sRGB version
 looked too pale beside them, and their app swatches are the nearest sRGB
-colors of the same hue.
+colors of the same hue. For the same reason, a custom color moves toward
+the LED's own colors, each LED lit by its own sRGB channel, by the square
+of its vividness (`vivid` in `app_led_color_cal`). Nine colors compared
+with the phone preferred it to the matrix alone, too pale for the vivid
+ones, and to the LEDs by their own channels everywhere, too deep for the
+pale ones and a violet that turned pink.
 
 **What the calibration does not correct.** Pulses of two channels that
 overlap in a period lose 1.5 to 3 % of their light each, through the

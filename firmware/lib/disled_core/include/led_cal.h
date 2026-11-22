@@ -5,7 +5,8 @@
  *
  * The calibration of the LED, measured on a closed lamp (docs/bringup.md):
  * - color: linear sRGB to the light of each LED channel, through a 3x3
- *   matrix built from the primaries of the LED;
+ *   matrix built from the primaries of the LED, then toward the LED's own
+ *   colors by the square of the vividness;
  * - light: per channel, the light of a pulse of each length in whole ticks,
  *   since short pulses lose light to the slow gate edges (note N4 in
  *   hardware/README.md), to turn a light into a PWM duty.
@@ -37,6 +38,10 @@ typedef struct {
      * so that no product overflows 32 bits. Each row adds up to more than 0:
      * the sRGB white, the matrix times (1, 1, 1), lies inside the LED gamut. */
     int16_t matrix[LED_CHANNEL_COUNT][3];
+    /* A color moves toward the LED's own colors, more saturated than any
+     * sRGB one, by the square of its vividness (led_cal_drive). False keeps
+     * every sRGB color. */
+    bool vivid;
 } led_color_cal_t;
 
 typedef struct {
@@ -54,9 +59,10 @@ typedef struct {
 } led_light_cal_t;
 
 /* A linear sRGB color, as SET_COLOR carries it, to the drive that shows it,
- * its largest channel at 65535. A color outside the LED gamut first takes
- * the least white that brings every channel to 0 or above: the hue stays,
- * the color is less saturated. Black stays black. */
+ * its largest channel at 65535. With `vivid`, the color moves toward the
+ * LED's own colors by the square of its vividness. A color outside the LED
+ * gamut then takes the least white that brings every channel to 0 or above:
+ * the hue stays, the color is less saturated. Black stays black. */
 rgb16_t led_cal_drive(const led_color_cal_t *cal, rgb16_t srgb);
 
 /* The duty, in sub-ticks, nearest to `light` (0 to LED_LIGHT_FULL) on a
