@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1](https://github.com/Oui-Dev/Disled/compare/fw-v2.2.0...fw-v2.2.1) (2026-11-22)
+
+
+### 🩹 Fixes
+
+* **firmware:** the more vivid a custom color, the deeper it shows, up to the built-in colors ([4045fa7](https://github.com/Oui-Dev/Disled/commit/4045fa7e6708d24755a13f882dc7aaad6c7a94b0))
+
 ## [2.2.0](https://github.com/Oui-Dev/Disled/compare/fw-v2.1.0...fw-v2.2.0) (2026-11-21)
 
 
