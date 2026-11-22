@@ -232,20 +232,25 @@ pub fn create(app: &AppHandle, locale: Locale) -> tauri::Result<()> {
     Ok(())
 }
 
-/// The frame of the icon in the menu bar, and the part of its screen that
-/// the menu bar and the Dock leave, in points as AppKit counts them, for the
-/// popup that opens under the icon on macOS. On the main thread. The screen
-/// is `None` while the icon is off every screen, as in the hidden menu bar
-/// of an app in full screen.
+/// The frame of the icon in the menu bar, then the frame of its screen and
+/// the part of that screen that the menu bar and the Dock leave, in points as
+/// AppKit counts them, for the popup that opens under the icon on macOS. On
+/// the main thread. The screen is `None` while the icon is off every screen,
+/// as in the hidden menu bar of an app in full screen.
 #[cfg(target_os = "macos")]
 pub fn icon_frame(
     app: &AppHandle,
-) -> Option<(objc2_foundation::NSRect, Option<objc2_foundation::NSRect>)> {
+) -> Option<(
+    objc2_foundation::NSRect,
+    Option<(objc2_foundation::NSRect, objc2_foundation::NSRect)>,
+)> {
     app.tray_by_id(TRAY_ID)?
         .with_inner_tray_icon(|tray| {
             let mtm = objc2::MainThreadMarker::new()?;
             let window = tray.ns_status_item()?.button(mtm)?.window()?;
-            let screen = window.screen().map(|screen| screen.visibleFrame());
+            let screen = window
+                .screen()
+                .map(|screen| (screen.frame(), screen.visibleFrame()));
             Some((window.frame(), screen))
         })
         .ok()

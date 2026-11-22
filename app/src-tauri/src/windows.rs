@@ -340,15 +340,32 @@ struct Edges {
     top: f64,
 }
 
-/// The top left corner of the popup on macOS: centred under the tray icon,
-/// within the screen, and against the bottom of the icon, or of the menu bar
-/// when that is lower. `screen` is the part that the menu bar and the Dock
-/// leave.
+/// A screen on macOS: the part that the menu bar and the Dock leave, and
+/// whether the menu bar keeps its room there. It does not when it hides
+/// itself, as over an app in full screen.
 #[cfg(any(target_os = "macos", test))]
-fn top_left_under(icon: Edges, screen: Edges, width: f64) -> (f64, f64) {
+#[derive(Debug, Clone, Copy)]
+struct Screen {
+    visible: Edges,
+    menu_bar_kept: bool,
+}
+
+/// The top left corner of the popup on macOS: centred under the tray icon,
+/// within the screen, and right under the menu bar where it keeps its room,
+/// whatever the frame of the icon says: at launch, the new icon can still
+/// sit a menu bar lower. Where the menu bar hides itself, against the bottom
+/// of the icon, or of the screen when that is lower.
+#[cfg(any(target_os = "macos", test))]
+fn top_left_under(icon: Edges, screen: Screen, width: f64) -> (f64, f64) {
+    let visible = screen.visible;
     let centred = (icon.left + icon.right - width) / 2.0;
-    let x = centred.min(screen.right - width).max(screen.left);
-    (x, icon.bottom.min(screen.top))
+    let x = centred.min(visible.right - width).max(visible.left);
+    let y = if screen.menu_bar_kept {
+        visible.top
+    } else {
+        icon.bottom.min(visible.top)
+    };
+    (x, y)
 }
 
 /// The top left corner of the popup on macOS, from the frame of the tray icon
@@ -359,16 +376,16 @@ fn top_left_under(icon: Edges, screen: Edges, width: f64) -> (f64, f64) {
 /// the bottom of the screen.
 #[cfg(any(target_os = "macos", test))]
 fn panel_top_left(
-    icon: Option<(Edges, Option<Edges>)>,
-    in_use: Option<Edges>,
+    icon: Option<(Edges, Option<Screen>)>,
+    in_use: Option<Screen>,
     width: f64,
 ) -> Option<(f64, f64)> {
     match (icon, in_use) {
         (Some((icon, Some(screen))), _) => Some(top_left_under(icon, screen, width)),
-        (Some((icon, None)), Some(screen)) if icon.bottom >= screen.top => {
+        (Some((icon, None)), Some(screen)) if icon.bottom >= screen.visible.top => {
             Some(top_left_under(icon, screen, width))
         }
-        (_, screen) => screen.map(|screen| (screen.right - width, screen.top)),
+        (_, screen) => screen.map(|screen| (screen.visible.right - width, screen.visible.top)),
     }
 }
 
@@ -389,7 +406,7 @@ mod panel {
     use tauri_nspanel::{CollectionBehavior, Panel, StyleMask};
 
     use self::class::PopupPanel;
-    use super::{Edges, panel_top_left};
+    use super::{Edges, Screen, panel_top_left};
 
     /// The class of the panel, in a module of its own: its macro imports
     /// AppKit names too.
@@ -473,9 +490,10 @@ mod panel {
     /// screen in use (panel_top_left).
     fn place(panel: &NSWindow, popup: &WebviewWindow, mtm: MainThreadMarker) {
         let width = panel.frame().size.width;
-        let in_use = NSScreen::mainScreen(mtm).map(|screen| edges(screen.visibleFrame()));
+        let in_use = NSScreen::mainScreen(mtm)
+            .map(|screen| self::screen((screen.frame(), screen.visibleFrame())));
         let icon = crate::tray::icon_frame(popup.app_handle())
-            .map(|(icon, screen)| (edges(icon), screen.map(edges)));
+            .map(|(icon, screen)| (edges(icon), screen.map(self::screen)));
         if let Some((x, y)) = panel_top_left(icon, in_use, width) {
             panel.setFrameTopLeftPoint(NSPoint::new(x, y));
         }
@@ -487,6 +505,15 @@ mod panel {
             right: rect.max().x,
             bottom: rect.min().y,
             top: rect.max().y,
+        }
+    }
+
+    /// A screen, from its frame and the part of it that the menu bar and the
+    /// Dock leave.
+    fn screen((frame, visible): (NSRect, NSRect)) -> Screen {
+        Screen {
+            visible: edges(visible),
+            menu_bar_kept: visible.max().y < frame.max().y,
         }
     }
 }
@@ -503,6 +530,12 @@ mod tests {
         top: 945.0,
     };
 
+    /// The same screen, under its menu bar.
+    const DESKTOP: Screen = Screen {
+        visible: SCREEN,
+        menu_bar_kept: true,
+    };
+
     fn icon(left: f64) -> Edges {
         Edges {
             left,
@@ -515,33 +548,47 @@ mod tests {
     #[test]
     fn the_popup_opens_under_the_tray_icon_within_its_screen() {
         assert_eq!(
-            top_left_under(icon(1000.0), SCREEN, POPUP_WIDTH),
+            top_left_under(icon(1000.0), DESKTOP, POPUP_WIDTH),
             (845.0, 945.0)
         );
         // Near an edge, it stays on the screen: the right edge of the main
         // display, the left edge of a display on its left.
         assert_eq!(
-            top_left_under(icon(1470.0), SCREEN, POPUP_WIDTH),
+            top_left_under(icon(1470.0), DESKTOP, POPUP_WIDTH),
             (1172.0, 945.0)
         );
-        let on_the_left = Edges {
-            left: -1512.0,
-            right: 0.0,
-            ..SCREEN
+        let on_the_left = Screen {
+            visible: Edges {
+                left: -1512.0,
+                right: 0.0,
+                ..SCREEN
+            },
+            ..DESKTOP
         };
         assert_eq!(
             top_left_under(icon(-1505.0), on_the_left, POPUP_WIDTH),
             (-1512.0, 945.0)
         );
+        // At launch, the new icon can still sit a menu bar lower: the popup
+        // stays right under the menu bar.
+        let new = Edges {
+            bottom: 908.0,
+            top: 945.0,
+            ..icon(1000.0)
+        };
+        assert_eq!(top_left_under(new, DESKTOP, POPUP_WIDTH), (845.0, 945.0));
     }
 
     #[test]
     fn the_popup_opens_under_the_menu_bar_of_an_app_in_full_screen() {
         // A menu bar that hides itself leaves the whole screen; shown over
         // the app, it holds the icon.
-        let whole = Edges {
-            top: 982.0,
-            ..SCREEN
+        let whole = Screen {
+            visible: Edges {
+                top: 982.0,
+                ..SCREEN
+            },
+            menu_bar_kept: false,
         };
         assert_eq!(
             top_left_under(icon(1000.0), whole, POPUP_WIDTH),
@@ -554,7 +601,7 @@ mod tests {
             top: 1019.0,
             ..icon(1000.0)
         };
-        assert_eq!(top_left_under(hidden, SCREEN, POPUP_WIDTH), (845.0, 945.0));
+        assert_eq!(top_left_under(hidden, DESKTOP, POPUP_WIDTH), (845.0, 945.0));
     }
 
     #[test]
@@ -563,14 +610,14 @@ mod tests {
         // On a screen, or hidden above it in full screen: under the icon.
         assert_eq!(
             panel_top_left(
-                Some((icon(1000.0), Some(SCREEN))),
-                Some(SCREEN),
+                Some((icon(1000.0), Some(DESKTOP))),
+                Some(DESKTOP),
                 POPUP_WIDTH
             ),
             Some((845.0, 945.0))
         );
         assert_eq!(
-            panel_top_left(Some((icon(1000.0), None)), Some(SCREEN), POPUP_WIDTH),
+            panel_top_left(Some((icon(1000.0), None)), Some(DESKTOP), POPUP_WIDTH),
             Some((845.0, 945.0))
         );
         // At launch, the new icon still has its first frame, at the bottom
@@ -582,9 +629,9 @@ mod tests {
             top: 37.0,
         };
         assert_eq!(
-            panel_top_left(Some((unplaced, None)), Some(SCREEN), POPUP_WIDTH),
+            panel_top_left(Some((unplaced, None)), Some(DESKTOP), POPUP_WIDTH),
             corner
         );
-        assert_eq!(panel_top_left(None, Some(SCREEN), POPUP_WIDTH), corner);
+        assert_eq!(panel_top_left(None, Some(DESKTOP), POPUP_WIDTH), corner);
     }
 }
