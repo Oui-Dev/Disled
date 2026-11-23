@@ -873,4 +873,39 @@ mod tests {
         let shown = host.plugins["timer"].shown.as_ref();
         assert_eq!(shown.map(|(state, _)| state.as_str()), Some("work"));
     }
+
+    #[test]
+    fn a_color_picked_for_a_state_replaces_that_of_the_plugin() {
+        let folder = tempfile::tempdir().expect("folder");
+        let mut host = host(folder.path());
+        add_approved(&mut host, "timer", &["run", "color"]);
+        let palette = Palette::from_value(&json!({
+            "custom": [{ "slot": 4, "name": "Focus", "xy": { "x": 12452, "y": 11796 } }]
+        }));
+        let mut outbox = Outbox::default();
+        let red = Some(LampColor::Slot(2));
+        assert_eq!(
+            host.set_color("timer", "work", Some(4), &palette, &mut outbox),
+            Ok(())
+        );
+        assert_eq!(
+            host.color("timer", "work", &palette),
+            Some(LampColor::Slot(4))
+        );
+        // Once that color is deleted, the plugin's shows again.
+        assert_eq!(host.color("timer", "work", &Palette::default()), red);
+        assert_eq!(
+            host.set_color("timer", "work", None, &palette, &mut outbox),
+            Ok(())
+        );
+        assert_eq!(host.color("timer", "work", &palette), red);
+        assert!(
+            host.set_color("timer", "work", Some(9), &palette, &mut outbox)
+                .is_err()
+        );
+        assert!(
+            host.set_color("timer", "nope", Some(1), &palette, &mut outbox)
+                .is_err()
+        );
+    }
 }
