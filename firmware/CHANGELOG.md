@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.0](https://github.com/Oui-Dev/Disled/compare/fw-v2.2.1...fw-v3.0.0) (2026-11-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **firmware:** colors as CIE 1931 chromaticities, in protocol 3.0
+
+### 🚀 Enhancements
+
+* **firmware:** colors as CIE 1931 chromaticities, in protocol 3.0 ([b322b17](https://github.com/Oui-Dev/Disled/commit/b322b174d8cc513184f7fa24a0a01abeab7a5ff9))
+
 ## [2.2.1](https://github.com/Oui-Dev/Disled/compare/fw-v2.2.0...fw-v2.2.1) (2026-11-22)
 
 

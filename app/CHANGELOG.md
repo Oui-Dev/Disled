@@ -1,5 +1,27 @@
 # Changelog
 
+## [3.0.0](https://github.com/Oui-Dev/Disled/compare/app-v2.2.3...app-v3.0.0) (2026-11-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **app:** colors as CIE 1931 chromaticities, and the plugin API 2
+
+### 🚀 Enhancements
+
+* **app:** a plugin changes the lamp color 4 times a second at most ([97b71b4](https://github.com/Oui-Dev/Disled/commit/97b71b4cc347b953fa21769fad7c04a04a8c6ec6))
+* **app:** colors as CIE 1931 chromaticities, and the plugin API 2 ([52bb42e](https://github.com/Oui-Dev/Disled/commit/52bb42e33c116366e15b60219c9ae78c25b7fdbf))
+
+
+### 🩹 Fixes
+
+* **app:** the lamp no longer stays on an old color of the plugin it follows ([b4b7b5f](https://github.com/Oui-Dev/Disled/commit/b4b7b5f172e7d570d9fbad56cf0e08c423b0ce50))
+
+
+### 💅 Refactors
+
+* **app:** one constant paces the lamp and the windows, and the color code drops what never runs ([0f4f318](https://github.com/Oui-Dev/Disled/commit/0f4f31882490350735da65300e930862d6f5d6ec))
+
 ## [2.2.3](https://github.com/Oui-Dev/Disled/compare/app-v2.2.2...app-v2.2.3) (2026-11-22)
 
 
