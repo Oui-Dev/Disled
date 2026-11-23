@@ -47,7 +47,7 @@ Stop with Ctrl+C. The log already holds every finished board.
    erases the whole flash, as the app does, then writes, verifies and
    restarts.
 2. The lamp starts its firmware. The tool checks what it reports
-   (`INFO`): the version of the release, a release build, protocol 2.
+   (`INFO`): the version of the release, a release build, protocol 3.
 3. **Self-test.** The lamp shows red, green, blue and warm white, 1.5 s
    each, while the tool names them. **Touch the lid** when it glows blue,
    within 10 s. The lamp checks its light sensor and its touch by itself.

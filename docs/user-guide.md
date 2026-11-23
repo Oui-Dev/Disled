@@ -197,10 +197,11 @@ keys pick the color. The square holds only full colors: the **Brightness**
 slider of the popup sets how bright the lamp shines. With
 **Preview on the lamp**, the lamp shows the color while you change it, and
 goes back to its own color when you leave the editor. **Save** keeps it.
-The lamp is calibrated so that your colors look like their swatch on a
-screen that shows colors faithfully, white included. Toward the top of the
-square, the lamp goes further than a screen can: the more vivid the color,
-the deeper it shows, up to the lamp's own colors at the top edge.
+The lamp shows each color as its true light, so that a pale color looks
+like its swatch on a screen that shows colors faithfully, white included.
+The square goes further than a screen can: toward the top, the lamp shows
+the color deeper than its swatch, up to the lamp's own colors at the top
+edge.
 
 **Delete** acts at once, without asking for confirmation. Wherever the
 color was in use, another one takes its place: the first color of the touch
@@ -267,7 +268,10 @@ tabs: **Installed**, the plugins of this computer, and **Catalog**.
   when another program holds the port of Disled, red when it stopped for
   good after several errors. A plugin that Disled cannot read says which
   file and why.
-- **Colors.** The color the lamp takes for each state of the plugin.
+- **Colors.** The color the lamp takes for each state of the plugin: a
+  color of yours, a built-in one, or **Plugin color** when the plugin
+  gives the state a color of its own. The lamp changes color at most four
+  times a second, whatever the plugin sends.
 - **Regenerate the token** gives the plugin a new one, to copy again into
   its program. **Remove the plugin** deletes its folder, for any plugin,
   even one never enabled or that Disled cannot read.
