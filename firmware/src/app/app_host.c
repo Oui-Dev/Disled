@@ -36,7 +36,7 @@ static host_notify_state_t observe(void)
         .applied_percent = brightness_level_percent(&app.brightness, app.lamp.brightness_mode,
                                                     app.lamp.manual_level),
         .link = app.link,
-        .rgb = app_lamp_rgb(),
+        .xy = app_lamp_xy(),
     };
     return content;
 }
@@ -263,6 +263,12 @@ static void handle_command(const uint8_t payload[PROTO_REPORT_SIZE], uint32_t no
         case PROTO_CMD_GET_TOUCH_CYCLE: {
             uint8_t reply[PROTO_REPORT_SIZE];
             proto_encode_touch_cycle(reply, command.seq, &app.cycle);
+            (void)usb_hid_send(reply);
+            break;
+        }
+        case PROTO_CMD_GET_GAMUT: {
+            uint8_t reply[PROTO_REPORT_SIZE];
+            proto_encode_gamut(reply, command.seq, app_led_gamut);
             (void)usb_hid_send(reply);
             break;
         }

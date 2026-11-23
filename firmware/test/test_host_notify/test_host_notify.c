@@ -20,7 +20,7 @@ void setUp(void)
     now = (host_notify_state_t){
         .applied_percent = 50,
         .link = USB_LINK_CONFIGURED,
-        .rgb = { 0, 65535, 0 },
+        .xy = { 9748, 46140 },
     };
     lamp_fsm_init(&now.lamp);
     host_notify_init(&n, &now, LEVEL_PERIOD_MS);
@@ -132,7 +132,7 @@ static void test_the_cause_of_a_change(void)
     observe(CHANGE_SOURCE_BOOT);
     TEST_ASSERT_EQUAL(CHANGE_SOURCE_AUTO_BRIGHTNESS, host_notify_state(&n).source);
 
-    now.rgb = (rgb16_t){ 65535, 0, 0 }; /* the color shown, redefined */
+    now.xy = (xy16_t){ 45170, 20347 }; /* the color shown, redefined */
     observe(CHANGE_SOURCE_BOOT);
     TEST_ASSERT_EQUAL(CHANGE_SOURCE_HOST, host_notify_state(&n).source);
 

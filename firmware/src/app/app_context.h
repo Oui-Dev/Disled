@@ -72,17 +72,17 @@ static inline bool app_request_allowed(const lamp_request_t *request)
            palette_defined(&app.palette, request->color);
 }
 
-/* The color of the slot shown, at full brightness, for STATE: as the host set
- * it, or the LED drive of a built-in color. */
-rgb16_t app_lamp_rgb(void);
+/* The chromaticity of the slot shown, for STATE: as the host set it, or
+ * that of a built-in color. */
+xy16_t app_lamp_xy(void);
 
 /* The brightness level to apply, per mille, after the lamp's brightness
  * settings as they are at the call. */
 uint16_t app_level_permille(void);
 
-/* Sets or empties (black) a custom slot. An emptied color leaves the touch
+/* Sets or empties (0, 0) a custom slot. An emptied color leaves the touch
  * cycle, and the lamp showing it goes to the first color of the cycle. */
-bool app_set_color(uint32_t slot, rgb16_t color);
+bool app_set_color(uint32_t slot, xy16_t color);
 
 /* False if a slot of the cycle holds no color. */
 bool app_set_touch_cycle(const touch_cycle_t *cycle);

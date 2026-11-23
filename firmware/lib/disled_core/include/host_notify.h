@@ -25,7 +25,7 @@ typedef struct {
     lamp_state_t lamp;
     uint8_t applied_percent;
     usb_link_t link;
-    rgb16_t rgb; /* changes alone when the host redefines the current color */
+    xy16_t xy; /* changes alone when the host redefines the current color */
 } host_notify_state_t;
 
 typedef struct {

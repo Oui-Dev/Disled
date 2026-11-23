@@ -48,7 +48,7 @@ static void show(size_t slot, uint16_t level_permille, usb_link_t link,
     led_output_init(&out, &output_config);
     const led_output_inputs_t in = {
         .on = true,
-        .drive = app_builtin_colors[slot],
+        .drive = app_builtin_colors[slot].drive,
         .level_permille = level_permille,
         .link = link,
     };
@@ -72,7 +72,7 @@ static void test_the_dimmest_level_lights_every_channel_of_a_built_in_color(void
 {
     const uint16_t dimmest = color_level_shown(10, APP_LED_FLOOR_PERMILLE);
     for (size_t slot = 0; slot < LAMP_COLOR_COUNT; slot++) {
-        const rgb16_t c = app_builtin_colors[slot];
+        const rgb16_t c = app_builtin_colors[slot].drive;
         const uint16_t drive[LED_CHANNEL_COUNT] = { c.r, c.g, c.b };
         uint16_t duty[LED_CHANNEL_COUNT];
         show(slot, dimmest, USB_LINK_CONFIGURED, duty);
@@ -101,30 +101,45 @@ static void test_the_built_in_colors_keep_to_the_cap(void)
     }
 }
 
-/* At full vividness, the sRGB red and green light the red and the green LED
- * alone, as the built-in red and green do: the edge of the color square of
- * the app is as vivid as the built-in colors. */
-static void test_the_srgb_red_and_green_are_the_built_in_ones(void)
+/* STATE gives the chromaticity of a built-in color, and a host may set it
+ * as a custom color: the calibration shows it with the same drive. */
+static void test_each_built_in_color_is_the_drive_of_its_chromaticity(void)
 {
-    const rgb16_t red = led_cal_drive(&app_led_color_cal, (rgb16_t){ 65535, 0, 0 });
-    const rgb16_t green = led_cal_drive(&app_led_color_cal, (rgb16_t){ 0, 65535, 0 });
-    TEST_ASSERT_EQUAL_MEMORY(&app_builtin_colors[LAMP_COLOR_RED], &red, sizeof red);
-    TEST_ASSERT_EQUAL_MEMORY(&app_builtin_colors[LAMP_COLOR_GREEN], &green, sizeof green);
+    for (size_t slot = 0; slot < LAMP_COLOR_COUNT; slot++) {
+        const rgb16_t drive = led_cal_drive(&app_led_color_cal, app_builtin_colors[slot].xy);
+        const rgb16_t built_in = app_builtin_colors[slot].drive;
+        snprintf(message, sizeof message, "color %u", (unsigned)slot);
+        TEST_ASSERT_UINT16_WITHIN_MESSAGE(2, built_in.r, drive.r, message);
+        TEST_ASSERT_UINT16_WITHIN_MESSAGE(2, built_in.g, drive.g, message);
+        TEST_ASSERT_UINT16_WITHIN_MESSAGE(2, built_in.b, drive.b, message);
+    }
 }
 
-/* The warm white is the 2700 K white of the app's swatch, #FFAD59, whose
- * linear light led_of() of colors.rs gives, through the color calibration
- * alone: a built-in white keeps its temperature, without the move toward
- * the LED's own colors. */
-static void test_the_warm_white_is_its_swatch_through_the_calibration(void)
+/* The corners of the gamut that GAMUT gives light each LED alone: the edge
+ * of the color square of the app reaches the LED's own colors. Coordinates
+ * in 1/65536 leave a trace of another LED, most at the blue corner, whose y
+ * is small: 16 of 65535 is a pulse of 1 tick at most, which gives no light
+ * (app_led_light_cal). */
+static void test_the_gamut_is_each_led_alone(void)
 {
-    led_color_cal_t faithful = app_led_color_cal;
-    faithful.vivid = false;
-    const rgb16_t drive = led_cal_drive(&faithful, (rgb16_t){ 65535, 27386, 6547 });
-    const rgb16_t warm_white = app_builtin_colors[LAMP_COLOR_WARM_WHITE];
-    TEST_ASSERT_UINT16_WITHIN(1, drive.r, warm_white.r);
-    TEST_ASSERT_UINT16_WITHIN(1, drive.g, warm_white.g);
-    TEST_ASSERT_UINT16_WITHIN(1, drive.b, warm_white.b);
+    for (size_t c = 0; c < LED_CHANNEL_COUNT; c++) {
+        const rgb16_t drive = led_cal_drive(&app_led_color_cal, app_led_gamut[c]);
+        const uint16_t channels[LED_CHANNEL_COUNT] = { drive.r, drive.g, drive.b };
+        for (size_t other = 0; other < LED_CHANNEL_COUNT; other++) {
+            snprintf(message, sizeof message, "LED %u, channel %u", (unsigned)c, (unsigned)other);
+            TEST_ASSERT_UINT16_WITHIN_MESSAGE(16, (other == c) ? 65535u : 0u, channels[other],
+                                              message);
+        }
+    }
+}
+
+/* The warm white lies within 0.001 in x and y of the 2700 K white of CIE
+ * 1931, (0.4599, 0.4106). */
+static void test_the_warm_white_is_2700_k(void)
+{
+    const xy16_t warm_white = app_builtin_colors[LAMP_COLOR_WARM_WHITE].xy;
+    TEST_ASSERT_UINT16_WITHIN(66, 30140, warm_white.x);
+    TEST_ASSERT_UINT16_WITHIN(66, 26909, warm_white.y);
 }
 
 /* --- Touch ------------------------------------------------------------ */
@@ -311,8 +326,9 @@ int main(void)
     RUN_TEST(test_the_calibration_passes_the_boot_checks);
     RUN_TEST(test_the_dimmest_level_lights_every_channel_of_a_built_in_color);
     RUN_TEST(test_the_built_in_colors_keep_to_the_cap);
-    RUN_TEST(test_the_srgb_red_and_green_are_the_built_in_ones);
-    RUN_TEST(test_the_warm_white_is_its_swatch_through_the_calibration);
+    RUN_TEST(test_each_built_in_color_is_the_drive_of_its_chromaticity);
+    RUN_TEST(test_the_gamut_is_each_led_alone);
+    RUN_TEST(test_the_warm_white_is_2700_k);
     RUN_TEST(test_a_correction_scales_press_release_and_rise);
     RUN_TEST(test_the_shipped_thresholds_keep_the_whole_range);
     RUN_TEST(test_every_correction_keeps_the_hysteresis_above_the_noise);

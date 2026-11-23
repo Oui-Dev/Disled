@@ -43,7 +43,7 @@ void app_apply_request(const lamp_request_t *request)
     }
 }
 
-rgb16_t app_lamp_rgb(void)
+xy16_t app_lamp_xy(void)
 {
     return palette_color(&app.palette, app.lamp.color);
 }
@@ -61,7 +61,7 @@ bool app_set_touch_cycle(const touch_cycle_t *cycle)
     return touch_cycle_set(&app.cycle, cycle->slots, cycle->count, app.palette.defined);
 }
 
-bool app_set_color(uint32_t slot, rgb16_t color)
+bool app_set_color(uint32_t slot, xy16_t color)
 {
     if (!palette_set(&app.palette, slot, color)) {
         return false;

@@ -39,91 +39,68 @@ static int32_t shift_signed(int32_t x, uint32_t shift)
     return (x < 0) ? -(int32_t)m : (int32_t)m;
 }
 
-/* The square root of x, rounded down. */
-static uint32_t isqrt(uint32_t x)
+/* The drive of the chromaticity x, y through the matrix, unscaled. With x,
+ * y and z = 1 - x - y from 0 to 65535 each, and the magnitudes of a row at
+ * most 32767 in all, |d| < 2^31. */
+static void through(const led_color_cal_t *cal, uint32_t x, uint32_t y,
+                    int32_t d[LED_CHANNEL_COUNT])
 {
-    uint32_t root = 0;
-    for (uint32_t bit = 1u << 30; bit != 0u; bit >>= 2) {
-        if (x >= root + bit) {
-            x -= root + bit;
-            root = (root >> 1) + bit;
-        } else {
-            root >>= 1;
-        }
-    }
-    return root;
-}
-
-/* How far a color moves toward the LED's own colors, in 1/65536: the square
- * of its vividness, 0 for a grey and 65536 for a color with a channel at 0.
- * The vividness is that of the color square of the app, the saturation of
- * the gamma-encoded color, here with a gamma of 2: 1 - sqrt(smallest /
- * largest). */
-static uint32_t vivid_weight(const int32_t in[3])
-{
-    const int32_t hi =
-        (in[0] > in[1]) ? ((in[0] > in[2]) ? in[0] : in[2]) : ((in[1] > in[2]) ? in[1] : in[2]);
-    const int32_t lo =
-        (in[0] < in[1]) ? ((in[0] < in[2]) ? in[0] : in[2]) : ((in[1] < in[2]) ? in[1] : in[2]);
-    if (hi == 0) {
-        return 0u;
-    }
-    /* In 1/32768: lo << 15 < 2^31, and the ratio << 15 <= 2^30. */
-    const uint32_t ratio = ((uint32_t)lo << 15) / (uint32_t)hi;
-    const uint32_t vividness = 32768u - isqrt(ratio << 15);
-    return (vividness * vividness) >> 14; /* vividness <= 2^15: at most 2^30 */
-}
-
-rgb16_t led_cal_drive(const led_color_cal_t *cal, rgb16_t srgb)
-{
-    const int32_t in[3] = { srgb.r, srgb.g, srgb.b };
-    int32_t d[LED_CHANNEL_COUNT];
-    /* The drive of the sRGB white, the matrix times (1, 1, 1), unscaled: 1 to
-     * 32767 (led_cal_color_valid). */
-    int32_t white[LED_CHANNEL_COUNT];
+    const int32_t in[3] = { (int32_t)x, (int32_t)y, (int32_t)(XY_ONE - x - y) };
     for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
-        /* The magnitudes of a row add up to 32767 at most, and in <= 65535:
-         * |sum| < 2^31. */
         int32_t sum = 0;
-        white[i] = 0;
         for (size_t j = 0; j < 3u; j++) {
             sum += (int32_t)cal->matrix[i][j] * in[j];
-            white[i] += cal->matrix[i][j];
         }
         d[i] = sum;
     }
-    /* The matrix keeps the sRGB color, which the LED's primaries exceed in
-     * saturation. A vivid color moves toward the drive of the white balance
-     * alone, each LED lit by its own sRGB channel: the matrix and that drive
-     * agree on every grey, and a channel at 0 gives the LED's own color,
-     * such as the red LED alone for #FF0000. */
-    const uint32_t t = cal->vivid ? vivid_weight(in) : 0u;
+}
+
+/* Rounds `v` to `bits` significant bits, its largest magnitude then at most
+ * 2^bits. False when every value is 0. */
+static bool round_to_bits(int32_t v[LED_CHANNEL_COUNT], uint32_t bits)
+{
     uint32_t largest = 0;
     for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
-        if (t != 0u) {
-            /* Both ends below 2^31 in magnitude, the step below 2^32. */
-            const int64_t step = (int64_t)white[i] * in[i] - d[i];
-            const uint64_t part = ((uint64_t)((step < 0) ? -step : step) * t) >> 16;
-            d[i] += (step < 0) ? -(int32_t)part : (int32_t)part;
-        }
-        if (magnitude(d[i]) > largest) {
-            largest = magnitude(d[i]);
+        if (magnitude(v[i]) > largest) {
+            largest = magnitude(v[i]);
         }
     }
     if (largest == 0u) {
+        return false;
+    }
+    const uint32_t shift = shift_to_bits(largest, bits);
+    for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
+        v[i] = shift_signed(v[i], shift);
+    }
+    return true;
+}
+
+bool led_cal_xy_valid(xy16_t xy)
+{
+    return xy.y != 0u && (uint32_t)xy.x + xy.y <= XY_ONE;
+}
+
+rgb16_t led_cal_drive(const led_color_cal_t *cal, xy16_t xy)
+{
+    if (!led_cal_xy_valid(xy)) {
         return black;
     }
-    /* 15 significant bits, rounded, so that |d| <= 32768 in the products
-     * below: a relative resolution of 2^-15. */
-    const uint32_t shift = shift_to_bits(largest, 15u);
-    for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
-        d[i] = shift_signed(d[i], shift);
+    /* With y at 1 or more, z <= 65535. */
+    int32_t d[LED_CHANNEL_COUNT];
+    int32_t white[LED_CHANNEL_COUNT];
+    through(cal, xy.x, xy.y, d);
+    through(cal, LED_WHITE_X, LED_WHITE_Y, white);
+    /* Only the directions count, since the scales cancel out below: the
+     * drive to 15 significant bits, |d| <= 32768, a relative resolution of
+     * 2^-15, and the white, above 0 on every channel (led_cal_color_valid),
+     * to 14, white <= 16384. */
+    if (!round_to_bits(d, 15u) || !round_to_bits(white, 14u)) {
+        return black;
     }
 
     /* Outside the gamut, add k white, k = max(-d / white) over the negative
-     * channels: the channel m that sets k reads 0. Only the direction of the
-     * white counts, since its scale cancels out below. The cross products
-     * stay at most 32768 * 32767 < 2^30. */
+     * channels: the channel m that sets k reads 0. The cross products stay
+     * at most 32768 * 16384 = 2^29. */
     size_t m = LED_CHANNEL_COUNT;
     for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
         if (d[i] < 0 && (m == LED_CHANNEL_COUNT || -d[i] * white[m] > -d[m] * white[i])) {
@@ -137,7 +114,7 @@ rgb16_t led_cal_drive(const led_color_cal_t *cal, rgb16_t srgb)
             e[i] = (uint32_t)d[i]; /* no channel is negative */
         } else {
             /* white[m] * (d[i] + k * white[i]) = d[i] * white[m] - d[m] *
-             * white[i], from 0 to 2 * 32768 * 32767 < 2^31. */
+             * white[i], from 0 to 2 * 2^29 = 2^30. */
             e[i] = (uint32_t)(d[i] * white[m] - d[m] * white[i]);
         }
         if (e[i] > top) {
@@ -265,12 +242,17 @@ bool led_cal_color_valid(const led_color_cal_t *cal)
 {
     for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
         uint32_t magnitudes = 0;
-        int32_t white = 0; /* channel i of the drive of the sRGB white */
         for (size_t j = 0; j < 3u; j++) {
             magnitudes += magnitude(cal->matrix[i][j]);
-            white += cal->matrix[i][j];
         }
-        if (magnitudes > 32767u || white <= 0) {
+        if (magnitudes > 32767u) {
+            return false;
+        }
+    }
+    int32_t white[LED_CHANNEL_COUNT];
+    through(cal, LED_WHITE_X, LED_WHITE_Y, white);
+    for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
+        if (white[i] <= 0) {
             return false;
         }
     }

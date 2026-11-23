@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 The Disled contributors
 # Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
-"""Turn protocol/vectors/v2.json into a C header for the unit tests.
+"""Turn protocol/vectors/v3.json into a C header for the unit tests.
 
 Runs before the native build. The header lands in the build directory, so
 it never goes stale in the source tree. Vectors with a "decode_error" are
-messages that hosts refuse, such as those of a version 1 lamp: they are left
+messages that hosts refuse, such as those of an older lamp: they are left
 out.
 """
 
@@ -22,7 +22,7 @@ STATUS = {
 }
 # The message kinds of the JSON; the C enum names each one MSG_<KIND>.
 KINDS = ("state", "info", "telemetry", "diagnostics", "self_test_result", "ack", "error", "color",
-         "touch_cycle", "alert_done", "touch")
+         "touch_cycle", "alert_done", "touch", "gamut")
 
 
 def c_bytes(hex_text):
@@ -34,8 +34,8 @@ def c_bool(value):
     return "true" if value else "false"
 
 
-def c_rgb(rgb):
-    return "{ %d, %d, %d }" % tuple(rgb)
+def c_xy(xy):
+    return "{ %d, %d }" % tuple(xy)
 
 
 def c_cycle(cycle):
@@ -73,7 +73,7 @@ def command_entry(vector):
                 vector["seq"], c_bool(set_state is not None), request, c_bool(period is not None),
                 period or 0, c_bool(bias is not None), bias or 0,
                 c_bool(set_color is not None), set_color["slot"] if set_color else 0,
-                c_rgb(set_color["rgb"]) if set_color else "{ 0, 0, 0 }",
+                c_xy(set_color["xy"]) if set_color else "{ 0, 0 }",
                 c_bool(slot is not None), slot or 0, c_bool(cycle is not None),
                 c_cycle(cycle) if cycle else "{ 0 }", c_bool(alert is not None),
                 alert["count"] if alert else 0, alert["period_ms"] if alert else 0,
@@ -88,10 +88,10 @@ def message_entry(vector):
         fields.append(".state = { .state_seq = %d, .lamp = { .on = %s, .color = %d, "
                       ".brightness_mode = (brightness_mode_t)%d, .manual_level = %d, "
                       ".touch_mode = (touch_mode_t)%d }, .applied_percent = %d, "
-                      ".link = (usb_link_t)%d, .source = (change_source_t)%d, .rgb = %s }"
+                      ".link = (usb_link_t)%d, .source = (change_source_t)%d, .xy = %s }"
                       % (s["state_seq"], c_bool(s["on"]), s["color"], s["brightness_mode"],
                          s["manual_level"], s["touch_mode"], s["applied_percent"], s["link"],
-                         s["source"], c_rgb(s["rgb"])))
+                         s["source"], c_xy(s["xy"])))
     elif kind == "info":
         i = vector["info"]
         uid = ", ".join("0x%s" % i["uid"][k:k + 2] for k in range(0, len(i["uid"]), 2))
@@ -139,13 +139,17 @@ def message_entry(vector):
                                                                          vector["error"]))
     elif kind == "color":
         c = vector["color"]
-        fields.append(".color_slot = %d, .color = %s" % (c["slot"], c_rgb(c["rgb"])))
+        fields.append(".color_slot = %d, .color = %s" % (c["slot"], c_xy(c["xy"])))
     elif kind == "touch_cycle":
         fields.append(".touch_cycle = %s" % c_cycle(vector["touch_cycle"]))
     elif kind == "alert_done":
         fields.append(".reason = %d" % vector["reason"])
     elif kind == "touch":
         fields.append(".press = %d" % vector["press"])
+    elif kind == "gamut":
+        g = vector["gamut"]
+        fields.append(".gamut = { %s, %s, %s }" % (c_xy(g["red"]), c_xy(g["green"]),
+                                                  c_xy(g["blue"])))
     fields.append(".canonical = %s" % c_bool(vector.get("canonical", True)))
     return "    { .name = \"%s\", .kind = %s, .seq = %d, .payload = %s,\n      %s },\n" % (
         vector["name"], "MSG_" + kind.upper(), vector["seq"], c_bytes(vector["bytes"]),
@@ -156,7 +160,7 @@ def generate(source, target):
     with open(source, encoding="utf-8") as handle:
         doc = json.load(handle)
     lines = [
-        "/* Generated from protocol/vectors/v2.json by scripts/gen_vectors.py. Do not edit. */\n",
+        "/* Generated from protocol/vectors/v3.json by scripts/gen_vectors.py. Do not edit. */\n",
         "#include <stdbool.h>\n#include <stdint.h>\n\n#include \"protocol.h\"\n\n",
         "#define VECTORS_PROTOCOL_MAJOR %du\n#define VECTORS_PROTOCOL_MINOR %du\n\n"
         % tuple(doc["protocol_version"]),
@@ -164,7 +168,7 @@ def generate(source, target):
         "    proto_status_t status;\n    uint8_t type;\n    uint8_t seq;\n    bool has_set_state;\n"
         "    lamp_request_t set_state;\n    bool has_period;\n    uint16_t telemetry_period_ms;\n"
         "    bool has_auto_bias;\n    int8_t auto_bias;\n"
-        "    bool has_set_color;\n    uint8_t set_color_slot;\n    rgb16_t set_color;\n"
+        "    bool has_set_color;\n    uint8_t set_color_slot;\n    xy16_t set_color;\n"
         "    bool has_color_slot;\n    uint8_t color_slot;\n"
         "    bool has_touch_cycle;\n    touch_cycle_t touch_cycle;\n"
         "    bool has_alert;\n    uint8_t alert_count;\n    uint16_t alert_period_ms;\n"
@@ -176,8 +180,9 @@ def generate(source, target):
         "    uint8_t payload[PROTO_REPORT_SIZE];\n    proto_state_t state;\n    proto_info_t info;\n"
         "    proto_telemetry_t telemetry;\n    proto_diagnostics_t diagnostics;\n"
         "    proto_self_test_result_t self_test_result;\n    uint8_t command;\n"
-        "    proto_status_t error;\n    uint8_t color_slot;\n    rgb16_t color;\n"
+        "    proto_status_t error;\n    uint8_t color_slot;\n    xy16_t color;\n"
         "    touch_cycle_t touch_cycle;\n    uint8_t reason;\n    uint8_t press;\n"
+        "    xy16_t gamut[LED_CHANNEL_COUNT];\n"
         "    bool canonical; /* false: decoder-only vector */\n"
         "} message_vector_t;\n\n",
         "static const command_vector_t command_vectors[] = {\n",
@@ -202,6 +207,6 @@ def generate(source, target):
 
 project_dir = env.subst("$PROJECT_DIR")  # noqa: F821
 generated_dir = os.path.join(env.subst("$BUILD_DIR"), "generated")  # noqa: F821
-generate(os.path.join(project_dir, "..", "protocol", "vectors", "v2.json"),
+generate(os.path.join(project_dir, "..", "protocol", "vectors", "v3.json"),
          os.path.join(generated_dir, "protocol_vectors.h"))
 env.Append(CPPPATH=[generated_dir])  # noqa: F821

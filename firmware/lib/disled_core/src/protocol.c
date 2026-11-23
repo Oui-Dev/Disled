@@ -82,6 +82,7 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
         case PROTO_CMD_GET_DIAGNOSTICS:
         case PROTO_CMD_SELF_TEST:
         case PROTO_CMD_GET_TOUCH_CYCLE:
+        case PROTO_CMD_GET_GAMUT:
             return PROTO_OK;
 
         case PROTO_CMD_SET_STATE: {
@@ -130,7 +131,7 @@ proto_status_t proto_decode_command(const uint8_t payload[PROTO_REPORT_SIZE],
             if (length < PROTO_SET_COLOR_SIZE) {
                 return PROTO_ERR_BAD_LENGTH;
             }
-            const rgb16_t color = { get_u16(&body[1]), get_u16(&body[3]), get_u16(&body[5]) };
+            const xy16_t color = { get_u16(&body[1]), get_u16(&body[3]) };
             /* The built-in colors never change. */
             if (body[0] < LAMP_COLOR_COUNT || body[0] >= LAMP_SLOT_COUNT ||
                 !palette_color_is_valid(color)) {
@@ -239,9 +240,8 @@ void proto_encode_state(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, const p
     put_u8(&w, (uint8_t)state->link);
     put_u8(&w, (uint8_t)state->source);
     put_u8(&w, (uint8_t)state->lamp.touch_mode);
-    put_u16(&w, state->rgb.r);
-    put_u16(&w, state->rgb.g);
-    put_u16(&w, state->rgb.b);
+    put_u16(&w, state->xy.x);
+    put_u16(&w, state->xy.y);
     end_message(&w);
 }
 
@@ -316,14 +316,23 @@ void proto_encode_error(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, uint8_t
     end_message(&w);
 }
 
-void proto_encode_color(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, uint8_t slot,
-                        rgb16_t color)
+void proto_encode_color(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, uint8_t slot, xy16_t color)
 {
     writer_t w = begin_message(payload, PROTO_MSG_COLOR, seq);
     put_u8(&w, slot);
-    put_u16(&w, color.r);
-    put_u16(&w, color.g);
-    put_u16(&w, color.b);
+    put_u16(&w, color.x);
+    put_u16(&w, color.y);
+    end_message(&w);
+}
+
+void proto_encode_gamut(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq,
+                        const xy16_t gamut[LED_CHANNEL_COUNT])
+{
+    writer_t w = begin_message(payload, PROTO_MSG_GAMUT, seq);
+    for (size_t i = 0; i < LED_CHANNEL_COUNT; i++) {
+        put_u16(&w, gamut[i].x);
+        put_u16(&w, gamut[i].y);
+    }
     end_message(&w);
 }
 

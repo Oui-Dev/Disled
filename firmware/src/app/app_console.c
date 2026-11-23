@@ -64,9 +64,9 @@ static void cmd_state(int argc, char **argv)
                    app.lamp.on ? "on" : "off", color_name(app.lamp.color),
                    app.lamp.brightness_mode == BRIGHTNESS_MODE_AUTO ? "auto" : "manual",
                    (unsigned)app.lamp.manual_level, (unsigned)app_level_permille());
-    const rgb16_t rgb = app_lamp_rgb();
-    console_printf("color slot %u = %u %u %u", (unsigned)app.lamp.color, (unsigned)rgb.r,
-                   (unsigned)rgb.g, (unsigned)rgb.b);
+    const xy16_t xy = app_lamp_xy();
+    console_printf("color slot %u = xy %u %u /65536", (unsigned)app.lamp.color, (unsigned)xy.x,
+                   (unsigned)xy.y);
     console_printf(", touch %s",
                    app.lamp.touch_mode == TOUCH_MODE_NORMAL ? "normal" : "power only");
     console_printf(", alert %s\r\n", alert_running(&app.alert) ? "running" : "off");
