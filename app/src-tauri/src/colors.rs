@@ -156,9 +156,6 @@ pub fn srgb_of(xy: Xy) -> [u8; 3] {
     let linear =
         XYZ_TO_SRGB.map(|row| (row[0] * xyz[0] + row[1] * xyz[1] + row[2] * xyz[2]).max(0.0));
     let max = linear.iter().copied().fold(0.0, f64::max);
-    if max <= 0.0 {
-        return [0; 3];
-    }
     linear.map(|channel| {
         let value = channel / max;
         let encoded = if value <= 0.003_130_8 {

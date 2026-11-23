@@ -65,8 +65,7 @@ const XYZ_TO_DISPLAY_P3 = [
 ];
 
 function times(matrix: number[][], v: Rgb): Rgb {
-  const row = (i: number) =>
-    (matrix[i]?.[0] ?? 0) * v[0] + (matrix[i]?.[1] ?? 0) * v[1] + (matrix[i]?.[2] ?? 0) * v[2];
+  const row = (i: number) => matrix[i][0] * v[0] + matrix[i][1] * v[1] + matrix[i][2] * v[2];
   return [row(0), row(1), row(2)];
 }
 
@@ -94,7 +93,7 @@ const p3 =
   && CSS.supports('color', 'color(display-p3 1 0 0)');
 
 /** The color space of the screen colors: Display P3 where the window shows it. */
-export const SCREEN_SPACE: PredefinedColorSpace = p3 ? 'display-p3' : 'srgb';
+const SCREEN_SPACE: PredefinedColorSpace = p3 ? 'display-p3' : 'srgb';
 
 /**
  * A chromaticity on screen, at full brightness: the gamma-encoded channels
@@ -147,7 +146,7 @@ function srgbEdge(hue: number): Point {
     [ramp, 0, 1],
     [1, 0, ramp],
   ];
-  const encoded = sextants[Math.floor(h) % 6] ?? [1, 0, 0];
+  const encoded = sextants[Math.floor(h) % 6];
   const [X, Y, Z] = times(SRGB_TO_XYZ, encoded.map(decode) as Rgb);
   const sum = X + Y + Z;
   return { x: X / sum, y: Y / sum };
@@ -166,7 +165,7 @@ function edgeOf(gamut: Gamut, toward: Point): Point {
   const dy = toward.y - D65.y;
   let nearest = Number.POSITIVE_INFINITY;
   corners.forEach((a, i) => {
-    const b = corners[(i + 1) % corners.length] ?? a;
+    const b = corners[(i + 1) % corners.length];
     const ex = b.x - a.x;
     const ey = b.y - a.y;
     const den = dx * ey - dy * ex;
@@ -210,7 +209,7 @@ export function pointOf(gamut: Gamut, xy: Xy, hue = 0): { hue: number; vividness
   };
   let nearest = 0;
   HUE_ANGLES.forEach((other, candidate) => {
-    if (gap(other) < gap(HUE_ANGLES[nearest] ?? 0)) {
+    if (gap(other) < gap(HUE_ANGLES[nearest])) {
       nearest = candidate;
     }
   });
