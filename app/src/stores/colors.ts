@@ -7,7 +7,9 @@
 
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import type { LampColor } from '@/bindings/LampColor';
 import type { Palette } from '@/bindings/Palette';
+import type { Xy } from '@/bindings/Xy';
 import { i18n } from '@/i18n';
 import {
   colorsDelete,
@@ -18,15 +20,19 @@ import {
   colorsSetCycle,
 } from '@/ipc/commands';
 import { mirror } from '@/ipc/events';
+import { cssOf } from '@/utils/color';
 import { BUILT_IN_COLORS, CUSTOM_MAX } from '@/utils/lamp';
 import { useErrorStore } from './errors';
 
-/** A color as the windows show it: its slot, the name the user sees, its code on screen. */
+/** A color as the windows show it: its slot, the name the user sees and its color on screen. */
 export interface ShownColor {
   slot: number;
   name: string;
-  hex: string;
+  /** A CSS color. */
+  swatch: string;
   builtIn: boolean;
+  /** The chromaticity of a custom color, null for a built-in one. */
+  xy: Xy | null;
 }
 
 /** The default name of a built-in color, in the language of the app. */
@@ -43,8 +49,9 @@ export function builtInColors(palette: Palette | null): ShownColor[] {
   return BUILT_IN_COLORS.map((color, slot) => ({
     slot,
     name: palette?.names[slot] ?? defaultName(slot),
-    hex: color.swatch,
+    swatch: color.swatch,
     builtIn: true,
+    xy: null,
   }));
 }
 
@@ -53,8 +60,9 @@ export function customColors(palette: Palette | null): ShownColor[] {
   return (palette?.custom ?? []).map((color) => ({
     slot: color.slot,
     name: color.name,
-    hex: color.hex,
+    swatch: cssOf(color.xy),
     builtIn: false,
+    xy: color.xy,
   }));
 }
 
@@ -78,6 +86,11 @@ export const useColorsStore = defineStore('colors', () => {
     return builtIn.value[slot] ?? custom.value.find((shown) => shown.slot === slot);
   }
 
+  /** The color on screen of a color that the app gives the lamp: a slot, or the chromaticity of a plugin. */
+  function swatchOf(lampColor: LampColor): string | undefined {
+    return 'xy' in lampColor ? cssOf(lampColor.xy) : color(lampColor.slot)?.swatch;
+  }
+
   return {
     palette,
     builtIn,
@@ -85,6 +98,7 @@ export const useColorsStore = defineStore('colors', () => {
     cycle,
     full,
     color,
+    swatchOf,
     saveCustom: (color: Parameters<typeof colorsSaveCustom>[0]) =>
       errors.attempt(colorsSaveCustom(color)),
     renameOriginal: (slot: number, name: string | null) =>

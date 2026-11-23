@@ -28,8 +28,8 @@ const state = computed(() => control.status.state);
 /** Off as the lamp last said; without a lamp, the card shows the state. */
 const off = computed(() => lamp.state !== null && !lamp.state.on);
 const swatch = computed(() => {
-  const slot = state.value?.slot;
-  return slot === undefined ? undefined : colors.color(slot)?.hex;
+  const color = state.value?.color;
+  return color === undefined ? undefined : colors.swatchOf(color);
 });
 
 const lines = computed(() => {

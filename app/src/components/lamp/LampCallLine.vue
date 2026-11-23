@@ -45,7 +45,7 @@ const items = computed(() => {
   return [...colors.builtIn, ...colors.custom].map((color) => ({
     value: color.slot,
     label: color.name,
-    hex: color.hex,
+    swatch: color.swatch,
     // The custom colors start a row of their own, under a line across the popover.
     class:
       color.slot === firstCustom
@@ -69,7 +69,7 @@ function choose(slot: number): void {
     <p
       v-if="back"
       class="in-call text-muted -mx-1.5 flex h-7 items-center gap-1.5 rounded-md px-1.5 text-xs whitespace-nowrap"
-      :style="{ '--call': callColor?.hex }"
+      :style="{ '--call': callColor?.swatch }"
       :title="t('calls.detected')"
     >
       <UIcon name="i-lucide-mic" class="size-3.5 shrink-0 text-(--call)" />
@@ -126,7 +126,7 @@ function choose(slot: number): void {
                   aria-hidden="true"
                   :title="item.label"
                   class="swatch swatch-ring block size-7"
-                  :style="{ background: item.hex }"
+                  :style="{ background: item.swatch }"
                 />
               </template>
             </URadioGroup>

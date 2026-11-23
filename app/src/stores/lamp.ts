@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Disled contributors
 
-// The lamp as one window sees it: the connection, its identity (INFO) and
-// its state (STATE). The lamp owns its state, so the window only shows the
-// last STATE message and sends commands.
+// The lamp as one window sees it: the connection, its identity (INFO), the
+// colors it can show (GAMUT) and its state (STATE). The lamp owns its
+// state, so the window only shows the last STATE message and sends commands.
 
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { Command } from '@/bindings/Command';
 import type { Connection } from '@/bindings/Connection';
+import type { Gamut } from '@/bindings/Gamut';
 import type { Info } from '@/bindings/Info';
 import type { LampChoice } from '@/bindings/LampChoice';
 import type { LampState } from '@/bindings/LampState';
 import { deviceConnection, deviceSend, lampChoose } from '@/ipc/commands';
 import { follow, on } from '@/ipc/events';
+import { DEFAULT_GAMUT } from '@/utils/color';
 import { useErrorStore } from './errors';
 
 export const useLampStore = defineStore('lamp', () => {
@@ -27,18 +29,23 @@ export const useLampStore = defineStore('lamp', () => {
   });
   const info = ref<Info | null>(null);
   const state = ref<LampState | null>(null);
+  /**
+   * The triangle of the colors the lamp shows, as the last lamp told it,
+   * which the editor of the colors offers.
+   */
+  const gamut = ref<Gamut>(DEFAULT_GAMUT);
 
   /**
    * What the protocol of the lamp lets the app do, null until it answers: a
-   * version 1 lamp and a lamp newer than the app are locked, a version 2
+   * lamp older than the app or newer than it is locked, a version 3
    * lamp is driven.
    */
   const generation = computed(() => connection.value.generation);
   /** A lamp the app does not drive: its controls stay greyed. */
-  const locked = computed(() => generation.value === 'v1' || generation.value === 'newer');
-  /** A version 2 lamp whose state is known, which the controls drive. */
+  const locked = computed(() => generation.value === 'older' || generation.value === 'newer');
+  /** A version 3 lamp whose state is known, which the controls drive. */
   const ready = computed(
-    () => connection.value.connected && generation.value === 'v2' && state.value !== null,
+    () => connection.value.connected && generation.value === 'current' && state.value !== null,
   );
 
   /**
@@ -75,6 +82,9 @@ export const useLampStore = defineStore('lamp', () => {
         case 'state':
           state.value = message;
           break;
+        case 'gamut':
+          gamut.value = { red: message.red, green: message.green, blue: message.blue };
+          break;
         case 'error':
           errors.report({ kind: 'rejected', command: message.command, error: message.error });
           break;
@@ -98,6 +108,7 @@ export const useLampStore = defineStore('lamp', () => {
     );
     if (connection.value.connected) {
       await send({ kind: 'get_info' }, { automatic: true });
+      await send({ kind: 'get_gamut' }, { automatic: true });
       await send({ kind: 'get_state' }, { automatic: true });
     }
   }
@@ -106,6 +117,7 @@ export const useLampStore = defineStore('lamp', () => {
     connection,
     info,
     state,
+    gamut,
     generation,
     locked,
     ready,

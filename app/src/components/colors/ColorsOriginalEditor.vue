@@ -47,7 +47,11 @@ defineExpose({ save, canSave });
       tabindex="-1"
       class="text-highlighted flex items-center gap-2 text-sm font-semibold focus:outline-none"
     >
-      <span aria-hidden="true" class="swatch size-5 shrink-0" :style="{ background: color?.hex }" />
+      <span
+        aria-hidden="true"
+        class="swatch size-5 shrink-0"
+        :style="{ background: color?.swatch }"
+      />
       {{ color?.name }}
     </h2>
 

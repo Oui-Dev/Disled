@@ -19,6 +19,7 @@ import type { PluginView } from '@/bindings/PluginView';
 import type { Settings } from '@/bindings/Settings';
 import type { SettingsPatch } from '@/bindings/SettingsPatch';
 import type { UpdateStatus } from '@/bindings/UpdateStatus';
+import type { Xy } from '@/bindings/Xy';
 
 /** The connection now, for a window that opens after the first event. */
 export function deviceConnection(): Promise<Connection> {
@@ -68,7 +69,8 @@ export function pluginSetEnabled(id: string, enabled: boolean): Promise<void> {
   return invoke('plugin_set_enabled', { id, enabled });
 }
 
-export function pluginSetColor(id: string, state: string, slot: number): Promise<void> {
+/** The color of a state of a plugin, a slot of the palette, or null for the color of the plugin. */
+export function pluginSetColor(id: string, state: string, slot: number | null): Promise<void> {
   return invoke('plugin_set_color', { id, state, slot });
 }
 
@@ -119,7 +121,7 @@ export function colorsGet(): Promise<Palette> {
 export function colorsSaveCustom(color: {
   slot: number | null;
   name: string;
-  hex: string;
+  xy: Xy;
   keepLit: boolean;
 }): Promise<number> {
   return invoke('colors_save_custom', color);
@@ -152,9 +154,9 @@ export function colorsImport(text: string): Promise<void> {
   return invoke('colors_import', { text });
 }
 
-/** Shows a code on the lamp while the editor changes it; null ends the preview. */
-export function colorsPreview(hex: string | null): Promise<void> {
-  return invoke('colors_preview', { hex });
+/** Shows a color on the lamp while the editor changes it; null ends the preview. */
+export function colorsPreview(xy: Xy | null): Promise<void> {
+  return invoke('colors_preview', { xy });
 }
 
 /** Writes a recording to a `.csv` file chosen in a save dialog. */
@@ -222,7 +224,7 @@ export function openDiagnostics(): Promise<void> {
   return invoke('open_diagnostics');
 }
 
-/** The guided update, to the newest firmware 2.x. */
+/** The guided update, to the newest firmware 3.x. */
 export function openLampUpdate(): Promise<void> {
   return invoke('open_lamp_update');
 }

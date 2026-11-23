@@ -3,8 +3,8 @@
   SPDX-FileCopyrightText: 2026 The Disled contributors
 
   The guided lamp update, opened by the two "Update" buttons: the offer to a
-  version 2 lamp and the warning of a version 1 lamp. It installs the newest
-  firmware 2.x and guides the user through it, with the BOOT and RESET
+  version 3 lamp and the warning of an older lamp. It installs the newest
+  firmware 3.x and guides the user through it, with the BOOT and RESET
   buttons and the Windows driver, while the backend downloads, checks,
   erases and flashes.
 -->

@@ -42,7 +42,7 @@ and writes what the lamp shows in its log. It needs Node.js.
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/Oui-Dev/Disled/main/docs/plugins/plugin.schema.json",
-  "api": 1,
+  "api": 2,
   "id": "hello",
   "name": "Hello",
   "version": "0.1.0",
@@ -71,7 +71,7 @@ send('state', { state: 'available' });
 readline.createInterface({ input: process.stdin }).on('line', (line) => {
   const { method, params } = JSON.parse(line);
   if (method === 'lamp' && params.connected) {
-    console.error(`lamp ${params.on ? 'on' : 'off'}, ${params.color.name ?? params.color.hex}`);
+    console.error(`lamp ${params.on ? 'on' : 'off'}, ${params.color.name ?? `${params.color.x} ${params.color.y}`}`);
   } else if (method === 'touch') {
     busy = !busy;
     send('state', { state: busy ? 'busy' : 'available' });

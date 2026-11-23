@@ -12,8 +12,8 @@
       "description": "The address of this schema, for the editor."
     },
     "api": {
-      "const": 1,
-      "description": "The version of the plugin API: 1. A larger value makes the plugin unreadable."
+      "const": 2,
+      "description": "The version of the plugin API: 2. Any other value makes the plugin unreadable."
     },
     "id": {
       "type": "string",
@@ -152,8 +152,20 @@
         "id": { "type": "string", "pattern": "^[a-z0-9-]{1,32}$" },
         "label": { "$ref": "#/definitions/text40" },
         "color": {
-          "enum": ["green", "orange", "red", "warm"],
-          "description": "Its default color, which the user can change."
+          "description": "Its default color, which the user can change: a built-in color, or a color of the plugin's own.",
+          "oneOf": [
+            { "enum": ["green", "orange", "red", "warm_white"] },
+            {
+              "type": "object",
+              "required": ["x", "y"],
+              "additionalProperties": false,
+              "description": "A CIE 1931 chromaticity, x + y at most 1.",
+              "properties": {
+                "x": { "type": "number", "minimum": 0, "exclusiveMaximum": 1 },
+                "y": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 }
+              }
+            }
+          ]
         },
         "priority": {
           "type": "integer",

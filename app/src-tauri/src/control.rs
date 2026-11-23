@@ -15,15 +15,15 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use disled_protocol::{
-    ChangeSource, Command, FIRST_CUSTOM_SLOT, LinearRgb, ProtocolError, SLOT_COUNT, SetState,
-    State, TouchMode,
+    ChangeSource, Command, FIRST_CUSTOM_SLOT, ProtocolError, SLOT_COUNT, SetState, State,
+    TouchMode, Xy,
 };
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::calls::Monitor;
-use crate::colors::DEFAULT_CYCLE;
+use crate::colors::{DEFAULT_CYCLE, LampColor, PLUGIN_SLOT};
 use crate::device::DeviceHandle;
 use crate::settings::CallSettings;
 
@@ -63,7 +63,7 @@ pub struct Integration {
 pub struct IntegrationState {
     /// Such as "Claude travaille".
     pub label: String,
-    pub slot: u8,
+    pub color: LampColor,
     /// When the state began, seconds since 1970-01-01 UTC.
     pub since: u64,
 }
@@ -106,7 +106,7 @@ pub struct LampChoice {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Input {
-    /// A version 2 lamp got the connection sequence.
+    /// A version 3 lamp got the connection sequence.
     Connected,
     Disconnected,
     /// A STATE of the lamp, a reply or a change.
@@ -174,6 +174,18 @@ fn color(slot: u8) -> Effect {
     }))
 }
 
+/// The color of `PLUGIN_SLOT` for a color of the plugin itself, which goes
+/// before the state that names the slot.
+fn plugin_slot(color: LampColor) -> Option<Effect> {
+    match color {
+        LampColor::Xy(xy) => Some(automatic(Command::SetColor {
+            slot: PLUGIN_SLOT,
+            xy,
+        })),
+        LampColor::Slot(_) => None,
+    }
+}
+
 /// A touch mode that the backend sets on its own, with the color `slot`
 /// if any.
 fn touch(mode: TouchMode, slot: Option<u8>) -> Effect {
@@ -198,7 +210,7 @@ struct Control {
     mode: Option<String>,
     integrations: Vec<Integration>,
     states: HashMap<String, IntegrationState>,
-    /// A version 2 lamp is there.
+    /// A version 3 lamp is there.
     connected: bool,
     /// Its last STATE.
     state: Option<State>,
@@ -247,8 +259,8 @@ impl Control {
     }
 
     /// The color of the state of the integration the lamp follows.
-    fn integration_slot(&self) -> Option<u8> {
-        self.integration_state().map(|state| state.slot)
+    fn integration_color(&self) -> Option<LampColor> {
+        self.integration_state().map(|state| state.color)
     }
 
     /// While the call color shows: the color the lamp gets back after it.
@@ -258,18 +270,21 @@ impl Control {
 
     /// The touch mode and the color that end the connection sequence. A
     /// call does not outlive the connection: the monitor hears it again.
-    fn on_connect(&self) -> (TouchMode, Option<u8>) {
+    fn on_connect(&self) -> (TouchMode, Option<LampColor>) {
         match self.mode {
-            Some(_) => (TouchMode::PowerOnly, self.integration_slot()),
+            Some(_) => (TouchMode::PowerOnly, self.integration_color()),
             None => (TouchMode::Normal, None),
         }
     }
 
     /// What the app sets on the lamp, sent again after a self-test that
     /// refused it.
-    fn imposed(&self) -> Effect {
-        let (mode, slot) = self.on_connect();
-        touch(mode, slot.or(self.call_back().map(|_| self.calls.color)))
+    fn imposed(&self) -> Vec<Effect> {
+        let (mode, color) = self.on_connect();
+        let color = color.or(self.call_back().map(|_| LampColor::Slot(self.calls.color)));
+        let mut effects: Vec<Effect> = color.and_then(plugin_slot).into_iter().collect();
+        effects.push(touch(mode, color.map(LampColor::slot)));
+        effects
     }
 
     /// The commands that hand the lamp back to its own behavior when the
@@ -289,12 +304,10 @@ impl Control {
         effects.push(automatic(Command::SetTouchCycle {
             slots: DEFAULT_CYCLE.to_vec(),
         }));
-        effects.extend((FIRST_CUSTOM_SLOT..SLOT_COUNT).map(|slot| {
-            automatic(Command::SetColor {
-                slot,
-                rgb: LinearRgb::default(),
-            })
-        }));
+        effects.extend(
+            (FIRST_CUSTOM_SLOT..SLOT_COUNT)
+                .map(|slot| automatic(Command::SetColor { slot, xy: Xy::NONE })),
+        );
         effects
     }
 
@@ -338,14 +351,16 @@ impl Control {
                     call.imposed = false;
                 }
                 // The card of an integration turns the lamp on with its color.
-                let slot = match self.mode {
-                    Some(_) => self.integration_slot(),
-                    None => slot,
-                };
+                let color = match self.mode {
+                    Some(_) => self.integration_color(),
+                    None => slot.map(LampColor::Slot),
+                }
+                .filter(|_| on);
+                effects.extend(color.and_then(plugin_slot));
                 effects.push(Effect::Send {
                     command: Command::SetState(SetState {
                         on: Some(on),
-                        color: slot.filter(|_| on),
+                        color: color.map(LampColor::slot),
                         ..SetState::default()
                     }),
                     user: true,
@@ -374,8 +389,8 @@ impl Control {
                 }
             }
             Input::Announce { id, state } => {
-                let before = self.states.get(&id).map(|known| known.slot);
-                let slot = state.as_ref().map(|state| state.slot);
+                let before = self.states.get(&id).map(|known| known.color);
+                let color = state.as_ref().map(|state| state.color);
                 match state {
                     Some(state) => self.states.insert(id.clone(), state),
                     None => self.states.remove(&id),
@@ -383,8 +398,9 @@ impl Control {
                 // The color follows the state, the power never. Without a
                 // state, the lamp keeps the color it has.
                 let followed = self.connected && self.mode.as_ref() == Some(&id);
-                if let Some(slot) = slot.filter(|slot| followed && before != Some(*slot)) {
-                    effects.push(color(slot));
+                if let Some(color) = color.filter(|color| followed && before != Some(*color)) {
+                    effects.extend(plugin_slot(color));
+                    effects.push(self::color(color.slot()));
                 }
             }
             Input::CallSettings(calls) => {
@@ -449,7 +465,7 @@ impl Control {
             Input::SelfTest(running) => {
                 self.self_test = running;
                 if !running && std::mem::take(&mut self.refused_in_test) && self.connected {
-                    effects.push(self.imposed());
+                    effects.extend(self.imposed());
                 }
                 if running {
                     self.refused_in_test = false;
@@ -461,7 +477,7 @@ impl Control {
     }
 
     /// The microphone monitor runs only while it serves: the switch on, a
-    /// system that tells calls, in manual mode, with a version 2 lamp. Each
+    /// system that tells calls, in manual mode, with a version 3 lamp. Each
     /// start is a new run, which first hears no call.
     fn watch(&mut self, effects: &mut Vec<Effect>) {
         let wanted =
@@ -487,7 +503,9 @@ impl Control {
         if self.mode.is_some() {
             self.call = None;
             if self.connected {
-                effects.push(touch(TouchMode::PowerOnly, self.integration_slot()));
+                let color = self.integration_color();
+                effects.extend(color.and_then(plugin_slot));
+                effects.push(touch(TouchMode::PowerOnly, color.map(LampColor::slot)));
                 if was_manual {
                     effects.push(Effect::Heartbeat(true));
                 }
@@ -556,7 +574,7 @@ impl ControlState {
         self.core.lock().status()
     }
 
-    pub fn on_connect(&self) -> (TouchMode, Option<u8>) {
+    pub fn on_connect(&self) -> (TouchMode, Option<LampColor>) {
         self.core.lock().on_connect()
     }
 
@@ -564,8 +582,8 @@ impl ControlState {
         self.core.lock().call_back()
     }
 
-    pub fn integration_slot(&self) -> Option<u8> {
-        self.core.lock().integration_slot()
+    pub fn integration_color(&self) -> Option<LampColor> {
+        self.core.lock().integration_color()
     }
 }
 
@@ -683,11 +701,11 @@ mod tests {
             link: UsbLink::Configured,
             source,
             touch_mode: TouchMode::Normal,
-            rgb: LinearRgb::default(),
+            xy: Xy::NONE,
         }
     }
 
-    /// A version 2 lamp, lit in green, the microphone followed, on a system
+    /// A version 3 lamp, lit in green, the microphone followed, on a system
     /// that hears calls.
     fn control() -> (Control, Instant) {
         let mut control = Control::new(CallSettings {
@@ -730,7 +748,7 @@ mod tests {
                 id: "claude-code".into(),
                 state: Some(IntegrationState {
                     label: "Claude travaille".into(),
-                    slot: SLOT_ORANGE,
+                    color: LampColor::Slot(SLOT_ORANGE),
                     since: 1_793_000_000,
                 }),
             },
@@ -884,7 +902,7 @@ mod tests {
                 id: "claude-code".into(),
                 state: Some(IntegrationState {
                     label: "Claude travaille".into(),
-                    slot: SLOT_ORANGE,
+                    color: LampColor::Slot(SLOT_ORANGE),
                     since: 0,
                 }),
             },
@@ -1015,12 +1033,24 @@ mod tests {
         assert_eq!(control.status().calls.back, Some(SLOT_ORANGE));
     }
 
+    /// The state of "claude-code", with this color.
+    fn announce(color: LampColor) -> Input {
+        Input::Announce {
+            id: "claude-code".into(),
+            state: Some(IntegrationState {
+                label: "Claude attend votre réponse".into(),
+                color,
+                since: 1_793_000_100,
+            }),
+        }
+    }
+
     #[test]
     fn a_new_state_changes_the_color_never_the_power() {
         let (mut control, now) = following();
         let mut state = IntegrationState {
             label: "Claude attend votre réponse".into(),
-            slot: SLOT_RED,
+            color: LampColor::Slot(SLOT_RED),
             since: 1_793_000_100,
         };
         let announce = |state: &IntegrationState| Input::Announce {
@@ -1041,6 +1071,26 @@ mod tests {
             state: None,
         };
         assert_eq!(control.step(now, none), []);
+    }
+
+    #[test]
+    fn a_color_of_the_plugin_itself_goes_to_its_slot() {
+        let (mut control, now) = following();
+        let cyan = Xy { x: 13107, y: 21627 };
+        assert_eq!(
+            control.step(now, announce(LampColor::Xy(cyan))),
+            [
+                automatic(Command::SetColor {
+                    slot: PLUGIN_SLOT,
+                    xy: cyan
+                }),
+                color(PLUGIN_SLOT)
+            ]
+        );
+        assert_eq!(
+            control.on_connect(),
+            (TouchMode::PowerOnly, Some(LampColor::Xy(cyan)))
+        );
     }
 
     #[test]
@@ -1091,7 +1141,7 @@ mod tests {
         control.step(now, Input::Disconnected);
         assert_eq!(
             control.on_connect(),
-            (TouchMode::PowerOnly, Some(SLOT_ORANGE))
+            (TouchMode::PowerOnly, Some(LampColor::Slot(SLOT_ORANGE)))
         );
         assert_eq!(
             control.step(now, Input::Connected),
@@ -1184,12 +1234,7 @@ mod tests {
 
     #[test]
     fn quitting_hands_the_lamp_back_to_its_own_behavior() {
-        let black = |slot| {
-            automatic(Command::SetColor {
-                slot,
-                rgb: LinearRgb::default(),
-            })
-        };
+        let none = |slot| automatic(Command::SetColor { slot, xy: Xy::NONE });
         let (control, _) = following();
         let effects = control.quit();
         assert_eq!(effects.len(), 16, "the heartbeat, then 15 reports");
@@ -1205,7 +1250,7 @@ mod tests {
                 slots: vec![0, 1, 2]
             })
         );
-        assert_eq!(effects[4..], (4..16).map(black).collect::<Vec<_>>());
+        assert_eq!(effects[4..], (4..16).map(none).collect::<Vec<_>>());
 
         // In manual mode, the touch is normal already.
         let (control, _) = self::control();
@@ -1215,7 +1260,7 @@ mod tests {
             effects[0],
             automatic(Command::SetTouchSensitivity { percent: 0 })
         );
-        // Without a version 2 lamp, nothing to hand back.
+        // Without a version 3 lamp, nothing to hand back.
         assert_eq!(Control::default().quit(), []);
     }
 }

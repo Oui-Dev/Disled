@@ -262,7 +262,7 @@ pub(super) mod tests {
     use zip::write::SimpleFileOptions;
 
     const MANIFEST: &str = r#"{
-        "api": 1, "id": "demo", "name": "Demo", "version": "1.0.0", "author": "test",
+        "api": 2, "id": "demo", "name": "Demo", "version": "1.0.0", "author": "test",
         "description": "A test plugin.", "capabilities": ["run"],
         "run": { "default": ["demo"] }
     }"#;
@@ -424,7 +424,7 @@ pub(super) mod tests {
         let two_folders = zip(&[("a/plugin.json", MANIFEST), ("b/plugin.json", MANIFEST)]);
         assert_eq!(import(two_folders, &plugins), Err(Reason::Missing));
         assert_eq!(import(b"not a zip".to_vec(), &plugins), Err(Reason::Io));
-        let broken = zip(&[("plugin.json", "{ \"api\": 1 }")]);
+        let broken = zip(&[("plugin.json", "{ \"api\": 2 }")]);
         assert_eq!(
             import(broken, &plugins),
             Err(Reason::Field { field: "id".into() })

@@ -115,6 +115,7 @@
     },
     "colors": "Colors",
     "colorsHint": "When the lamp follows {name}:",
+    "ownColor": "Plugin color",
     "tokenOwn": "This plugin’s own token",
     "regenerate": "Regenerate the token",
     "remove": "Remove the plugin",
@@ -439,11 +440,11 @@
     "lampUpdate": "Disled lamp update",
     "lampInstall": "Reinstall the firmware"
   },
-  "lampV1": {
+  "lampOlder": {
     "title": "Update required",
-    "text": "This lamp still runs firmware v1, and Disled v2 needs firmware v2.",
+    "text": "This lamp’s firmware is too old for this app.",
     "action": "Update",
-    "line": "This lamp runs firmware v1, and Disled v2 needs firmware v2."
+    "line": "This lamp’s firmware is too old for this app."
   },
   "lampNewer": {
     "text": "This lamp’s firmware is too new for this app. Update Disled."

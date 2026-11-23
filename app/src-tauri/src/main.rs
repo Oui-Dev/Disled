@@ -25,7 +25,7 @@ mod windows;
 use colors::{Around, ColorsState, Palette, PaletteChange, PreviewState};
 use control::{ControlState, ControlStatus, Input, LampChoice};
 use device::{Connection, DeviceHandle};
-use disled_protocol::{Command, SetState};
+use disled_protocol::{Command, SetState, Xy};
 use firmware::{FirmwareState, FirmwareStatus};
 use i18n::{Locale, LocaleState};
 use plugins::PluginsState;
@@ -116,13 +116,14 @@ async fn plugin_set_enabled(app: AppHandle, id: String, enabled: bool) -> Result
     plugins::set_enabled(&app, &id, enabled)
 }
 
-/// The color of a state of a plugin.
+/// The color of a state of a plugin, or the one of the plugin again, for
+/// no `slot`.
 #[tauri::command]
 async fn plugin_set_color(
     app: AppHandle,
     id: String,
     state: String,
-    slot: u8,
+    slot: Option<u8>,
 ) -> Result<(), String> {
     plugins::set_color(&app, &id, &state, slot)
 }
@@ -225,7 +226,9 @@ fn around(app: &AppHandle) -> Around {
         lamp: app.state::<DeviceHandle>().state().map(|state| state.color),
         call_color: app.state::<SettingsState>().get().calls.color,
         call_then: control.call_back(),
-        integration: control.integration_slot().and(plugins::fallback_color(app)),
+        integration: control
+            .integration_color()
+            .and(plugins::fallback_color(app)),
     }
 }
 
@@ -238,22 +241,12 @@ fn colors_save_custom(
     app: AppHandle,
     slot: Option<u8>,
     name: String,
-    hex: String,
+    xy: Xy,
     keep_lit: bool,
 ) -> Result<u8, String> {
     let mut palette = app.state::<ColorsState>().get();
-    let saved = palette.save_custom(slot, &name, &hex)?;
-    let mut commands: Vec<Command> = palette
-        .custom
-        .iter()
-        .filter(|color| color.slot == saved)
-        .filter_map(|color| {
-            Some(Command::SetColor {
-                slot: saved,
-                rgb: colors::led_of(&color.hex)?,
-            })
-        })
-        .collect();
+    let saved = palette.save_custom(slot, &name, xy)?;
+    let mut commands = vec![Command::SetColor { slot: saved, xy }];
     commands.extend(
         app.state::<PreviewState>()
             .end((keep_lit && slot.is_none()).then_some(saved)),
@@ -318,23 +311,25 @@ fn colors_import(app: AppHandle, text: String) -> Result<(), String> {
     apply_change(&app, change)
 }
 
-/// The preview of the editor on the lamp: a code starts or follows it, and
-/// `null` ends it, the lamp back to its state. Only with the preview setting
-/// on and a lamp that the app drives.
+/// The preview of the editor on the lamp: a chromaticity starts or follows
+/// it, and `null` ends it, the lamp back to its state. Only with the preview
+/// setting on and a lamp that the app drives.
 #[tauri::command]
-fn colors_preview(app: AppHandle, hex: Option<String>) -> Result<(), String> {
+fn colors_preview(app: AppHandle, xy: Option<Xy>) -> Result<(), String> {
     let device = app.state::<DeviceHandle>();
     let preview = app.state::<PreviewState>();
-    let commands = match hex {
-        Some(hex) => {
+    let commands = match xy {
+        Some(xy) => {
             let Some(lamp) = device.state() else {
                 return Ok(());
             };
             if !app.state::<SettingsState>().get().color_preview {
                 return Ok(());
             }
-            let rgb = colors::led_of(&hex).ok_or("not a color code")?;
-            preview.follow(&lamp, rgb)
+            if !xy.is_chromaticity() {
+                return Err("not a chromaticity".into());
+            }
+            preview.follow(&lamp, xy)
         }
         None => preview.end(None),
     };

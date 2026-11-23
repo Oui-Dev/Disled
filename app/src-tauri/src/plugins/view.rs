@@ -12,7 +12,7 @@ use super::host::Host;
 use super::http;
 use super::manifest::{self, Capabilities, Reason};
 use super::process::ProgramStatus;
-use crate::colors::Palette;
+use crate::colors::{LampColor, Palette};
 
 /// The last event of a plugin, for its details.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -30,8 +30,10 @@ pub struct LastEvent {
 pub struct StateView {
     pub id: String,
     pub label: String,
-    /// The color that the user picked, or the default one.
-    pub slot: u8,
+    /// The color it shows: the one the user picked, or that of the plugin.
+    pub color: LampColor,
+    /// The color that the plugin gives it, which the user can pick back.
+    pub default: LampColor,
 }
 
 /// The installation note, without its block, which `plugin_note` fills.
@@ -144,7 +146,10 @@ impl Host {
                                 .map(|state| StateView {
                                     id: state.id.clone(),
                                     label: state.label.get(language).clone(),
-                                    slot: self.slot(id, &state.id, palette).unwrap_or(state.color),
+                                    color: self
+                                        .color(id, &state.id, palette)
+                                        .unwrap_or(state.color),
+                                    default: state.color,
                                 })
                                 .collect()
                         })

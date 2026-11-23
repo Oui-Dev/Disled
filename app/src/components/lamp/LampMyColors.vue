@@ -41,8 +41,8 @@ const tileLabel = computed(() =>
 );
 
 // Null among the values, which the group takes when no color is chosen.
-const items = computed<{ value: number | null; label: string; hex: string }[]>(() =>
-  colors.custom.map((color) => ({ value: color.slot, label: color.name, hex: color.hex })),
+const items = computed<{ value: number | null; label: string; swatch: string }[]>(() =>
+  colors.custom.map((color) => ({ value: color.slot, label: color.name, swatch: color.swatch })),
 );
 
 async function choose(slot: number | null): Promise<void> {
@@ -88,7 +88,7 @@ async function choose(slot: number | null): Promise<void> {
           :data-state="current ? 'checked' : undefined"
           class="swatch swatch-ring block size-9"
           :class="{ wheel: !current }"
-          :style="current ? { background: current.hex } : undefined"
+          :style="current ? { background: current.swatch } : undefined"
         />
         <template #content>
           <UIcon name="i-lucide-chevron-down" class="text-muted size-3" />
@@ -142,7 +142,7 @@ async function choose(slot: number | null): Promise<void> {
               <span
                 aria-hidden="true"
                 class="swatch swatch-ring block size-9"
-                :style="{ background: item.hex }"
+                :style="{ background: item.swatch }"
               />
               <LampTileName :name="item.label ?? ''" :named="false" />
             </template>

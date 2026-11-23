@@ -16,10 +16,13 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 
 use super::rules::{self, Rule};
+use crate::colors::LampColor;
+use disled_protocol::Xy;
 
 pub const FILE: &str = "plugin.json";
-/// The version of the plugin API that this app reads.
-pub const API: u64 = 1;
+/// The version of the plugin API that this app reads, the only one: a
+/// plugin of version 1 needs an update.
+pub const API: u64 = 2;
 
 /// The icons a plugin may name. The windows bundle exactly these, since the
 /// app never loads anything from the Internet.
@@ -64,7 +67,8 @@ pub enum Reason {
     Field { field: String },
     /// A field that breaks its rule.
     Invalid { field: String },
-    /// A later version of the plugin API.
+    /// A version of the plugin API that this app does not read, earlier or
+    /// later.
     Api { api: u64 },
     /// The id differs from the name of the folder.
     Id,
@@ -159,8 +163,8 @@ pub struct Capabilities {
 pub struct State {
     pub id: String,
     pub label: Localized<String>,
-    /// A built-in color, slot 0 to 3.
-    pub color: u8,
+    /// A built-in color, slot 0 to 3, or a color of the plugin itself.
+    pub color: LampColor,
     /// 1 to 9: the live key of the highest priority gives the state.
     pub priority: u8,
     /// How long a key keeps the state without a new event.
@@ -262,12 +266,18 @@ fn valid_state_id(id: &str) -> bool {
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
 }
 
-/// The slot of a built-in color, by its name in a manifest.
-fn built_in(name: &str) -> Option<u8> {
-    ["green", "orange", "red", "warm"]
-        .iter()
-        .position(|known| *known == name)
-        .and_then(|slot| u8::try_from(slot).ok())
+/// The color of a state in a manifest: a built-in color by its name, or a
+/// chromaticity of the plugin itself, `{ "x": 0.17, "y": 0.7 }`.
+fn state_color(value: &Value) -> Option<LampColor> {
+    if let Some(name) = value.as_str() {
+        let slot = ["green", "orange", "red", "warm_white"]
+            .iter()
+            .position(|known| *known == name)?;
+        return u8::try_from(slot).ok().map(LampColor::Slot);
+    }
+    let object = value.as_object().filter(|object| object.len() == 2)?;
+    let coordinate = |key: &str| object.get(key).and_then(Value::as_f64);
+    Xy::from_coordinates(coordinate("x")?, coordinate("y")?).map(LampColor::Xy)
 }
 
 /// Reads the manifest of the plugin in `folder`.
@@ -301,7 +311,7 @@ impl Manifest {
         let api = object.get("api").ok_or_else(|| missing("api"))?;
         match api.as_u64() {
             Some(API) => {}
-            Some(later) if later > API => return Err(Reason::Api { api: later }),
+            Some(other) if other > 0 => return Err(Reason::Api { api: other }),
             _ => return Err(invalid("api")),
         }
         let id = string(object, "id")?;
@@ -434,7 +444,7 @@ fn read_state(value: &Value) -> Option<State> {
     let object = value.as_object()?;
     let id = object.get("id")?.as_str().filter(|id| valid_state_id(id))?;
     let label = localized(object.get("label"), "label", |value| text(value, MAX_LABEL)).ok()?;
-    let color = built_in(object.get("color")?.as_str()?)?;
+    let color = state_color(object.get("color")?)?;
     let priority = match object.get("priority") {
         None => 1,
         Some(priority) => u8::try_from(priority.as_u64().filter(|p| (1..=9).contains(p))?).ok()?,
@@ -546,7 +556,7 @@ mod tests {
     /// its note.
     fn claude_code() -> Value {
         json!({
-            "api": 1,
+            "api": 2,
             "id": "claude-code",
             "name": "Claude Code",
             "version": "1.0.0",
@@ -574,7 +584,7 @@ mod tests {
 
     fn pomodoro() -> Value {
         json!({
-            "api": 1,
+            "api": 2,
             "id": "pomodoro",
             "name": "Pomodoro",
             "version": "1.2.0",
@@ -597,7 +607,10 @@ mod tests {
         assert_eq!(manifest.icon, "terminal");
         assert!(manifest.capabilities.events && manifest.capabilities.alert);
         assert!(!manifest.capabilities.run);
-        assert_eq!(manifest.state("waiting").map(|state| state.color), Some(1));
+        assert_eq!(
+            manifest.state("waiting").map(|state| state.color),
+            Some(LampColor::Slot(1))
+        );
         assert_eq!(
             manifest.state("working").and_then(|state| state.ttl),
             Some(Duration::from_secs(600))
@@ -721,9 +734,15 @@ mod tests {
             ),
             (
                 "a later API",
-                with(claude_code(), |v| v["api"] = json!(2)),
+                with(claude_code(), |v| v["api"] = json!(3)),
                 false,
-                Err(Reason::Api { api: 2 }),
+                Err(Reason::Api { api: 3 }),
+            ),
+            (
+                "the API of app 2",
+                with(claude_code(), |v| v["api"] = json!(1)),
+                false,
+                Err(Reason::Api { api: 1 }),
             ),
             (
                 "a long name",
@@ -754,6 +773,52 @@ mod tests {
             (
                 "a color that is not built in",
                 with(claude_code(), |v| v["states"][0]["color"] = json!("pink")),
+                false,
+                Err(invalid("states")),
+            ),
+            (
+                "the warm white",
+                with(claude_code(), |v| {
+                    v["states"][0]["color"] = json!("warm_white")
+                }),
+                true,
+                Ok(()),
+            ),
+            (
+                "the warm white of API 1",
+                with(claude_code(), |v| v["states"][0]["color"] = json!("warm")),
+                false,
+                Err(invalid("states")),
+            ),
+            (
+                "a color of the plugin itself",
+                with(claude_code(), |v| {
+                    v["states"][0]["color"] = json!({ "x": 0.17, "y": 0.7 })
+                }),
+                true,
+                Ok(()),
+            ),
+            (
+                "a color without y",
+                with(claude_code(), |v| {
+                    v["states"][0]["color"] = json!({ "x": 0.17 })
+                }),
+                false,
+                Err(invalid("states")),
+            ),
+            (
+                "a color in another space",
+                with(claude_code(), |v| {
+                    v["states"][0]["color"] = json!({ "x": 0.17, "y": 0.7, "z": 0.13 })
+                }),
+                false,
+                Err(invalid("states")),
+            ),
+            (
+                "a coordinate past 1",
+                with(claude_code(), |v| {
+                    v["states"][0]["color"] = json!({ "x": 1.2, "y": 0.3 })
+                }),
                 false,
                 Err(invalid("states")),
             ),
@@ -834,6 +899,14 @@ mod tests {
             (
                 "two states of the same id",
                 with(pomodoro(), |v| v["states"][1]["id"] = json!("work")),
+                true,
+                Err(invalid("states")),
+            ),
+            (
+                "a color beyond the chromaticities, x + y past 1",
+                with(claude_code(), |v| {
+                    v["states"][0]["color"] = json!({ "x": 0.6, "y": 0.5 })
+                }),
                 true,
                 Err(invalid("states")),
             ),

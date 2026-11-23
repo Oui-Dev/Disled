@@ -3,8 +3,9 @@
   SPDX-FileCopyrightText: 2026 The Disled contributors
 
   The lock of a lamp that the app does not drive, at the top of the lamp
-  and settings pages. A version 1 lamp needs the firmware v2, which the
-  guided update window installs. A lamp newer than the app needs a newer app.
+  and settings pages. An older lamp, of protocol 1 or 2, needs a firmware
+  3.x, which the guided update window installs. A lamp newer than the app
+  needs a newer app.
 -->
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
@@ -17,16 +18,16 @@ const lamp = useLampStore();
 
 <template>
   <UAlert
-    v-if="lamp.generation === 'v1'"
+    v-if="lamp.generation === 'older'"
     color="warning"
     variant="subtle"
     icon="i-lucide-triangle-alert"
     orientation="vertical"
-    :title="t('lampV1.title')"
-    :description="t('lampV1.text')"
+    :title="t('lampOlder.title')"
+    :description="t('lampOlder.text')"
     :actions="[
       {
-        label: t('lampV1.action'),
+        label: t('lampOlder.action'),
         color: 'neutral',
         variant: 'solid',
         size: 'sm',

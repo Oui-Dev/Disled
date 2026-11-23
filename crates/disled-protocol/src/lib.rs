@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Disled contributors
 
-//! Command encoder and message decoder of the Disled USB HID protocol 2.1,
+//! Command encoder and message decoder of the Disled USB HID protocol 3.0,
 //! which `protocol/README.md` specifies. The functions do no I/O; the desktop
-//! app and the production tool share them. INFO keeps the layout of version
-//! 1, so the decoder reads the INFO of a version 1 lamp too: its protocol
-//! major tells the two apart.
+//! app and the production tool share them. INFO keeps the layout of versions
+//! 1 and 2, so the decoder reads the INFO of an older lamp too: its protocol
+//! major tells them apart.
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -32,8 +32,8 @@ const REPORT_ID_MESSAGE: u8 = 2;
 pub const PAYLOAD_SIZE: usize = 63;
 const HEADER_SIZE: usize = 3;
 const MAX_BODY_SIZE: usize = PAYLOAD_SIZE - HEADER_SIZE;
-pub const PROTOCOL_MAJOR: u8 = 2;
-pub const PROTOCOL_MINOR: u8 = 1;
+pub const PROTOCOL_MAJOR: u8 = 3;
+pub const PROTOCOL_MINOR: u8 = 0;
 
 /// Automatic brightness bias limits, percent.
 pub const AUTO_BIAS_MIN: i8 = -50;
@@ -69,6 +69,7 @@ const CMD_SET_TOUCH_CYCLE: u8 = 0x0C;
 const CMD_GET_TOUCH_CYCLE: u8 = 0x0D;
 const CMD_ALERT: u8 = 0x0E;
 const CMD_SET_TOUCH_SENSITIVITY: u8 = 0x10;
+const CMD_GET_GAMUT: u8 = 0x11;
 
 const MSG_INFO: u8 = 0x81;
 const MSG_STATE: u8 = 0x82;
@@ -78,8 +79,8 @@ const MSG_SELF_TEST_RESULT: u8 = 0x85;
 const MSG_COLOR: u8 = 0x86;
 const MSG_TOUCH_CYCLE: u8 = 0x87;
 const MSG_ALERT_DONE: u8 = 0x88;
-/// Version 2.1.
 const MSG_TOUCH: u8 = 0x89;
+const MSG_GAMUT: u8 = 0x8A;
 const MSG_ACK: u8 = 0x8E;
 const MSG_ERROR: u8 = 0x8F;
 
@@ -137,7 +138,7 @@ wire_enum!(ResetCause {
 });
 wire_enum!(TouchState { Calibrating = 0, Idle = 1, Pressed = 2 });
 wire_enum!(
-    /// A press on the lid that a TOUCH message tells of (version 2.1).
+    /// A press on the lid that a TOUCH message tells of.
     Press { Short = 0 }
 );
 wire_enum!(ProtocolError {
@@ -163,14 +164,61 @@ wire_enum!(
     }
 );
 
-/// Linear light of a color at full brightness, its largest channel at 65535.
-/// Black, three zeros, empties a custom slot.
+/// A color: the CIE 1931 chromaticity of its light, x and y times
+/// `Xy::ONE`, as Zigbee and Matter carry them. `Xy::NONE` empties a custom
+/// slot.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export))]
-pub struct LinearRgb {
-    pub r: u16,
-    pub g: u16,
-    pub b: u16,
+pub struct Xy {
+    pub x: u16,
+    pub y: u16,
+}
+
+impl Xy {
+    /// The coordinates are x and y times this.
+    pub const ONE: u32 = 65536;
+    /// No color.
+    pub const NONE: Xy = Xy { x: 0, y: 0 };
+    /// The D65 white, x 0.3127 and y 0.3290, the white of the lamp.
+    pub const D65: Xy = Xy { x: 20493, y: 21561 };
+
+    /// A chromaticity: y above 0, and x + y at most 1. The lamp refuses
+    /// anything else but `NONE`.
+    pub fn is_chromaticity(self) -> bool {
+        self.y != 0 && u32::from(self.x) + u32::from(self.y) <= Self::ONE
+    }
+
+    /// The nearest chromaticity to the coordinates x and y, none for
+    /// coordinates of anything but a chromaticity.
+    pub fn from_coordinates(x: f64, y: f64) -> Option<Xy> {
+        let scale = |value: f64| (value * f64::from(Self::ONE)).round();
+        let (x, y) = (scale(x), scale(y));
+        let range = 0.0..=f64::from(u16::MAX);
+        if !range.contains(&x) || !range.contains(&y) {
+            return None;
+        }
+        Some(Xy {
+            x: x as u16,
+            y: y as u16,
+        })
+        .filter(|xy| xy.is_chromaticity())
+    }
+
+    /// The coordinates x and y, from 0 to 1.
+    pub fn coordinates(self) -> (f64, f64) {
+        let one = f64::from(Self::ONE);
+        (f64::from(self.x) / one, f64::from(self.y) / one)
+    }
+}
+
+/// The chromaticities of the LED primaries of a lamp: it shows every color
+/// of their triangle as it is, and brings the others inside.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export))]
+pub struct Gamut {
+    pub red: Xy,
+    pub green: Xy,
+    pub blue: Xy,
 }
 
 /// Lamp settings to change; `None` leaves a setting as it is.
@@ -203,11 +251,11 @@ pub enum Command {
     },
     GetDiagnostics,
     SelfTest,
-    /// Defines a custom slot, `FIRST_CUSTOM_SLOT` to `SLOT_COUNT` - 1, or
-    /// empties it with black.
+    /// Defines a custom slot, `FIRST_CUSTOM_SLOT` to `SLOT_COUNT` - 1, with a
+    /// chromaticity, or empties it with `Xy::NONE`.
     SetColor {
         slot: u8,
-        rgb: LinearRgb,
+        xy: Xy,
     },
     /// Any slot, 0 to `SLOT_COUNT` - 1.
     GetColor {
@@ -228,6 +276,7 @@ pub enum Command {
     SetTouchSensitivity {
         percent: i8,
     },
+    GetGamut,
 }
 
 /// The sequence number of the command after one sent with `seq`. 0 marks
@@ -292,11 +341,10 @@ impl Command {
             Command::SetAutoBias { bias } => (CMD_SET_AUTO_BIAS, bias.to_le_bytes().to_vec()),
             Command::GetDiagnostics => (CMD_GET_DIAGNOSTICS, vec![]),
             Command::SelfTest => (CMD_SELF_TEST, vec![]),
-            Command::SetColor { slot, rgb } => {
+            Command::SetColor { slot, xy } => {
                 let mut body = vec![*slot];
-                for channel in [rgb.r, rgb.g, rgb.b] {
-                    body.extend_from_slice(&channel.to_le_bytes());
-                }
+                body.extend_from_slice(&xy.x.to_le_bytes());
+                body.extend_from_slice(&xy.y.to_le_bytes());
                 (CMD_SET_COLOR, body)
             }
             Command::GetColor { slot } => (CMD_GET_COLOR, vec![*slot]),
@@ -318,6 +366,7 @@ impl Command {
             Command::SetTouchSensitivity { percent } => {
                 (CMD_SET_TOUCH_SENSITIVITY, percent.to_le_bytes().to_vec())
             }
+            Command::GetGamut => (CMD_GET_GAMUT, vec![]),
         };
         let mut payload = [0u8; PAYLOAD_SIZE];
         payload[0] = kind;
@@ -335,8 +384,8 @@ pub struct Fault {
     pub mepc: u32,
 }
 
-/// INFO, whose layout is the same in versions 1 and 2. It leaves out the
-/// capability bits: every version 2 lamp has all the commands of this codec.
+/// INFO, whose layout is the same in versions 1 to 3. It leaves out the
+/// capability bits: every version 3 lamp has all the commands of this codec.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export))]
 pub struct Info {
@@ -366,8 +415,8 @@ pub struct State {
     pub link: UsbLink,
     pub source: ChangeSource,
     pub touch_mode: TouchMode,
-    /// The color of the slot at full brightness.
-    pub rgb: LinearRgb,
+    /// The chromaticity of the slot.
+    pub xy: Xy,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -443,11 +492,12 @@ pub enum Message {
     Telemetry(Telemetry),
     Diagnostics(Diagnostics),
     SelfTestResult(SelfTestResult),
-    /// A slot and its color, black when the slot is empty.
+    /// A slot and its chromaticity, `Xy::NONE` when the slot is empty.
     Color {
         slot: u8,
-        rgb: LinearRgb,
+        xy: Xy,
     },
+    Gamut(Gamut),
     TouchCycle {
         slots: Vec<u8>,
     },
@@ -455,7 +505,7 @@ pub enum Message {
     AlertDone {
         reason: AlertDoneReason,
     },
-    /// A short press on the lid, whatever the lamp did with it (version 2.1).
+    /// A short press on the lid, whatever the lamp did with it.
     Touch {
         press: Press,
     },
@@ -528,11 +578,10 @@ impl Reader<'_> {
         slice
     }
 
-    fn rgb(&mut self) -> LinearRgb {
-        LinearRgb {
-            r: self.u16(),
-            g: self.u16(),
-            b: self.u16(),
+    fn xy(&mut self) -> Xy {
+        Xy {
+            x: self.u16(),
+            y: self.u16(),
         }
     }
 }
@@ -594,7 +643,7 @@ pub fn decode_message(payload: &[u8]) -> Result<Frame, DecodeError> {
             })
         }
         MSG_STATE => {
-            expect_size(kind, body, 16)?;
+            expect_size(kind, body, 14)?;
             Message::State(State {
                 state_seq: r.u16(),
                 on: r.u8() != 0,
@@ -605,7 +654,7 @@ pub fn decode_message(payload: &[u8]) -> Result<Frame, DecodeError> {
                 link: UsbLink::from_wire(r.u8())?,
                 source: ChangeSource::from_wire(r.u8())?,
                 touch_mode: TouchMode::from_wire(r.u8())?,
-                rgb: r.rgb(),
+                xy: r.xy(),
             })
         }
         MSG_TELEMETRY => {
@@ -678,11 +727,19 @@ pub fn decode_message(payload: &[u8]) -> Result<Frame, DecodeError> {
             })
         }
         MSG_COLOR => {
-            expect_size(kind, body, 7)?;
+            expect_size(kind, body, 5)?;
             Message::Color {
                 slot: r.u8(),
-                rgb: r.rgb(),
+                xy: r.xy(),
             }
+        }
+        MSG_GAMUT => {
+            expect_size(kind, body, 12)?;
+            Message::Gamut(Gamut {
+                red: r.xy(),
+                green: r.xy(),
+                blue: r.xy(),
+            })
         }
         MSG_TOUCH_CYCLE => {
             expect_size(kind, body, 1 + TOUCH_CYCLE_MAX)?;
@@ -730,9 +787,9 @@ mod tests {
     fn vectors() -> Value {
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../protocol/vectors/v2.json"
+            "/../../protocol/vectors/v3.json"
         );
-        let text = std::fs::read_to_string(path).expect("protocol/vectors/v2.json");
+        let text = std::fs::read_to_string(path).expect("protocol/vectors/v3.json");
         serde_json::from_str(&text).expect("valid JSON")
     }
 
@@ -752,17 +809,16 @@ mod tests {
         v[key].as_i64().unwrap_or_else(|| panic!("number {key}"))
     }
 
-    fn rgb(v: &Value) -> LinearRgb {
-        let channels: Vec<u16> = v
+    fn xy(v: &Value) -> Xy {
+        let coordinates: Vec<u16> = v
             .as_array()
-            .expect("rgb")
+            .expect("xy")
             .iter()
-            .map(|c| c.as_u64().expect("channel") as u16)
+            .map(|c| c.as_u64().expect("coordinate") as u16)
             .collect();
-        LinearRgb {
-            r: channels[0],
-            g: channels[1],
-            b: channels[2],
+        Xy {
+            x: coordinates[0],
+            y: coordinates[1],
         }
     }
 
@@ -804,6 +860,7 @@ mod tests {
                 CMD_GET_DIAGNOSTICS => Command::GetDiagnostics,
                 CMD_SELF_TEST => Command::SelfTest,
                 CMD_GET_TOUCH_CYCLE => Command::GetTouchCycle,
+                CMD_GET_GAMUT => Command::GetGamut,
                 CMD_SET_AUTO_BIAS => Command::SetAutoBias {
                     bias: i(v, "auto_bias") as i8,
                 },
@@ -830,7 +887,7 @@ mod tests {
                     let c = &v["set_color"];
                     Command::SetColor {
                         slot: u(c, "slot") as u8,
-                        rgb: rgb(&c["rgb"]),
+                        xy: xy(&c["xy"]),
                     }
                 }
                 CMD_GET_COLOR => Command::GetColor {
@@ -865,7 +922,7 @@ mod tests {
         for v in doc["messages"].as_array().expect("messages") {
             let name = v["name"].as_str().unwrap_or("?");
             let decoded = decode_message(&payload(v["bytes"].as_str().expect("bytes")));
-            // Messages of a version 1 lamp that this version refuses.
+            // Messages of an older lamp that this version refuses.
             if let Some(error) = v["decode_error"].as_str() {
                 match (error, &decoded) {
                     ("body_too_short", Err(DecodeError::BodyTooShort(..)))
@@ -891,7 +948,7 @@ mod tests {
                     assert_eq!(s.link as u64, u(e, "link"), "{name}");
                     assert_eq!(s.source as u64, u(e, "source"), "{name}");
                     assert_eq!(s.touch_mode as u64, u(e, "touch_mode"), "{name}");
-                    assert_eq!(s.rgb, rgb(&e["rgb"]), "{name}");
+                    assert_eq!(s.xy, xy(&e["xy"]), "{name}");
                 }
                 (Some("info"), Message::Info(info)) => {
                     let e = &v["info"];
@@ -1006,10 +1063,19 @@ mod tests {
                         i(e, "touch_peak_permille")
                     );
                 }
-                (Some("color"), Message::Color { slot, rgb: color }) => {
+                (Some("color"), Message::Color { slot, xy: color }) => {
                     let e = &v["color"];
                     assert_eq!(u64::from(*slot), u(e, "slot"), "{name}");
-                    assert_eq!(*color, rgb(&e["rgb"]), "{name}");
+                    assert_eq!(*color, xy(&e["xy"]), "{name}");
+                }
+                (Some("gamut"), Message::Gamut(gamut)) => {
+                    let e = &v["gamut"];
+                    let expected = Gamut {
+                        red: xy(&e["red"]),
+                        green: xy(&e["green"]),
+                        blue: xy(&e["blue"]),
+                    };
+                    assert_eq!(*gamut, expected, "{name}");
                 }
                 (Some("touch_cycle"), Message::TouchCycle { slots: cycle }) => {
                     assert_eq!(*cycle, slots(&v["touch_cycle"]), "{name}");
@@ -1042,14 +1108,14 @@ mod tests {
         p[2] = 9;
         assert_eq!(
             decode_message(&p),
-            Err(DecodeError::BodyTooShort(0x82, 9, 16))
+            Err(DecodeError::BodyTooShort(0x82, 9, 14))
         );
         p[0] = 0x42;
         assert_eq!(decode_message(&p), Err(DecodeError::UnknownType(0x42)));
 
         // A STATE with a brightness mode of 9.
         let state = [
-            0x82, 0, 16, 0, 0, 1, 4, 9, 50, 50, 1, 1, 0, 0, 0xFF, 0xFF, 0, 0, 0,
+            0x82, 0, 14, 0, 0, 1, 4, 9, 50, 50, 1, 1, 0, 0x0D, 0x50, 0x39, 0x54,
         ];
         let mut p = [0u8; PAYLOAD_SIZE];
         p[..state.len()].copy_from_slice(&state);
@@ -1106,6 +1172,31 @@ mod tests {
         assert_eq!(command, Command::SetTelemetry { period_ms: 100 });
         let command: Command = serde_json::from_str(r#"{"kind":"self_test"}"#).expect("self_test");
         assert_eq!(command, Command::SelfTest);
+    }
+
+    #[test]
+    fn coordinates_go_to_the_nearest_chromaticity_and_back() {
+        assert_eq!(Xy::from_coordinates(0.3127, 0.3290), Some(Xy::D65));
+        let (x, y) = Xy::D65.coordinates();
+        assert!((x - 0.3127).abs() < 1e-5 && (y - 0.3290).abs() < 1e-5);
+        assert_eq!(
+            Xy::from_coordinates(0.0, 1.0 - 1.0 / 65536.0),
+            Some(Xy { x: 0, y: 65535 })
+        );
+        // No y, beyond x + y = 1, below 0, past 1, not a number.
+        for (x, y) in [
+            (0.3, 0.0),
+            (0.6, 0.5),
+            (-0.1, 0.3),
+            (0.3, 1.0),
+            (f64::NAN, 0.3),
+        ] {
+            assert_eq!(Xy::from_coordinates(x, y), None, "{x} {y}");
+        }
+        assert!(Xy::D65.is_chromaticity());
+        assert!(!Xy::NONE.is_chromaticity());
+        assert!(Xy { x: 30000, y: 35536 }.is_chromaticity());
+        assert!(!Xy { x: 30000, y: 35537 }.is_chromaticity());
     }
 
     #[test]

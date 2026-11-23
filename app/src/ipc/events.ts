@@ -21,7 +21,7 @@ interface Events {
   'device-connection': Connection;
   /** A message from the lamp. */
   'device-message': Frame;
-  /** A report from a version 2 lamp that the backend could not decode. */
+  /** A report from a version 3 lamp that the backend could not decode. */
   'device-protocol-error': string;
   /** Any window changed the settings. */
   'settings-changed': Settings;

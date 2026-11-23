@@ -115,6 +115,7 @@
     },
     "colors": "Couleurs",
     "colorsHint": "Quand la lampe suit {name} :",
+    "ownColor": "Couleur du plugin",
     "tokenOwn": "Jeton propre à ce plugin",
     "regenerate": "Régénérer le jeton",
     "remove": "Retirer le plugin",
@@ -439,11 +440,11 @@
     "lampUpdate": "Mise à jour de la lampe Disled",
     "lampInstall": "Réinstaller le firmware"
   },
-  "lampV1": {
+  "lampOlder": {
     "title": "Mise à jour nécessaire",
-    "text": "Cette lampe a encore le firmware v1, et Disled v2 a besoin du firmware v2.",
+    "text": "Le firmware de cette lampe est trop ancien pour cette app.",
     "action": "Mettre à jour",
-    "line": "Cette lampe a le firmware v1, et Disled v2 a besoin du firmware v2."
+    "line": "Le firmware de cette lampe est trop ancien pour cette app."
   },
   "lampNewer": {
     "text": "Cette lampe a un firmware plus récent que cette app. Mettez Disled à jour."

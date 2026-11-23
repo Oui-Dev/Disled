@@ -2,7 +2,7 @@
   SPDX-License-Identifier: GPL-3.0-or-later
   SPDX-FileCopyrightText: 2026 The Disled contributors
 
-  The reinstall window, opened from the settings menu only: a firmware 2.x
+  The reinstall window, opened from the settings menu only: a firmware 3.x
   of the user's choice, then the four steps of the guided update. Without a
   list of versions, it looks for one as it opens.
 -->
@@ -20,7 +20,7 @@ const firmware = useFirmwareStore();
 const { flash, idle } = useFlashSteps();
 const versions = computed(() => firmware.status.versions);
 
-/** The checked version, the newest firmware 2.x when the window opens. */
+/** The checked version, the newest firmware 3.x when the window opens. */
 const chosen = ref<string | null>(null);
 watch(
   versions,

@@ -34,7 +34,7 @@ use parking_lot::Mutex;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::colors::{ColorsState, PreviewState};
+use crate::colors::{ColorsState, LampColor, PreviewState};
 use crate::control::{self, ControlState, Input};
 use crate::device::DeviceHandle;
 use crate::i18n::{Locale, LocaleState};
@@ -236,8 +236,9 @@ pub fn set_enabled(app: &AppHandle, id: &str, enabled: bool) -> Result<(), Strin
     })
 }
 
-/// The color of a state of a plugin.
-pub fn set_color(app: &AppHandle, id: &str, state: &str, slot: u8) -> Result<(), String> {
+/// The color of a state of a plugin, or the one of the plugin again, for
+/// no `slot`.
+pub fn set_color(app: &AppHandle, id: &str, state: &str, slot: Option<u8>) -> Result<(), String> {
     let palette = app.state::<ColorsState>().get();
     change(app, |host, outbox| {
         host.set_color(id, state, slot, &palette, outbox)
@@ -335,8 +336,8 @@ pub fn remember_mode(app: &AppHandle, mode: Option<String>) {
 }
 
 /// The color that takes the place of a deleted one on a lamp that follows a
-/// plugin: the default color of its state.
-pub fn fallback_color(app: &AppHandle) -> Option<u8> {
+/// plugin: the color that the plugin gives its state.
+pub fn fallback_color(app: &AppHandle) -> Option<LampColor> {
     let mode = app.state::<ControlState>().status().mode?;
     read(app, |host| {
         let (state, _) = host.plugins.get(&mode)?.shown.as_ref()?;
@@ -378,12 +379,21 @@ fn lamp_now(app: &AppHandle) -> lamp::Lamp {
     let kept = app
         .try_state::<PreviewState>()
         .and_then(|preview| preview.kept());
-    let follows = app
+    let status = app
         .try_state::<ControlState>()
-        .and_then(|control| control.status().mode);
+        .map(|control| control.status());
+    let follows = status.as_ref().and_then(|status| status.mode.clone());
+    let label = status.and_then(|status| status.state.map(|state| state.label));
     let palette = app.state::<ColorsState>().get();
     let locale = app.state::<LocaleState>().get();
-    lamp::view(state.as_ref(), kept, &palette, locale, follows)
+    lamp::view(
+        state.as_ref(),
+        kept,
+        &palette,
+        locale,
+        follows,
+        label.as_deref(),
+    )
 }
 
 /// Something that the plugins read of the lamp may have changed: its state,

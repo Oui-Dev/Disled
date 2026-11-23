@@ -31,7 +31,7 @@ test of the app keeps true:
 
 | Field | Type | Required | Rule |
 |---|---|---|---|
-| `api` | integer | yes | `1`. A larger value makes the plugin unreadable. |
+| `api` | integer | yes | `2`. Any other value makes the plugin unreadable: a plugin of API 1 needs an update ([changes](changelog.md)). |
 | `id` | text | yes | `^[a-z0-9][a-z0-9-]{0,31}$`, the name of its folder |
 | `name` | text | yes | 1 to 32 characters |
 | `version` | text | yes | [SemVer](https://semver.org), such as `1.2.0` |
