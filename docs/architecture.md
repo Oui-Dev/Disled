@@ -8,7 +8,7 @@ Disled has three parts that share one protocol:
  │ light ─┼─> lamp state ─> LED output (PWM)   │<──────>│ plugins, microphone, updates        │
  │ host ──┘        └─> notifications           │  HID   │ Vue: popup and windows              │
  └─────────────────────────────────────────────┘        └─────────────────────────────────────┘
-                      protocol/README.md + protocol/vectors/v2.json
+                      protocol/README.md + protocol/vectors/v3.json
 ```
 
 The lamp owns its state. The touch changes it locally, the host reads and
@@ -152,15 +152,14 @@ a bound that the duties cannot exceed.
 The palette (`palette`) holds the four built-in colors and the custom ones
 that the host sets, all at full brightness; the level then scales their
 light, level 1 % showing 3 % of perceived brightness (`color_level_shown`).
-The built-in colors are LED drives. A custom color comes as linear sRGB, as
-a screen shows it, and a 3x3 matrix (`led_cal_drive`) turns it into the
-light of the three LEDs that shows that color, the white of `#FFFFFF` being
-D65. Then, by the square of its vividness (`vivid`), a color moves toward
-the LED's own colors, each LED lit by its own sRGB channel with the white
-balance: a pale color barely moves, a grey never, and the top edge of the
-app's color square is as deep as the built-in colors. A color outside the
-LED gamut then takes the least white that brings it inside, which keeps
-its hue; the largest channel then goes back to full light. The matrix and the tables come from a measured calibration
+The built-in colors are LED drives, given with the chromaticity of their
+light. A custom color comes as a CIE 1931 chromaticity, x and y, and a 3x3
+matrix (`led_cal_drive`) turns x, y and 1 − x − y into the light of the
+three LEDs that has that very chromaticity, without a division: the scale
+of the product drops out when the largest channel goes back to full light.
+A chromaticity outside the triangle of the LED primaries (`app_led_gamut`,
+which `GAMUT` tells the host) takes the least white that brings it inside,
+which keeps its hue. The matrix and the tables come from a measured calibration
 ([bringup.md](bringup.md#led-calibration)). An alert (`alert`) moves the
 perceived brightness of the lamp color along a smoothstep, after the fade,
 up from a dim lamp and down from a bright one.
@@ -190,9 +189,11 @@ but passes no gesture, nor the release of a press that outlived the alert.
 - `test_app_config` checks the shipped configuration (`app_config.c`) the
   same way: the light tables and the color matrix pass the boot checks,
   the dimmest level lights every channel of a built-in color, the colors
-  keep to the cap, and the touch settings behave on the measured board.
+  keep to the cap, each built-in color is the drive of its chromaticity,
+  the corners of the gamut light each LED alone, and the touch settings
+  behave on the measured board.
 - The protocol tests check the codec byte for byte against
-  `protocol/vectors/v2.json`, the same file the app tests use.
+  `protocol/vectors/v3.json`, the same file the app tests use.
 - `pio check` runs cppcheck on `src/` and the core, in both builds, at every
   severity.
 - [bringup.md](bringup.md) lists the checks on a real board.
@@ -235,15 +236,18 @@ window only), `device-protocol-error`, `settings-changed`,
 (with no token), `update-status` and `firmware-status`. A window that opens
 reads each value once, then follows its event (`follow` in
 `src/ipc/events.ts`). A window that shows the lamp also asks it for its
-INFO and its STATE (`src/stores/lamp.ts`).
+INFO, its GAMUT and its STATE (`src/stores/lamp.ts`).
 
 ### Control
 
 `control.rs` decides what the app sets on the lamp beyond the choices of
 the user: the source the lamp follows, the user or one integration; the
 power-only touch while an integration drives the lamp, kept by a command
-every 3 s; the color of a call; the alerts of the plugins; and the lamp
-handed back to its own colors, cycle and sensitivity when the app quits.
+every 3 s; the color of its state, at most 4 times a second, a color that
+comes sooner waiting for its turn in the place of the one that waited, and
+shown in slot 14 when it is a chromaticity of the plugin itself; the color
+of a call; the alerts of the plugins; and the lamp handed back to its own
+colors, cycle and sensitivity when the app quits.
 Its core, `Control::step`, is pure: it turns an `Input`, such as a STATE of
 the lamp, a choice in the popup, the state of a plugin or the start of a
 call, into effects. `control::input` runs it under a lock, from whatever
