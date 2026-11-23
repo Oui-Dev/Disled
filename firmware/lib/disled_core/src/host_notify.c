@@ -7,15 +7,15 @@
 
 #include "time_utils.h"
 
-static bool same_rgb(rgb16_t a, rgb16_t b)
+static bool same_xy(xy16_t a, xy16_t b)
 {
-    return a.r == b.r && a.g == b.g && a.b == b.b;
+    return a.x == b.x && a.y == b.y;
 }
 
 /* Everything but the applied level. */
 static bool same_but_level(const host_notify_state_t *a, const host_notify_state_t *b)
 {
-    return same_rgb(a->rgb, b->rgb) && lamp_state_equal(&a->lamp, &b->lamp) && a->link == b->link;
+    return same_xy(a->xy, b->xy) && lamp_state_equal(&a->lamp, &b->lamp) && a->link == b->link;
 }
 
 static bool same_content(const host_notify_state_t *a, const host_notify_state_t *b)
@@ -45,7 +45,7 @@ void host_notify_observe(host_notify_t *n, const host_notify_state_t *now,
         n->source = CHANGE_SOURCE_USB;
     } else if (now->applied_percent != n->seen.applied_percent) {
         n->source = CHANGE_SOURCE_AUTO_BRIGHTNESS;
-    } else if (!same_rgb(now->rgb, n->seen.rgb)) {
+    } else if (!same_xy(now->xy, n->seen.xy)) {
         n->source = CHANGE_SOURCE_HOST; /* only the host redefines a color */
     }
     n->seen = *now;
@@ -69,7 +69,7 @@ proto_state_t host_notify_state(const host_notify_t *n)
         .applied_percent = n->seen.applied_percent,
         .link = n->seen.link,
         .source = n->source,
-        .rgb = n->seen.rgb,
+        .xy = n->seen.xy,
     };
     return state;
 }

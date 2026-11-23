@@ -76,32 +76,43 @@ const brightness_config_t app_brightness_config = {
 /* The LED, measured on 2026-11-20 on a closed lamp (pcb 1.0.0, 100 Ω gate
  * resistors, white PLA) with the procedure of docs/bringup.md#led-calibration.
  *
- * Built-in colors, as LED drives: green, orange and red are the LED's own
- * primaries, more saturated than any sRGB color and kept so; their app
- * swatches are sRGB colors near them (#00F57A, #FF6F00, #FF001C), the green
- * a little less bluish than the LED, so that it looks as saturated as the
- * others. The warm white is 2700 K (#FFAD59) through the color calibration
- * below, which the native suite test_app_config checks, with the tables of
- * this file. */
+ * Built-in colors, as LED drives with the chromaticity of each: green and
+ * red are the LED's own primaries, more saturated than any sRGB color and
+ * kept so, and orange mixes them; their app swatches are sRGB colors near
+ * them (#00F57A, #FF6F00, #FF001C), the green a little less bluish than the
+ * LED, so that it looks as saturated as the others. The warm white is
+ * 2700 K (#FFAD59) through the color calibration below, which the native
+ * suite test_app_config checks, with the tables of this file. */
 /* clang-format off */
-const rgb16_t app_builtin_colors[LAMP_COLOR_COUNT] = {
-    [LAMP_COLOR_GREEN] = {     0, 65535,     0 }, /* the green LED alone */
-    [LAMP_COLOR_ORANGE] = { 65535, 29000,     0 }, /* red and green LEDs */
-    [LAMP_COLOR_RED] = { 65535,     0,     0 }, /* the red LED alone */
-    [LAMP_COLOR_WARM_WHITE] = { 65535, 62887,  3435 }, /* 2700 K, #FFAD59 */
+const palette_builtin_t app_builtin_colors[LAMP_COLOR_COUNT] = {
+    /* the green LED alone */
+    [LAMP_COLOR_GREEN] = { .drive = {     0, 65535,     0 }, .xy = {  9748, 46140 } },
+    /* red and green LEDs */
+    [LAMP_COLOR_ORANGE] = { .drive = { 65535, 29000,     0 }, .xy = { 37825, 25696 } },
+    /* the red LED alone */
+    [LAMP_COLOR_RED] = { .drive = { 65535,     0,     0 }, .xy = { 45170, 20347 } },
+    /* 2700 K, #FFAD59 */
+    [LAMP_COLOR_WARM_WHITE] = { .drive = { 65535, 62887,  3435 }, .xy = { 30097, 26924 } },
 };
 
-/* Linear sRGB to LED drive, with the D65 white of #FFFFFF, from LED
- * primaries matched by eye against an sRGB screen. A color moves toward the
- * LED's own colors by the square of its vividness, which nine colors
- * compared by eye against the screen preferred. */
+/* CIE 1931 chromaticity to LED drive, with the D65 white, from LED primaries
+ * matched by eye against an sRGB screen: the linear sRGB matrix of that
+ * match times the XYZ to linear sRGB matrix of IEC 61966-2-1, so that every
+ * sRGB color shows as before. */
 const led_color_cal_t app_led_color_cal = {
     .matrix = {
-        {  11785,   6713,     -3 },
-        {   1466,  29585,   1714 },
-        {     95,    -66,   6982 },
+        {  13137,  -2290,  -2322 },
+        {  -9879,  21930,    958 },
+        {    315,   -702,   3039 },
     },
-    .vivid = true,
+};
+
+/* The chromaticities of the LEDs through that matrix: the gamut of the
+ * lamp. */
+const xy16_t app_led_gamut[LED_CHANNEL_COUNT] = {
+    [LED_CHANNEL_RED] = { 45170, 20347 },
+    [LED_CHANNEL_GREEN] = {  9748, 46140 },
+    [LED_CHANNEL_BLUE] = {  9839,  2091 },
 };
 
 /* Light of a pulse of each length in whole ticks, measured with a camera
@@ -191,7 +202,7 @@ const self_test_config_t app_self_test_config = {
     .color_ms = 1500,
     .touch_wait_ms = 10000,
     .color_permille = 500,
-    .white = &app_builtin_colors[LAMP_COLOR_WARM_WHITE],
+    .white = &app_builtin_colors[LAMP_COLOR_WARM_WHITE].drive,
     .wait_permille = 200,
     .touch_idle_min = 1000,
     .touch_idle_max = 3800,

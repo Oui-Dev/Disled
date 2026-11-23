@@ -76,12 +76,20 @@ enum {
 
 #define LED_CHANNEL_COUNT 3u
 
-/* A color, 0 to 65535 per channel: linear sRGB as a host sends it, or an LED
- * drive (led_cal.h). */
+/* An LED drive, 0 to 65535 per channel (led_cal.h). */
 typedef struct {
     uint16_t r;
     uint16_t g;
     uint16_t b;
 } rgb16_t;
+
+/* A color: the CIE 1931 chromaticity of its light, x and y times XY_ONE, as
+ * the protocol carries it (protocol/README.md#palette). 0, 0 is no color. */
+typedef struct {
+    uint16_t x;
+    uint16_t y;
+} xy16_t;
+
+#define XY_ONE 65536u
 
 #endif /* DISLED_TYPES_H */

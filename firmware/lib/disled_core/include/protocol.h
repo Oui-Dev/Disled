@@ -3,10 +3,10 @@
  * SPDX-FileCopyrightText: 2026 The Disled contributors
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
- * Codec of the USB HID protocol v2.1 (protocol/README.md), without I/O. A
+ * Codec of the USB HID protocol v3.0 (protocol/README.md), without I/O. A
  * payload is [0] type, [1] seq, [2] body length, then the body, zero padded,
  * with multi-byte fields in little-endian. INFO starts with the protocol
- * version, as in version 1, so that a host tells the two apart.
+ * version, as in versions 1 and 2, so that a host tells them apart.
  */
 #ifndef DISLED_PROTOCOL_H
 #define DISLED_PROTOCOL_H
@@ -21,8 +21,8 @@
 #include "palette.h"
 #include "touch_cycle.h"
 
-#define PROTO_VERSION_MAJOR 2u
-#define PROTO_VERSION_MINOR 1u
+#define PROTO_VERSION_MAJOR 3u
+#define PROTO_VERSION_MINOR 0u
 
 /* HID report IDs: commands go from the host to the device, messages from
  * the device to the host. */
@@ -51,6 +51,7 @@
 #define PROTO_CMD_GET_TOUCH_CYCLE       0x0Du
 #define PROTO_CMD_ALERT                 0x0Eu
 #define PROTO_CMD_SET_TOUCH_SENSITIVITY 0x10u
+#define PROTO_CMD_GET_GAMUT             0x11u
 
 /* From the device to the host. */
 #define PROTO_MSG_INFO             0x81u
@@ -62,6 +63,7 @@
 #define PROTO_MSG_TOUCH_CYCLE      0x87u
 #define PROTO_MSG_ALERT_DONE       0x88u
 #define PROTO_MSG_TOUCH            0x89u
+#define PROTO_MSG_GAMUT            0x8Au
 #define PROTO_MSG_ACK              0x8Eu
 #define PROTO_MSG_ERROR            0x8Fu
 
@@ -74,7 +76,7 @@
 #define PROTO_TELEMETRY_SIZE             32u
 #define PROTO_SET_AUTO_BIAS_SIZE         1u
 #define PROTO_SELF_TEST_RESULT_SIZE      9u
-#define PROTO_SET_COLOR_SIZE             7u
+#define PROTO_SET_COLOR_SIZE             5u
 #define PROTO_GET_COLOR_SIZE             1u
 #define PROTO_TOUCH_CYCLE_SIZE           10u
 #define PROTO_ALERT_SIZE                 3u
@@ -133,7 +135,7 @@ typedef struct {
         int8_t auto_bias; /* percent */
         struct {
             uint8_t slot; /* a custom slot: LAMP_COLOR_COUNT and up */
-            rgb16_t color;
+            xy16_t color; /* a chromaticity, or 0, 0 to empty the slot */
         } set_color;
         uint8_t color_slot; /* GET_COLOR */
         /* Slots in range and none twice; the application checks they hold
@@ -167,9 +169,9 @@ typedef struct {
     uint8_t applied_percent;
     usb_link_t link;
     change_source_t source;
-    /* The color of the slot at full brightness: as the host set it, or the
-     * LED drive of a built-in color. */
-    rgb16_t rgb;
+    /* The chromaticity of the slot: as the host set it, or that of a
+     * built-in color. */
+    xy16_t xy;
 } proto_state_t;
 
 typedef struct {
@@ -231,7 +233,10 @@ void proto_encode_ack(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, uint8_t c
 void proto_encode_error(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, uint8_t command_type,
                         proto_status_t error);
 void proto_encode_color(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq, uint8_t slot,
-                        rgb16_t color);
+                        xy16_t color);
+/* The chromaticities of the red, green and blue LEDs. */
+void proto_encode_gamut(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq,
+                        const xy16_t gamut[LED_CHANNEL_COUNT]);
 void proto_encode_touch_cycle(uint8_t payload[PROTO_REPORT_SIZE], uint8_t seq,
                               const touch_cycle_t *cycle);
 /* `seq` is that of the ALERT command; `reason` one of PROTO_ALERT_*. */

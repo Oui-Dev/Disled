@@ -158,7 +158,7 @@ static void test_command_vectors(void)
             TEST_ASSERT_EQUAL_UINT8_MESSAGE(v->set_color_slot, command.body.set_color.slot,
                                             v->name);
             TEST_ASSERT_EQUAL_MEMORY_MESSAGE(&v->set_color, &command.body.set_color.color,
-                                             sizeof(rgb16_t), v->name);
+                                             sizeof(xy16_t), v->name);
         }
         if (v->has_color_slot) {
             TEST_ASSERT_EQUAL_UINT8_MESSAGE(v->color_slot, command.body.color_slot, v->name);
@@ -220,6 +220,9 @@ static void test_message_vectors(void)
                 break;
             case MSG_TOUCH:
                 proto_encode_touch(payload, v->press);
+                break;
+            case MSG_GAMUT:
+                proto_encode_gamut(payload, v->seq, v->gamut);
                 break;
             case MSG_ERROR:
             default:

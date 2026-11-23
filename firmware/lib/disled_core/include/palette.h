@@ -4,11 +4,11 @@
  * Additional permission under GNU GPL version 3 section 7: see LICENSING.md.
  *
  * Lamp colors by slot: the four built-in colors, which never change, then
- * custom colors set by the host, all at full brightness with their largest
- * channel at 65535. The built-in colors are LED drives (led_cal.h): green,
- * orange and red use the LED's own primaries, more saturated than any sRGB
- * color. The custom colors are linear sRGB, as a screen shows them, and go
- * through the LED calibration. The brightness level scales the light.
+ * custom colors set by the host. A color is a chromaticity, the brightness
+ * set apart. The built-in colors are LED drives (led_cal.h), green and red
+ * the LED's own primaries, given with the chromaticity of their drive. The
+ * custom colors go through the LED calibration. The brightness level scales
+ * the light.
  */
 #ifndef DISLED_PALETTE_H
 #define DISLED_PALETTE_H
@@ -22,30 +22,36 @@
 /* Bit n set: slot n holds a color. */
 #define PALETTE_FIXED_MASK ((uint16_t)((1u << LAMP_COLOR_COUNT) - 1u))
 
+/* A built-in color: its LED drive, its largest channel at 65535, and the
+ * chromaticity of that drive. */
 typedef struct {
-    const rgb16_t *fixed; /* LAMP_COLOR_COUNT colors */
-    rgb16_t custom[LAMP_SLOT_COUNT - LAMP_COLOR_COUNT];
+    rgb16_t drive;
+    xy16_t xy;
+} palette_builtin_t;
+
+typedef struct {
+    const palette_builtin_t *fixed; /* LAMP_COLOR_COUNT colors */
+    xy16_t custom[LAMP_SLOT_COUNT - LAMP_COLOR_COUNT];
     uint16_t defined; /* bit per slot; the fixed bits are always set */
 } palette_t;
 
 /* The built-in colors only, every custom slot empty. */
-void palette_init(palette_t *palette, const rgb16_t fixed[LAMP_COLOR_COUNT]);
+void palette_init(palette_t *palette, const palette_builtin_t fixed[LAMP_COLOR_COUNT]);
 
 bool palette_defined(const palette_t *palette, uint32_t slot);
 
-/* The color of a slot, black for an empty or unknown one. */
-rgb16_t palette_color(const palette_t *palette, uint32_t slot);
+/* The chromaticity of a slot, 0, 0 for an empty or unknown one. */
+xy16_t palette_color(const palette_t *palette, uint32_t slot);
 
-/* The LED drive of a slot: a built-in color as it is, a custom color through
+/* The LED drive of a slot: that of a built-in color, a custom color through
  * the calibration (led_cal_drive). Black for an empty or unknown slot. */
 rgb16_t palette_light(const palette_t *palette, uint32_t slot, const led_color_cal_t *cal);
 
-/* A custom color has its largest channel at COLOR_LINEAR_MAX, so that the
- * brightness level alone sets how bright it is. Black empties a slot. */
-bool palette_color_is_valid(rgb16_t color);
+/* A custom color is a chromaticity (led_cal_xy_valid); 0, 0 empties a slot. */
+bool palette_color_is_valid(xy16_t color);
 
-/* Sets a custom slot, or empties it with black. Returns false and changes
+/* Sets a custom slot, or empties it with 0, 0. Returns false and changes
  * nothing for a built-in or unknown slot, or an invalid color. */
-bool palette_set(palette_t *palette, uint32_t slot, rgb16_t color);
+bool palette_set(palette_t *palette, uint32_t slot, xy16_t color);
 
 #endif /* DISLED_PALETTE_H */

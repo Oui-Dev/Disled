@@ -14,6 +14,7 @@
 #include "drivers/tkey.h"
 #include "led_cal.h"
 #include "led_output.h"
+#include "palette.h"
 #include "power_limiter.h"
 #include "self_test.h"
 #include "touch_detector.h"
@@ -70,12 +71,16 @@ extern const tkey_config_t app_tkey_config;
 extern const touch_config_t app_touch_config;
 extern const brightness_config_t app_brightness_config;
 /* Each built-in color as LED drive (led_cal.h), its largest channel at
- * COLOR_LINEAR_MAX. */
-extern const rgb16_t app_builtin_colors[LAMP_COLOR_COUNT];
+ * COLOR_LINEAR_MAX, with the chromaticity of that drive. */
+extern const palette_builtin_t app_builtin_colors[LAMP_COLOR_COUNT];
 extern const power_config_t app_power_config;
-/* The LED calibration (led_cal.h): sRGB to LED light, then light to duty. */
+/* The LED calibration (led_cal.h): chromaticity to LED light, then light to
+ * duty. */
 extern const led_color_cal_t app_led_color_cal;
 extern const led_light_cal_t app_led_light_cal[LED_CHANNEL_COUNT];
+/* The chromaticities of the red, green and blue LEDs: the gamut of the
+ * calibration, which GAMUT tells the host. */
+extern const xy16_t app_led_gamut[LED_CHANNEL_COUNT];
 extern const self_test_config_t app_self_test_config;
 
 #endif /* DISLED_APP_CONFIG_H */
