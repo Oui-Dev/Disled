@@ -215,7 +215,7 @@ runtime for the async commands. The app adds:
 
 | Thread | Module | Owns |
 |---|---|---|
-| `disled-usb` | `device.rs` | the lamp through hidapi: discovery, reconnection, a queue of commands, the heartbeat, the messages decoded by `crates/disled-protocol`, and after the INFO of a version 2 lamp its settings, colors and touch cycle again ([connection](../protocol/README.md#connection)) |
+| `disled-usb` | `device.rs` | the lamp through hidapi: discovery, reconnection, a queue of commands, the heartbeat, the messages decoded by `crates/disled-protocol`, and after the INFO of a version 3 lamp its settings, colors and touch cycle again ([connection](../protocol/README.md#connection)) |
 | `disled-mic` | `calls/` | the reading of the microphone in use, while the control wants it |
 | `disled-updates` | `updates.rs` | the checks of the app and of the firmware, at start-up then daily |
 | `disled-firmware` | `firmware.rs` | a lamp install: download, signature check, then wchisp (`crates/disled-flash`) |
@@ -243,11 +243,11 @@ INFO, its GAMUT and its STATE (`src/stores/lamp.ts`).
 `control.rs` decides what the app sets on the lamp beyond the choices of
 the user: the source the lamp follows, the user or one integration; the
 power-only touch while an integration drives the lamp, kept by a command
-every 3 s; the color of its state, at most 4 times a second, a color that
-comes sooner waiting for its turn in the place of the one that waited, and
-shown in slot 14 when it is a chromaticity of the plugin itself; the color
-of a call; the alerts of the plugins; and the lamp handed back to its own
-colors, cycle and sensitivity when the app quits.
+every 3 s; the color of its state, as often as
+[states](plugins/states.md#states) allows, and shown in slot 14 when it is
+a chromaticity of the plugin itself; the color of a call; the alerts of the
+plugins; and the lamp handed back to its own colors, cycle and sensitivity
+when the app quits.
 Its core, `Control::step`, is pure: it turns an `Input`, such as a STATE of
 the lamp, a choice in the popup, the state of a plugin or the start of a
 call, into effects. `control::input` runs it under a lock, from whatever

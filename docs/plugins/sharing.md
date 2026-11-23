@@ -57,7 +57,7 @@ An index of a later `schema` asks for a later app.
 3. Open a pull request. Its checks run the manifest against the
    [schema](plugin.schema.json) and the rules of the catalog, and list what
    the plugin asks for; then a maintainer reads every file.
-4. Once merged, the plugin shows in the Catalog tab of every Disled 2.1 and
+4. Once merged, the plugin shows in the Catalog tab of every Disled 3.0 and
    later, within minutes.
 
 The rules, in short

@@ -145,7 +145,7 @@ const XYZ_TO_SRGB: [[f64; 3]; 3] = [
 /// linear sRGB with a channel below 0 brought to 0, since a screen shows
 /// nothing more saturated, then the largest channel at full. The lamp shows
 /// colors beyond sRGB; a screen shows them as near as it can, the same way
-/// as the windows do (`displayOf` in src/utils/color.ts). Black for anything
+/// as the windows do (`screenOf` in src/utils/color.ts). Black for anything
 /// but a chromaticity.
 pub fn srgb_of(xy: Xy) -> [u8; 3] {
     if !xy.is_chromaticity() {

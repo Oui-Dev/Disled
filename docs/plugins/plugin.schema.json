@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/Oui-Dev/Disled/main/docs/plugins/plugin.schema.json",
   "title": "Disled plugin manifest",
-  "description": "plugin.json, version 1 of the plugin API, as Disled 2.1 reads it (docs/plugins/manifest.md). The schema refuses the fields and values that the app ignores, which are typos most of the time.",
+  "description": "plugin.json, version 2 of the plugin API, as Disled 3.0 reads it (docs/plugins/manifest.md). The schema refuses the fields and values that the app ignores, which are typos most of the time.",
   "type": "object",
   "required": ["api", "id", "name", "version", "author", "description", "capabilities"],
   "additionalProperties": false,

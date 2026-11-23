@@ -120,7 +120,7 @@ the taskbar. Drag it onto the taskbar to keep it in view.
 </picture>
 
 - **Status.** "Lamp connected", "Connecting…" or "No lamp connected", and
-  "Lamp needs an update" for a lamp on firmware v1
+  "Lamp needs an update" for a lamp on firmware v2 or earlier
   ([Update required](#update-required)).
 - **Mode.** The button at the top right says what the lamp follows:
   **Manual** when you choose its color, or the name of an integration
@@ -359,12 +359,13 @@ If the update stops, click **Try again**, or follow the
 
 ### Update required
 
-A lamp that still runs firmware v1 cannot work with Disled v2. The popup
-says "Update required", and everything that talks to the lamp is grayed
-out: the colors, the mode button, the brightness, the touch sensitivity
-and the diagnostics. **Update** under the message opens the same window as
-above, and the lamp runs firmware v2 a minute later. The other settings,
-the app updates and **Reinstall the firmware** stay available.
+A lamp that still runs firmware v2 or earlier cannot work with Disled v3.
+The popup says "Update required", and everything that talks to the lamp is
+grayed out: the colors, the mode button, the brightness, the touch
+sensitivity and the diagnostics. **Update** under the message opens the
+same window as above, and the lamp runs firmware v3 a minute later. The
+other settings, the app updates and **Reinstall the firmware** stay
+available.
 
 ### Reinstall the firmware
 
@@ -375,12 +376,17 @@ release notes of the checked version. The window then guides the install
 as above. It works with or without a lamp connected, so a lamp that no
 longer starts gets its firmware back through its update mode.
 
-**Back to Disled v1.** The window lists firmware 2.x only. To go back to
-Disled v1, flash firmware 1.0.0 by hand
-([flashing guide](flashing.md#flash)), then install Disled 1.1.2 from its
-[release](https://github.com/Oui-Dev/Disled/releases/tag/app-v1.1.2). It
-will offer Disled v2 again: turn off **Check for updates every day** to
-silence it.
+**Back to an earlier Disled.** The window lists firmware 3.x only. To go
+back, flash by hand ([flashing guide](flashing.md#flash)) the firmware of
+the line you want, then install the app that goes with it:
+
+| Back to | Firmware | App |
+|---|---|---|
+| Disled v2 | [2.2.1](https://github.com/Oui-Dev/Disled/releases/tag/fw-v2.2.1) | [Disled 2.2.3](https://github.com/Oui-Dev/Disled/releases/tag/app-v2.2.3) |
+| Disled v1 | [1.0.0](https://github.com/Oui-Dev/Disled/releases/tag/fw-v1.0.0) | [Disled 1.1.2](https://github.com/Oui-Dev/Disled/releases/tag/app-v1.1.2) |
+
+That app will offer Disled v3 again: turn off **Check for updates every
+day** to silence it.
 
 ## Diagnostics
 
@@ -414,7 +420,7 @@ sees, and helps to report a problem.
 | Symptom | What to do |
 |---|---|
 | "No lamp connected" | Use a cable that carries data, and plug the lamp into the computer or a powered hub. Right after the app starts, finding the lamp can take up to a minute on a computer with a USB device that answers slowly, such as some gaming mice. |
-| "Update required" | The lamp still runs firmware v1: click **Update** ([Update required](#update-required)). |
+| "Update required" | The lamp still runs firmware v2 or earlier: click **Update** ([Update required](#update-required)). |
 | The tray icon is missing (Windows) | Look behind the **^** arrow of the taskbar, then drag the icon onto the taskbar. |
 | The lamp turns off by itself | An object laid on the lid turns it off after 2 s. At a high touch sensitivity, a hand held above the lid can too. |
 | The lamp is off and its touch does nothing (Windows) | Disled is not running, so Windows put the lamp to sleep. Start Disled ([On Windows, keep the app running](#the-lamp)). |

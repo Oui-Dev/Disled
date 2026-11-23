@@ -9,7 +9,7 @@
 #include "protocol.h"
 #include "self_test.h"
 
-/* protocol/vectors/v2.json, turned into C by scripts/gen_vectors.py. */
+/* protocol/vectors/v3.json, turned into C by scripts/gen_vectors.py. */
 #include "protocol_vectors.h"
 
 static uint8_t payload[PROTO_REPORT_SIZE];
