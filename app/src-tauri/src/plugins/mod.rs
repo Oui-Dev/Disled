@@ -47,10 +47,6 @@ use view::{FilledBlock, PluginView};
 pub(crate) const EVENT_PLUGINS: &str = "plugins-changed";
 /// How often the states whose time runs out leave.
 const TICK: Duration = Duration::from_secs(1);
-/// The windows redraw the plugins at most this often, as the lamp follows
-/// an integration (control.rs): a program that floods the app with
-/// notifications costs the windows nothing more.
-const VIEWS_SPACING: Duration = Duration::from_millis(250);
 
 /// The host, once the app started it.
 #[derive(Default)]
@@ -70,19 +66,20 @@ struct Redraw {
     waiting: Option<Vec<PluginView>>,
 }
 
-/// Redraws the windows with `views`, at most every `VIEWS_SPACING`: views
-/// that come sooner wait for the end of that time, in the place of those
-/// that waited.
+/// Redraws the windows with `views` at the pace of the lamp, at most every
+/// `control::INTEGRATION_SPACING`, so that a program that floods the app
+/// with notifications costs the windows nothing more: views that come
+/// sooner wait for the end of that time, in the place of those that waited.
 fn redraw(app: &AppHandle, views: Vec<PluginView>) {
     let now = Instant::now();
     let state = app.state::<PluginsState>();
     let mut redraw = state.views.lock();
     let since = redraw.at.map(|at| now.saturating_duration_since(at));
-    if let Some(since) = since.filter(|since| *since < VIEWS_SPACING) {
+    if let Some(since) = since.filter(|since| *since < control::INTEGRATION_SPACING) {
         if redraw.waiting.replace(views).is_none() {
             let owner = app.clone();
             tauri::async_runtime::spawn(async move {
-                tokio::time::sleep(VIEWS_SPACING - since).await;
+                tokio::time::sleep(control::INTEGRATION_SPACING - since).await;
                 let state = owner.state::<PluginsState>();
                 let waiting = {
                     let mut redraw = state.views.lock();

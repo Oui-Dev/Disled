@@ -213,7 +213,7 @@ impl Xy {
 
 /// The chromaticities of the LED primaries of a lamp: it shows every color
 /// of their triangle as it is, and brings the others inside.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export))]
 pub struct Gamut {
     pub red: Xy,

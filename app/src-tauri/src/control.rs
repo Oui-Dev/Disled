@@ -49,7 +49,7 @@ const QUIT_WAIT: Duration = Duration::from_millis(200);
 /// 4 times a second: with the fade of the lamp, the colors flow into each
 /// other, at most 2 back and forth a second, under the 3 flashes a second of
 /// the accessibility guidelines.
-const INTEGRATION_SPACING: Duration = Duration::from_millis(250);
+pub(crate) const INTEGRATION_SPACING: Duration = Duration::from_millis(250);
 
 /// An integration the lamp can follow: an approved and enabled plugin that
 /// picks a color.
@@ -433,10 +433,7 @@ impl Control {
                 }
             }
             Input::Wake => {
-                if let Some(color) = self.integration_pending.take()
-                    && self.connected
-                    && self.mode.is_some()
-                {
+                if let Some(color) = self.integration_pending.take() {
                     self.show_integration(now, color, &mut effects);
                 }
             }
