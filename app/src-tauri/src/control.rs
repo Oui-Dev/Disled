@@ -45,6 +45,11 @@ const ALERT_MARGIN: Duration = Duration::from_secs(2);
 const ALERT_SPACING: Duration = Duration::from_secs(10);
 /// How long the app waits for the lamp to answer the commands of its exit.
 const QUIT_WAIT: Duration = Duration::from_millis(200);
+/// The integration the lamp follows changes its color at most this often,
+/// 4 times a second: with the fade of the lamp, the colors flow into each
+/// other, at most 2 back and forth a second, under the 3 flashes a second of
+/// the accessibility guidelines.
+const INTEGRATION_SPACING: Duration = Duration::from_millis(250);
 
 /// An integration the lamp can follow: an approved and enabled plugin that
 /// picks a color.
@@ -144,6 +149,8 @@ pub enum Input {
     },
     /// A self-test started, or ended.
     SelfTest(bool),
+    /// The time that a color of the integration waited for is over.
+    Wake,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -156,6 +163,8 @@ enum Effect {
     /// The microphone monitor starts under the number of its run, or
     /// stops.
     Monitor(Option<u64>),
+    /// `Input::Wake` after this long.
+    Wake(Duration),
 }
 
 /// A command that the backend sends on its own.
@@ -210,6 +219,12 @@ struct Control {
     mode: Option<String>,
     integrations: Vec<Integration>,
     states: HashMap<String, IntegrationState>,
+    /// The color that the integration the lamp follows last gave it, and
+    /// when.
+    integration_shown: Option<(LampColor, Instant)>,
+    /// A color of that integration that came too soon after it, and waits
+    /// for its turn: the last one only.
+    integration_pending: Option<LampColor>,
     /// A version 3 lamp is there.
     connected: bool,
     /// Its last STATE.
@@ -318,6 +333,14 @@ impl Control {
                 self.connected = true;
                 self.state = None;
                 self.call = None;
+                // The connection sequence gave the lamp the color of the
+                // integration it follows (`on_connect`).
+                self.integration_pending = None;
+                self.integration_shown = self
+                    .mode
+                    .as_ref()
+                    .and(self.integration_color())
+                    .map(|color| (color, now));
                 if self.mode.is_some() {
                     effects.push(Effect::Heartbeat(true));
                 }
@@ -326,6 +349,8 @@ impl Control {
                 self.connected = false;
                 self.state = None;
                 self.call = None;
+                self.integration_shown = None;
+                self.integration_pending = None;
                 self.alert = None;
                 self.self_test = false;
                 self.refused_in_test = false;
@@ -371,7 +396,7 @@ impl Control {
                     .as_ref()
                     .is_none_or(|id| self.integrations.iter().any(|known| &known.id == id));
                 if mode != self.mode && offered {
-                    self.follow(mode, &mut effects);
+                    self.follow(mode, now, &mut effects);
                 }
             }
             Input::Integrations(integrations) => {
@@ -385,11 +410,10 @@ impl Control {
                     .as_ref()
                     .is_some_and(|id| !self.integrations.iter().any(|known| &known.id == id));
                 if gone {
-                    self.follow(None, &mut effects);
+                    self.follow(None, now, &mut effects);
                 }
             }
             Input::Announce { id, state } => {
-                let before = self.states.get(&id).map(|known| known.color);
                 let color = state.as_ref().map(|state| state.color);
                 match state {
                     Some(state) => self.states.insert(id.clone(), state),
@@ -398,9 +422,16 @@ impl Control {
                 // The color follows the state, the power never. Without a
                 // state, the lamp keeps the color it has.
                 let followed = self.connected && self.mode.as_ref() == Some(&id);
-                if let Some(color) = color.filter(|color| followed && before != Some(*color)) {
-                    effects.extend(plugin_slot(color));
-                    effects.push(self::color(color.slot()));
+                if let Some(color) = color.filter(|_| followed) {
+                    self.show_integration(now, color, &mut effects);
+                }
+            }
+            Input::Wake => {
+                if let Some(color) = self.integration_pending.take()
+                    && self.connected
+                    && self.mode.is_some()
+                {
+                    self.show_integration(now, color, &mut effects);
                 }
             }
             Input::CallSettings(calls) => {
@@ -493,19 +524,50 @@ impl Control {
         effects.push(Effect::Monitor(self.monitor));
     }
 
+    /// Gives the lamp the color of the integration it follows, at most once
+    /// every `INTEGRATION_SPACING`. A color that comes sooner waits for the
+    /// end of that time, in the place of the one that waited, if any: the
+    /// lamp always ends on the state the integration gives last.
+    fn show_integration(&mut self, now: Instant, color: LampColor, effects: &mut Vec<Effect>) {
+        if self.integration_shown.map(|(shown, _)| shown) == Some(color) {
+            self.integration_pending = None;
+            return;
+        }
+        let since = self
+            .integration_shown
+            .map(|(_, at)| now.saturating_duration_since(at));
+        match since {
+            Some(since) if since < INTEGRATION_SPACING => {
+                if self.integration_pending.is_none() {
+                    effects.push(Effect::Wake(INTEGRATION_SPACING - since));
+                }
+                self.integration_pending = Some(color);
+            }
+            _ => {
+                effects.extend(plugin_slot(color));
+                effects.push(self::color(color.slot()));
+                self.integration_shown = Some((color, now));
+                self.integration_pending = None;
+            }
+        }
+    }
+
     /// Changes the source the lamp follows. An integration takes the touch
     /// to power only and the color of its state, and the call is forgotten.
     /// Back to manual, the heartbeat stops before the touch goes back to
     /// normal, so that none follows, and a call under way starts afresh.
-    fn follow(&mut self, mode: Option<String>, effects: &mut Vec<Effect>) {
+    fn follow(&mut self, mode: Option<String>, now: Instant, effects: &mut Vec<Effect>) {
         let was_manual = self.mode.is_none();
         self.mode = mode;
+        self.integration_shown = None;
+        self.integration_pending = None;
         if self.mode.is_some() {
             self.call = None;
             if self.connected {
                 let color = self.integration_color();
                 effects.extend(color.and_then(plugin_slot));
                 effects.push(touch(TouchMode::PowerOnly, color.map(LampColor::slot)));
+                self.integration_shown = color.map(|color| (color, now));
                 if was_manual {
                     effects.push(Effect::Heartbeat(true));
                 }
@@ -663,6 +725,13 @@ fn carry_out(app: &AppHandle, effects: Vec<Effect>) -> Result<(), String> {
                 let _ = device.send_automatic(command);
             }
             Effect::Heartbeat(on) => device.heartbeat(on),
+            Effect::Wake(after) => {
+                let app = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(after).await;
+                    let _ = input(&app, Input::Wake);
+                });
+            }
             // Done by `input`, under the lock of the core.
             Effect::Monitor(_) => {}
         }
@@ -1048,6 +1117,7 @@ mod tests {
     #[test]
     fn a_new_state_changes_the_color_never_the_power() {
         let (mut control, now) = following();
+        let now = now + INTEGRATION_SPACING;
         let mut state = IntegrationState {
             label: "Claude attend votre réponse".into(),
             color: LampColor::Slot(SLOT_RED),
@@ -1074,11 +1144,41 @@ mod tests {
     }
 
     #[test]
+    fn the_integration_changes_the_color_4_times_a_second_at_most() {
+        // Orange shows at `now`, when the lamp starts to follow.
+        let (mut control, now) = following();
+        let at = |ms| now + Duration::from_millis(ms);
+        // Red comes too soon: it waits for the end of the 250 ms.
+        assert_eq!(
+            control.step(at(100), announce(LampColor::Slot(SLOT_RED))),
+            [Effect::Wake(Duration::from_millis(150))]
+        );
+        // Green takes its place, without another wait.
+        assert_eq!(
+            control.step(at(200), announce(LampColor::Slot(SLOT_GREEN))),
+            []
+        );
+        assert_eq!(control.step(at(250), Input::Wake), [color(SLOT_GREEN)]);
+        // Back to the color shown, nothing waits any more.
+        control.step(at(300), announce(LampColor::Slot(SLOT_RED)));
+        assert_eq!(
+            control.step(at(310), announce(LampColor::Slot(SLOT_GREEN))),
+            []
+        );
+        assert_eq!(control.step(at(500), Input::Wake), []);
+        // Spaced enough, a color shows at once.
+        assert_eq!(
+            control.step(at(510), announce(LampColor::Slot(SLOT_RED))),
+            [color(SLOT_RED)]
+        );
+    }
+
+    #[test]
     fn a_color_of_the_plugin_itself_goes_to_its_slot() {
         let (mut control, now) = following();
         let cyan = Xy { x: 13107, y: 21627 };
         assert_eq!(
-            control.step(now, announce(LampColor::Xy(cyan))),
+            control.step(now + INTEGRATION_SPACING, announce(LampColor::Xy(cyan))),
             [
                 automatic(Command::SetColor {
                     slot: PLUGIN_SLOT,
@@ -1091,6 +1191,14 @@ mod tests {
             control.on_connect(),
             (TouchMode::PowerOnly, Some(LampColor::Xy(cyan)))
         );
+    }
+
+    #[test]
+    fn a_color_that_waits_drops_with_the_integration() {
+        let (mut control, now) = following();
+        control.step(now, announce(LampColor::Slot(SLOT_RED)));
+        control.step(now, Input::Follow(None));
+        assert_eq!(control.step(now + INTEGRATION_SPACING, Input::Wake), []);
     }
 
     #[test]

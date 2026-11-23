@@ -19,6 +19,8 @@ shows as unreadable until its update, which the catalog offers.
   and `color.y`, the chromaticity of the light of the lamp, in the place
   of `color.hex`. Slot 14 holds a color of a plugin itself, named after
   the label of its state.
+- While the lamp follows a plugin, its color changes at most 4 times a
+  second: a state that comes sooner waits for its turn, the last one only.
 
 To move a plugin to version 2: `"api": 2`, `warm_white` for `warm`, and
 `color.x` and `color.y` for `color.hex`.
