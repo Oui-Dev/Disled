@@ -529,7 +529,7 @@ impl Worker {
                             return false;
                         }
                     }
-                    let _ = control::input(&self.app, Input::Connected);
+                    let _ = control::input(&self.app, Input::Connected(imposed));
                 }
             }
             Message::State(state) => {

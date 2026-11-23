@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::calls::Monitor;
-use crate::colors::{DEFAULT_CYCLE, LampColor, PLUGIN_SLOT};
+use crate::colors::{DEFAULT_CYCLE, LampColor};
 use crate::device::DeviceHandle;
 use crate::settings::CallSettings;
 
@@ -111,8 +111,9 @@ pub struct LampChoice {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Input {
-    /// A version 3 lamp got the connection sequence.
-    Connected,
+    /// A version 3 lamp got the connection sequence, with the touch mode and
+    /// the color that `on_connect` gave when it was written.
+    Connected((TouchMode, Option<LampColor>)),
     Disconnected,
     /// A STATE of the lamp, a reply or a change.
     State(State),
@@ -183,26 +184,25 @@ fn color(slot: u8) -> Effect {
     }))
 }
 
-/// The color of `PLUGIN_SLOT` for a color of the plugin itself, which goes
-/// before the state that names the slot.
-fn plugin_slot(color: LampColor) -> Option<Effect> {
+/// The commands that set `state`, with `color` if any
+/// (`LampColor::commands`).
+fn with_color(state: SetState, color: Option<LampColor>) -> Vec<Command> {
     match color {
-        LampColor::Xy(xy) => Some(automatic(Command::SetColor {
-            slot: PLUGIN_SLOT,
-            xy,
-        })),
-        LampColor::Slot(_) => None,
+        Some(color) => color.commands(state),
+        None => vec![Command::SetState(state)],
     }
 }
 
-/// A touch mode that the backend sets on its own, with the color `slot`
-/// if any.
-fn touch(mode: TouchMode, slot: Option<u8>) -> Effect {
-    automatic(Command::SetState(SetState {
+/// A touch mode that the backend sets on its own, with `color` if any.
+fn touch(mode: TouchMode, color: Option<LampColor>) -> Vec<Effect> {
+    let state = SetState {
         touch_mode: Some(mode),
-        color: slot,
         ..SetState::default()
-    }))
+    };
+    with_color(state, color)
+        .into_iter()
+        .map(automatic)
+        .collect()
 }
 
 /// A call that the app follows: in manual mode, with a lamp.
@@ -295,11 +295,12 @@ impl Control {
     /// What the app sets on the lamp, sent again after a self-test that
     /// refused it.
     fn imposed(&self) -> Vec<Effect> {
-        let (mode, color) = self.on_connect();
-        let color = color.or(self.call_back().map(|_| LampColor::Slot(self.calls.color)));
-        let mut effects: Vec<Effect> = color.and_then(plugin_slot).into_iter().collect();
-        effects.push(touch(mode, color.map(LampColor::slot)));
-        effects
+        let (mode, _) = self.on_connect();
+        let color = self
+            .integration_shown
+            .map(|(color, _)| color)
+            .or(self.call_back().map(|_| LampColor::Slot(self.calls.color)));
+        touch(mode, color)
     }
 
     /// The commands that hand the lamp back to its own behavior when the
@@ -313,7 +314,7 @@ impl Control {
         }
         if self.mode.is_some() {
             effects.push(Effect::Heartbeat(false));
-            effects.push(touch(TouchMode::Normal, None));
+            effects.extend(touch(TouchMode::Normal, None));
         }
         effects.push(automatic(Command::SetTouchSensitivity { percent: 0 }));
         effects.push(automatic(Command::SetTouchCycle {
@@ -329,18 +330,18 @@ impl Control {
     fn step(&mut self, now: Instant, input: Input) -> Vec<Effect> {
         let mut effects = Vec::new();
         match input {
-            Input::Connected => {
+            Input::Connected(sent) => {
                 self.connected = true;
                 self.state = None;
                 self.call = None;
-                // The connection sequence gave the lamp the color of the
-                // integration it follows (`on_connect`).
                 self.integration_pending = None;
-                self.integration_shown = self
-                    .mode
-                    .as_ref()
-                    .and(self.integration_color())
-                    .map(|color| (color, now));
+                // What changed while the connection sequence was written
+                // goes now.
+                let (mode, color) = self.on_connect();
+                if (mode, color) != sent {
+                    effects.extend(touch(mode, color));
+                }
+                self.integration_shown = color.map(|color| (color, now));
                 if self.mode.is_some() {
                     effects.push(Effect::Heartbeat(true));
                 }
@@ -375,21 +376,26 @@ impl Control {
                 if let Some(call) = &mut self.call {
                     call.imposed = false;
                 }
-                // The card of an integration turns the lamp on with its color.
+                // The card of an integration turns the lamp on with the color
+                // it shows: one that waits keeps its turn.
                 let color = match self.mode {
-                    Some(_) => self.integration_color(),
+                    Some(_) => self.integration_shown.map(|(color, _)| color),
                     None => slot.map(LampColor::Slot),
                 }
                 .filter(|_| on);
-                effects.extend(color.and_then(plugin_slot));
-                effects.push(Effect::Send {
-                    command: Command::SetState(SetState {
-                        on: Some(on),
-                        color: color.map(LampColor::slot),
-                        ..SetState::default()
-                    }),
-                    user: true,
-                });
+                let state = SetState {
+                    on: Some(on),
+                    ..SetState::default()
+                };
+                // The state carries the choice of the user.
+                effects.extend(
+                    with_color(state, color)
+                        .into_iter()
+                        .map(|command| Effect::Send {
+                            user: matches!(command, Command::SetState(_)),
+                            command,
+                        }),
+                );
             }
             Input::Follow(mode) => {
                 let offered = mode
@@ -544,8 +550,12 @@ impl Control {
                 self.integration_pending = Some(color);
             }
             _ => {
-                effects.extend(plugin_slot(color));
-                effects.push(self::color(color.slot()));
+                effects.extend(
+                    color
+                        .commands(SetState::default())
+                        .into_iter()
+                        .map(automatic),
+                );
                 self.integration_shown = Some((color, now));
                 self.integration_pending = None;
             }
@@ -565,8 +575,7 @@ impl Control {
             self.call = None;
             if self.connected {
                 let color = self.integration_color();
-                effects.extend(color.and_then(plugin_slot));
-                effects.push(touch(TouchMode::PowerOnly, color.map(LampColor::slot)));
+                effects.extend(touch(TouchMode::PowerOnly, color));
                 self.integration_shown = color.map(|color| (color, now));
                 if was_manual {
                     effects.push(Effect::Heartbeat(true));
@@ -574,7 +583,7 @@ impl Control {
             }
         } else if self.connected {
             effects.push(Effect::Heartbeat(false));
-            effects.push(touch(TouchMode::Normal, None));
+            effects.extend(touch(TouchMode::Normal, None));
             self.start_call(effects);
         }
     }
@@ -757,6 +766,7 @@ pub fn release(app: &AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::colors::PLUGIN_SLOT;
     use disled_protocol::{BrightnessMode, SLOT_GREEN, SLOT_ORANGE, SLOT_RED, UsbLink};
 
     fn lamp(on: bool, color: u8, state_seq: u16, source: ChangeSource) -> State {
@@ -783,7 +793,7 @@ mod tests {
         });
         let now = Instant::now();
         control.step(now, Input::CallsAvailable(true));
-        control.step(now, Input::Connected);
+        control.step(now, Input::Connected(control.on_connect()));
         control.step(
             now,
             Input::State(lamp(true, SLOT_GREEN, 1, ChangeSource::Boot)),
@@ -980,10 +990,10 @@ mod tests {
         assert_eq!(
             effects,
             [
-                touch(TouchMode::PowerOnly, Some(SLOT_ORANGE)),
-                Effect::Heartbeat(true),
-                Effect::Monitor(None)
+                touch(TouchMode::PowerOnly, Some(LampColor::Slot(SLOT_ORANGE))),
+                vec![Effect::Heartbeat(true), Effect::Monitor(None)]
             ]
+            .concat()
         );
         let status = control.status();
         assert_eq!(status.mode.as_deref(), Some("claude-code"));
@@ -1002,10 +1012,11 @@ mod tests {
         assert_eq!(
             control.step(now, Input::Follow(None)),
             [
-                Effect::Heartbeat(false),
+                vec![Effect::Heartbeat(false)],
                 touch(TouchMode::Normal, None),
-                Effect::Monitor(Some(2))
+                vec![Effect::Monitor(Some(2))]
             ]
+            .concat()
         );
         assert_eq!(control.status().mode, None);
     }
@@ -1032,7 +1043,7 @@ mod tests {
         });
         assert_eq!(control.step(now, Input::CallsAvailable(true)), []);
         assert_eq!(
-            control.step(now, Input::Connected),
+            control.step(now, Input::Connected(control.on_connect())),
             [Effect::Monitor(Some(1))]
         );
         let switch = |mic| {
@@ -1050,7 +1061,7 @@ mod tests {
             [Effect::Monitor(None)]
         );
         assert_eq!(
-            control.step(now, Input::Connected),
+            control.step(now, Input::Connected(control.on_connect())),
             [Effect::Monitor(Some(3))]
         );
         assert_eq!(
@@ -1060,7 +1071,10 @@ mod tests {
         // The switch off from the start: no monitor at all.
         let mut control = Control::new(CallSettings::default());
         control.step(now, Input::CallsAvailable(true));
-        assert_eq!(control.step(now, Input::Connected), []);
+        assert_eq!(
+            control.step(now, Input::Connected(control.on_connect())),
+            []
+        );
     }
 
     #[test]
@@ -1093,7 +1107,7 @@ mod tests {
         );
         assert!(!control.status().calls.in_call);
         // Back with its color of start-up, which the call gives back.
-        control.step(now, Input::Connected);
+        control.step(now, Input::Connected(control.on_connect()));
         control.step(
             now,
             Input::State(lamp(true, SLOT_ORANGE, 1, ChangeSource::Boot)),
@@ -1230,10 +1244,11 @@ mod tests {
         assert_eq!(
             control.step(now, Input::Integrations(Vec::new())),
             [
-                Effect::Heartbeat(false),
+                vec![Effect::Heartbeat(false)],
                 touch(TouchMode::Normal, None),
-                Effect::Monitor(Some(2))
+                vec![Effect::Monitor(Some(2))]
             ]
+            .concat()
         );
         assert_eq!(control.status().mode, None);
         // An integration that is not on offer cannot be followed.
@@ -1252,7 +1267,7 @@ mod tests {
             (TouchMode::PowerOnly, Some(LampColor::Slot(SLOT_ORANGE)))
         );
         assert_eq!(
-            control.step(now, Input::Connected),
+            control.step(now, Input::Connected(control.on_connect())),
             [Effect::Heartbeat(true)]
         );
         let (control, _) = self::control();
@@ -1323,7 +1338,9 @@ mod tests {
     #[test]
     fn a_self_test_that_refused_the_state_gets_it_again() {
         let (mut control, now) = following();
+        let cyan = Xy { x: 13107, y: 21627 };
         control.step(now, Input::SelfTest(true));
+        control.step(now + INTEGRATION_SPACING, announce(LampColor::Xy(cyan)));
         control.step(
             now,
             Input::Refused {
@@ -1333,7 +1350,17 @@ mod tests {
         );
         assert_eq!(
             control.step(now, Input::SelfTest(false)),
-            [touch(TouchMode::PowerOnly, Some(SLOT_ORANGE))]
+            [
+                automatic(Command::SetColor {
+                    slot: PLUGIN_SLOT,
+                    xy: cyan
+                }),
+                automatic(Command::SetState(SetState {
+                    touch_mode: Some(TouchMode::PowerOnly),
+                    color: Some(PLUGIN_SLOT),
+                    ..SetState::default()
+                }))
+            ]
         );
         // Nothing was refused this time.
         control.step(now, Input::SelfTest(true));
@@ -1347,7 +1374,7 @@ mod tests {
         let effects = control.quit();
         assert_eq!(effects.len(), 16, "the heartbeat, then 15 reports");
         assert_eq!(effects[0], Effect::Heartbeat(false));
-        assert_eq!(effects[1], touch(TouchMode::Normal, None));
+        assert_eq!(effects[1..2], touch(TouchMode::Normal, None));
         assert_eq!(
             effects[2],
             automatic(Command::SetTouchSensitivity { percent: 0 })
