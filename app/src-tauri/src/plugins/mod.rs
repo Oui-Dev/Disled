@@ -47,6 +47,10 @@ use view::{FilledBlock, PluginView};
 pub(crate) const EVENT_PLUGINS: &str = "plugins-changed";
 /// How often the states whose time runs out leave.
 const TICK: Duration = Duration::from_secs(1);
+/// The windows redraw the plugins at most this often, as the lamp follows
+/// an integration (control.rs): a program that floods the app with
+/// notifications costs the windows nothing more.
+const VIEWS_SPACING: Duration = Duration::from_millis(250);
 
 /// The host, once the app started it.
 #[derive(Default)]
@@ -55,6 +59,47 @@ pub struct PluginsState {
     /// Taken while the state of the lamp goes to the programs, one change at
     /// a time.
     lamp: Mutex<()>,
+    views: Mutex<Redraw>,
+}
+
+/// When the windows last redrew the plugins, and the views that came too
+/// soon after, the last ones only.
+#[derive(Default)]
+struct Redraw {
+    at: Option<Instant>,
+    waiting: Option<Vec<PluginView>>,
+}
+
+/// Redraws the windows with `views`, at most every `VIEWS_SPACING`: views
+/// that come sooner wait for the end of that time, in the place of those
+/// that waited.
+fn redraw(app: &AppHandle, views: Vec<PluginView>) {
+    let now = Instant::now();
+    let state = app.state::<PluginsState>();
+    let mut redraw = state.views.lock();
+    let since = redraw.at.map(|at| now.saturating_duration_since(at));
+    if let Some(since) = since.filter(|since| *since < VIEWS_SPACING) {
+        if redraw.waiting.replace(views).is_none() {
+            let owner = app.clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(VIEWS_SPACING - since).await;
+                let state = owner.state::<PluginsState>();
+                let waiting = {
+                    let mut redraw = state.views.lock();
+                    redraw.at = Some(Instant::now());
+                    redraw.waiting.take()
+                };
+                if let Some(views) = waiting {
+                    let _ = owner.emit(EVENT_PLUGINS, views);
+                }
+            });
+        }
+        return;
+    }
+    redraw.at = Some(now);
+    redraw.waiting = None;
+    drop(redraw);
+    let _ = app.emit(EVENT_PLUGINS, views);
 }
 
 fn language(app: &AppHandle) -> &'static str {
@@ -95,7 +140,7 @@ fn with<T>(app: &AppHandle, change: impl FnOnce(&mut Host, &mut Outbox) -> T) ->
         let _ = settings::save_integrations(app, value);
     }
     if let Some(views) = outbox.views {
-        let _ = app.emit(EVENT_PLUGINS, views);
+        redraw(app, views);
     }
     Some(result)
 }

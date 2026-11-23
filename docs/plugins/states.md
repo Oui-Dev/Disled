@@ -27,7 +27,10 @@ plugin with `alert` can also make the lamp breathe, whatever it follows.
 A plugin has 1 to 8 states. The user can give each state another color,
 built in or of their own, in the integrations window, and give it back the
 color of the plugin. While the lamp follows the plugin, a new state changes
-the color of the lamp, never its power: a lamp turned off stays off.
+the color of the lamp, never its power: a lamp turned off stays off. The
+lamp changes color at most 4 times a second: a state that comes sooner
+waits for its turn, in the place of the one that waited, so that the lamp
+always ends on the last state.
 
 ## Colors
 
