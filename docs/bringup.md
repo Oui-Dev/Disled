@@ -55,13 +55,13 @@ Equipment:
       flicker and with smooth 300 ms fades. Judge the colors through the
       closed enclosure, because the PLA shifts them. The built-in colors
       are `app_builtin_colors`; the self-test shows its warm white too.
-- [ ] Warm white and a custom white, `#FFFFFF` from the app, keep the same
+- [ ] Warm white and a custom white, vividness 0 in the app, keep the same
       hue at 1, 3, 10, 30 and 100 % (`set level`). If a low level drifts,
       yellow-green when red is missing, yellow when blue is or pink when
       green is, the light tables of `app_led_light_cal` do not fit this
       board: measure them again ([LED calibration](#led-calibration)).
 - [ ] In a dim room, a custom white and a few custom colors look like the
-      same codes on a screen that shows sRGB faithfully (a phone in its
+      same colors on a screen that shows sRGB faithfully (a phone in its
       natural or sRGB screen mode), side by side. If they lean to a hue,
       measure the color calibration again
       ([LED calibration](#led-calibration)).

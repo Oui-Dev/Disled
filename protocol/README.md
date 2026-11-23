@@ -455,10 +455,10 @@ After each connection, a host sends its settings again, in this order:
 
 A lamp with firmware 1.0.0 speaks version 1.1, and one with a firmware 2.x
 version 2.0 or 2.1. Their `INFO` has the same layout, with a protocol major
-of 1 or 2, but their colors are linear sRGB, in a `STATE` of 9 or 16 bytes.
-A version 3 host reads their `INFO`, then sends them nothing else and
-ignores what they send, until a firmware update brings them to version 3.
-Likewise, a version 2 host stops at the `INFO` of a version 3 lamp.
+of 1 or 2, but their `STATE` has 9 or 16 bytes. A version 3 host reads
+their `INFO`, then sends them nothing else and ignores what they send,
+until a firmware update brings them to version 3. Likewise, a version 2
+host stops at the `INFO` of a version 3 lamp.
 
 ## Compatibility
 

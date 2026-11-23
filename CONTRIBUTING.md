@@ -66,7 +66,7 @@ on Apple Silicon`. The body says why, wrapped at 72 characters.
   ([docs/releasing.md](docs/releasing.md)).
 - Scopes in use: `app`, `firmware`, `protocol`, `factory` (the production
   tool), `hardware`, `deps`.
-- `feat!` or a `BREAKING CHANGE:` footer marks a breaking change. Version 2
+- `feat!` or a `BREAKING CHANGE:` footer marks a breaking change. Version 3
   of the USB protocol is frozen: it only grows in compatible ways
   ([protocol/README.md](protocol/README.md#compatibility)).
 

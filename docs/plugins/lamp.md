@@ -71,9 +71,6 @@ to tell a program that you saw its alert, even while the lamp follows it.
 A long press turns the lamp off or on: the program reads it as a `lamp`
 with `"source":"touch"`, and no `touch`.
 
-- Presses come only from a lamp with firmware 2.1.0 or later, which the
-  app installs ([user guide](../user-guide.md#updates)). With an earlier
-  one, no `touch` comes, and the rest works.
 - During the self-test of the Diagnostics window, the touch belongs to the
   test: no `touch` comes.
 - A press is news only while it is fresh: a program that does not run when

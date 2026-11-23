@@ -8,7 +8,7 @@
 //! app name leaves this module.
 //!
 //! The monitor runs only while the control wants it: the "Microphone in
-//! use" switch on, in manual mode, with a version 2 lamp. It reads on a
+//! use" switch on, in manual mode, with a version 3 lamp. It reads on a
 //! thread of its own, `disled-mic`, and a debounce turns the readings into
 //! calls: 2 s of capture to begin one, 5 s without to end it.
 

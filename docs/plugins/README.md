@@ -85,9 +85,6 @@ readline.createInterface({ input: process.stdin }).on('line', (line) => {
    (`plugins/hello.log` in the log folder of the app) tells what the lamp
    shows at every change.
 
-Presses reach a plugin with a lamp on firmware 2.1.0 or later, which the
-app installs ([user guide](../user-guide.md#updates)).
-
 ## While you write it
 
 Any change to a file turns the plugin off ([approval](#approval)): turn it

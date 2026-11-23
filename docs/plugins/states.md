@@ -36,9 +36,9 @@ always ends on the last state.
 
 A built-in color goes by its name: `green`, `orange`, `red` and
 `warm_white`, the colors that the lamp shows best, its own LEDs for green
-and red. A color of the plugin's own is a CIE 1931 chromaticity, `x` and
-`y` from 0 to 1, `x + y` at most 1, as Philips Hue, Zigbee and Matter give
-them: `{ "x": 0.6892, "y": 0.3105 }` is the red LED, and
+and red. A color of the plugin's own is a CIE 1931 chromaticity, `x` from
+0 to 1, `y` above 0, `x + y` at most 1, as Philips Hue, Zigbee and Matter
+give them: `{ "x": 0.6892, "y": 0.3105 }` is the red LED, and
 `{ "x": 0.3127, "y": 0.329 }` the white of the lamp, D65. The lamp shows
 the light of that very color, as far as its LEDs go: a color beyond them
 comes as near as it can, with the same hue, less saturated. The brightness

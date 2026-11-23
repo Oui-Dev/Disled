@@ -12,15 +12,16 @@ never from software.
 
 The desktop app offers a new firmware when the connected lamp runs an older
 one, and its **Update** button guides the update in a window of its own,
-the Windows driver included ([user guide](user-guide.md#updates)). A
-version 1 lamp gets the same button under "Update required". A lamp that
-no longer starts, or one that should run another version, gets its
+the Windows driver included ([user guide](user-guide.md#updates)). A lamp
+on firmware v2 or earlier gets the same button under "Update required". A
+lamp that no longer starts, or one that should run another version, gets its
 firmware from **Reinstall the firmware**, in the **⋮** menu of the settings
 page of the popup, where you pick the version. The app empties the whole
 flash before it writes the firmware.
 
 The rest of this page is for development and for flashing by hand, as for
-firmware 1.0.0, which takes a lamp back to Disled v1.
+a firmware 2.x or 1.0.0, which takes a lamp back to Disled v2 or v1
+([user guide](user-guide.md#reinstall-the-firmware)).
 
 ## Enter the bootloader
 

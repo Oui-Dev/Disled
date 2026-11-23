@@ -98,7 +98,8 @@ const palette_builtin_t app_builtin_colors[LAMP_COLOR_COUNT] = {
 /* CIE 1931 chromaticity to LED drive, with the D65 white, from LED primaries
  * matched by eye against an sRGB screen: the linear sRGB matrix of that
  * match times the XYZ to linear sRGB matrix of IEC 61966-2-1, so that every
- * sRGB color shows as before. */
+ * sRGB color shows as the matrix of firmware 2.x showed it, without the
+ * move toward the LED's own colors that came after it there. */
 const led_color_cal_t app_led_color_cal = {
     .matrix = {
         {  13137,  -2290,  -2322 },

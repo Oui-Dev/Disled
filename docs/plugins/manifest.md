@@ -2,7 +2,7 @@
 
 Every plugin has a `plugin.json` at the root of its folder: who made it,
 what it can do, its states, how it talks to Disled and its installation
-note. This page describes version 1 of the plugin API, which Disled 2.0
+note. This page describes version 2 of the plugin API, which Disled 3.0
 and later read ([changes](changelog.md)).
 
 A manifest that breaks a rule makes the plugin unreadable, and the
