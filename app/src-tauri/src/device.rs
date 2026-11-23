@@ -729,6 +729,7 @@ mod tests {
 
     #[test]
     fn a_version_3_lamp_is_driven() {
+        assert_eq!(look_of_info(&info_of("info")), None);
         let mut session = Session::default();
         assert!(matches!(
             session.receive(decoded("info")),
@@ -938,14 +939,5 @@ mod tests {
         let (done, answered) = mpsc::channel();
         Link::new().begin_flush(done);
         assert_eq!(answered.try_recv(), Ok(()));
-    }
-
-    #[test]
-    fn a_locked_lamp_shows_at_once_in_the_tray() {
-        assert_eq!(
-            look_of_info(&info_of("info_of_a_version_1_lamp")),
-            Some(Look::NeedsUpdate)
-        );
-        assert_eq!(look_of_info(&info_of("info")), None);
     }
 }

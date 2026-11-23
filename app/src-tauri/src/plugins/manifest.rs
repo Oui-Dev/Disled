@@ -608,10 +608,6 @@ mod tests {
         assert!(manifest.capabilities.events && manifest.capabilities.alert);
         assert!(!manifest.capabilities.run);
         assert_eq!(
-            manifest.state("waiting").map(|state| state.color),
-            Some(LampColor::Slot(1))
-        );
-        assert_eq!(
             manifest.state("working").and_then(|state| state.ttl),
             Some(Duration::from_secs(600))
         );
@@ -636,6 +632,28 @@ mod tests {
         value["capabilities"] = json!(["run", "color", "lamp"]);
         let manifest = Manifest::from_value(&value, Some("pomodoro")).expect("read");
         assert!(manifest.capabilities.lamp && manifest.capabilities.run);
+    }
+
+    #[test]
+    fn a_state_color_is_a_built_in_name_or_a_chromaticity() {
+        let mut value = claude_code();
+        for (color, read) in [
+            (json!("green"), LampColor::Slot(0)),
+            (json!("orange"), LampColor::Slot(1)),
+            (json!("red"), LampColor::Slot(2)),
+            (json!("warm_white"), LampColor::Slot(3)),
+            (
+                json!({ "x": 0.17, "y": 0.7 }),
+                LampColor::Xy(Xy { x: 11141, y: 45875 }),
+            ),
+        ] {
+            value["states"][0]["color"] = color;
+            let manifest = Manifest::from_value(&value, Some("claude-code")).expect("read");
+            assert_eq!(
+                manifest.state("waiting").map(|state| state.color),
+                Some(read)
+            );
+        }
     }
 
     #[test]

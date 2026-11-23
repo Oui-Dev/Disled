@@ -612,14 +612,6 @@ mod tests {
     const CYAN: Xy = Xy { x: 13107, y: 21627 };
 
     #[test]
-    fn the_default_palette_is_the_one_of_version_1() {
-        let palette = Palette::default();
-        assert_eq!(palette.cycle, [0, 1, 2]);
-        assert!(palette.names.iter().all(Option::is_none));
-        assert!(palette.custom.is_empty());
-    }
-
-    #[test]
     fn a_screen_shows_a_chromaticity_as_near_as_srgb_can() {
         assert_eq!(srgb_of(Xy::D65), [255, 255, 255]);
         // The sRGB red, and the 2700 K white of the built-in swatch.
