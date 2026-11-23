@@ -14,7 +14,7 @@ import { openLink } from '@/ipc/commands';
 const props = defineProps<{
   /** Newest first. */
   versions: string[];
-  /** The recommended version, the newest firmware 2.x. */
+  /** The recommended version, the newest firmware 3.x. */
   latest: string | null;
   /** The version of the connected lamp. */
   current: string | null;

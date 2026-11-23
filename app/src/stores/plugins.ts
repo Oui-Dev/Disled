@@ -132,7 +132,7 @@ export const usePluginsStore = defineStore('plugins', () => {
     openSource: (id: string) => errors.attempt(pluginOpenSource(id)),
     approve: (id: string, fingerprint: string) => changeToken(pluginApprove(id, fingerprint)),
     setEnabled: (id: string, enabled: boolean) => errors.attempt(pluginSetEnabled(id, enabled)),
-    setColor: (id: string, state: string, slot: number) =>
+    setColor: (id: string, state: string, slot: number | null) =>
       errors.attempt(pluginSetColor(id, state, slot)),
     regenerateToken: (id: string) => changeToken(pluginRegenerateToken(id)),
     remove: (id: string) => errors.attempt(pluginRemove(id)),

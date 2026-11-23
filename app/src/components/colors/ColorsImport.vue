@@ -59,7 +59,7 @@ defineExpose({ apply });
           :key="color.slot"
           class="flex items-center gap-1.5 text-xs"
         >
-          <span aria-hidden="true" class="swatch size-4" :style="{ background: color.hex }" />
+          <span aria-hidden="true" class="swatch size-4" :style="{ background: color.swatch }" />
           {{ color.name }}
         </li>
       </ul>

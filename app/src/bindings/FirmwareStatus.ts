@@ -10,7 +10,7 @@ export type FirmwareStatus = {
  */
 checking: boolean, 
 /**
- * The signed firmware 2.x, newest first. The update buttons install
+ * The signed firmware 3.x, newest first. The update buttons install
  * the first.
  */
 versions: Array<string>, 

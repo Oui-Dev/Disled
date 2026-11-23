@@ -347,9 +347,9 @@ mod tests {
     #[test]
     fn a_board_passes_with_the_release_build_of_the_firmware_given() {
         let lamp = Info {
-            protocol: [2, 1],
-            firmware: [2, 1, 0],
-            firmware_version: "v2.1.0".into(),
+            protocol: [3, 0],
+            firmware: [3, 0, 0],
+            firmware_version: "v3.0.0".into(),
             board_revision: 1,
             uid: "0123456789ABCDEF01234567".into(),
             reset_cause: ResetCause::PowerOn,
@@ -358,18 +358,18 @@ mod tests {
         };
         let signed = Firmware {
             path: PathBuf::new(),
-            version: Some(Version::new(2, 1, 0)),
+            version: Some(Version::new(3, 0, 0)),
         };
         let mut row = Row::default();
         assert_eq!(check_info(&lamp, &signed, &mut row), Ok(()));
         assert_eq!(row.uid, "0123456789ABCDEF01234567");
-        assert_eq!(row.firmware, "v2.1.0");
+        assert_eq!(row.firmware, "v3.0.0");
         assert_eq!(row.board_revision, Some(1));
         assert!(row.remarks.is_empty());
 
         let refused = [
             Info {
-                firmware: [2, 0, 0],
+                firmware: [2, 2, 1],
                 ..lamp.clone()
             },
             Info {
@@ -377,11 +377,11 @@ mod tests {
                 ..lamp.clone()
             },
             Info {
-                protocol: [1, 1],
+                protocol: [2, 1],
                 ..lamp.clone()
             },
             Info {
-                protocol: [3, 0],
+                protocol: [4, 0],
                 ..lamp.clone()
             },
         ];

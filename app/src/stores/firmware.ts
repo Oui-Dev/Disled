@@ -29,7 +29,7 @@ export const useFirmwareStore = defineStore('firmware', () => {
   /** The status of the backend is in, once `start` has read it. */
   const loaded = ref(false);
 
-  /** The newest firmware 2.x, which the update buttons install. */
+  /** The newest firmware 3.x, which the update buttons install. */
   const latest = computed(() => status.value.versions[0] ?? null);
 
   /** Whether the connected lamp runs this "X.Y.Z" version. */
@@ -39,8 +39,8 @@ export const useFirmwareStore = defineStore('firmware', () => {
   }
 
   /**
-   * The newest firmware 2.x, when the connected lamp runs an older one,
-   * whatever its generation: the guided window installs it, a version 1
+   * The newest firmware 3.x, when the connected lamp runs an older one,
+   * whatever its generation: the guided window installs it, an older
    * lamp included.
    */
   const newerForLamp = computed(() => {
@@ -50,10 +50,10 @@ export const useFirmwareStore = defineStore('firmware', () => {
   });
 
   /**
-   * The same, on offer in the popup, for a version 2 lamp only: a version 1
+   * The same, on offer in the popup, for a version 3 lamp only: an older
    * lamp has its own warning, whose button opens the guided window.
    */
-  const updateForLamp = computed(() => (lamp.generation === 'v2' ? newerForLamp.value : null));
+  const updateForLamp = computed(() => (lamp.generation === 'current' ? newerForLamp.value : null));
 
   /** A version of the list; an update that does not start shows as failed. */
   async function install(version: string): Promise<void> {

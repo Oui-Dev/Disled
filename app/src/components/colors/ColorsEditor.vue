@@ -4,28 +4,22 @@
 
   The editor of a custom color: its name, seven suggestions, a square with
   the hues across and the vividness up and down, at full brightness, and
-  the preview on the lamp. The lamp shows such full colors as they are
-  (light_hex in src-tauri/src/colors.rs). The draft keeps the code of the
-  color until the thumb moves or a suggestion is picked. The page saves
-  through `save`, which the popup footer calls.
+  the preview on the lamp. The square goes from the white of the lamp up to
+  the colors of its LEDs themselves, beyond those of a screen, which shows
+  them as near as it can (src/utils/color.ts). The draft keeps the
+  chromaticity of the color until the thumb moves or a suggestion is
+  picked. The page saves through `save`, which the popup footer calls.
 -->
 <script setup lang="ts">
-import {
-  type Color,
-  ColorAreaArea,
-  ColorAreaRoot,
-  ColorAreaThumb,
-  colorToHex,
-  convertToHsb,
-  type HSBColor,
-  parseColor,
-} from 'reka-ui';
+import { type Color, ColorAreaArea, ColorAreaRoot, ColorAreaThumb, type HSBColor } from 'reka-ui';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import type { Xy } from '@/bindings/Xy';
 import { colorsPreview } from '@/ipc/commands';
 import { useColorsStore } from '@/stores/colors';
 import { useLampStore } from '@/stores/lamp';
 import { useSettingsStore } from '@/stores/settings';
+import { cssOf, HUES, paintSquare, pointOf, xyOf } from '@/utils/color';
 import { MOVE_UPDATE_MS } from '@/utils/lamp';
 
 const props = defineProps<{
@@ -36,16 +30,21 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ done: [] }>();
 
-/** Codes that the square makes: the thumb back on one checks it again. */
+/**
+ * Points of the square, nearest to the colors that the suggestions of app
+ * 2.2 showed on the lamp: the thumb back on one checks it again.
+ */
 const SUGGESTIONS = [
-  { key: 'yellow', hex: '#FFDC2E' },
-  { key: 'cyan', hex: '#26E2FF' },
-  { key: 'blue', hex: '#3D87FF' },
-  { key: 'violet', hex: '#9061FF' },
-  { key: 'magenta', hex: '#FF45FF' },
-  { key: 'pink', hex: '#FF70BA' },
-  { key: 'coolWhite', hex: '#EDF5FF' },
+  { key: 'yellow', hue: 50, vividness: 96 },
+  { key: 'cyan', hue: 185, vividness: 86 },
+  { key: 'blue', hue: 209, vividness: 78 },
+  { key: 'violet', hue: 273, vividness: 55 },
+  { key: 'magenta', hue: 308, vividness: 79 },
+  { key: 'pink', hue: 323, vividness: 52 },
+  { key: 'coolWhite', hue: 199, vividness: 5 },
 ] as const;
+
+type Suggestion = (typeof SUGGESTIONS)[number];
 
 const { t, n } = useI18n();
 const colors = useColorsStore();
@@ -58,37 +57,48 @@ const existing = colors.custom.find((color) => color.slot === props.slot);
 const nameInput = useTemplateRef<{ inputRef: HTMLInputElement | null }>('nameInput');
 onMounted(() => nameInput.value?.inputRef?.focus());
 
-/**
- * The thumb on a code, at full brightness, as HSB: Reka reads the
- * saturation of a code in HSL, where every full color is at 100 %. A grey
- * or a white stands at hue 0, at the bottom.
- */
-function pointOf(code: string): HSBColor {
-  const { h, s } = convertToHsb(parseColor(code));
-  return { space: 'hsb', h: Math.round(h) % 360, s: Math.round(s), b: 100, alpha: 1 };
+function same(a: Xy | null, b: Xy): boolean {
+  return a !== null && a.x === b.x && a.y === b.y;
 }
 
 /** A new color starts on the first suggestion that no color of the user has. */
-const start =
-  existing?.hex
-  ?? (
-    SUGGESTIONS.find((suggestion) => !colors.custom.some((color) => color.hex === suggestion.hex))
-    ?? SUGGESTIONS[0]
-  ).hex;
+const start: Suggestion =
+  SUGGESTIONS.find((suggestion) => {
+    const xy = xyOf(lamp.gamut, suggestion.hue, suggestion.vividness);
+    return !colors.custom.some((color) => same(color.xy, xy));
+  }) ?? SUGGESTIONS[0];
 
 const name = ref(existing?.name ?? '');
-const hex = ref(start);
-const point = ref(pointOf(start));
+/** The thumb, at full brightness, as HSB: Reka's axes, hue and saturation. */
+const point = ref<HSBColor>({ space: 'hsb', h: 0, s: 0, b: 100, alpha: 1 });
+const xy = ref<Xy>(existing?.xy ?? xyOf(lamp.gamut, start.hue, start.vividness));
+const swatch = computed(() => cssOf(xy.value));
 const canSave = computed(() => name.value.trim().length > 0);
+
+/** The thumb on a point, and the draft on its color unless told to keep it. */
+function place(hue: number, vividness: number, { keep = false } = {}): void {
+  point.value = { space: 'hsb', h: hue, s: vividness, b: 100, alpha: 1 };
+  if (!keep) {
+    xy.value = xyOf(lamp.gamut, hue, vividness);
+  }
+}
+
+const placed = pointOf(lamp.gamut, xy.value);
+place(placed.hue, placed.vividness, { keep: true });
+
 const suggestion = computed(
-  () => SUGGESTIONS.find((candidate) => candidate.hex === hex.value)?.hex,
+  () =>
+    SUGGESTIONS.find(
+      (candidate) => candidate.hue === point.value.h && candidate.vividness === point.value.s,
+    )?.key,
 );
 // Null among the values, which the group takes when the color is none of
 // the suggestions.
-const suggestions = computed<{ value: string | null; label: string }[]>(() =>
+const suggestions = computed<{ value: string | null; label: string; swatch: string }[]>(() =>
   SUGGESTIONS.map((item) => ({
-    value: item.hex,
+    value: item.key,
     label: t(`colors.editor.suggestion.${item.key}`),
+    swatch: cssOf(xyOf(lamp.gamut, item.hue, item.vividness)),
   })),
 );
 
@@ -100,29 +110,38 @@ const valueText = computed(() =>
   }),
 );
 
-/** A suggestion: its code, and the thumb on it. */
-function pick(code: unknown): void {
-  if (typeof code !== 'string') {
-    return;
+/** A suggestion: the thumb on it, and its color. */
+function pick(key: unknown): void {
+  const chosen = SUGGESTIONS.find((item) => item.key === key);
+  if (chosen) {
+    place(chosen.hue, chosen.vividness);
   }
-  hex.value = code;
-  point.value = pointOf(code);
 }
 
 /**
  * The thumb moved, under the pointer or a key. Reka emits the axes as the
- * `h` and `s` of an HSL color, so its code is not this color: the draft
- * takes the rounded axes, the right edge (hue 360) being hue 0.
+ * `h` and `s` of an HSL color: the draft takes the rounded axes, the right
+ * edge (hue 360) being hue 0.
  */
 function move(color: Color): void {
   // Never RGB, for a hue and a saturation.
   if (color.space === 'rgb') {
     return;
   }
-  const h = Math.round(color.h) % 360;
-  point.value = { space: 'hsb', h, s: Math.round(color.s), b: 100, alpha: 1 };
-  hex.value = colorToHex(point.value).toUpperCase();
+  place(Math.round(color.h) % HUES, Math.round(color.s));
 }
+
+// The square, painted again when another lamp tells its gamut.
+const square = useTemplateRef<HTMLCanvasElement>('square');
+watch(
+  () => [square.value, lamp.gamut] as const,
+  ([canvas, gamut]) => {
+    if (canvas) {
+      paintSquare(canvas, gamut);
+    }
+  },
+  { immediate: true },
+);
 
 // The preview on the lamp: with the setting on and a lamp the app drives.
 const previewing = computed(() => (settings.settings?.color_preview ?? true) && lamp.ready);
@@ -130,32 +149,32 @@ let lastSent = 0;
 let pending: ReturnType<typeof setTimeout> | undefined;
 
 /**
- * Shows a code on the lamp, at most every MOVE_UPDATE_MS, or ends the
+ * Shows a color on the lamp, at most every MOVE_UPDATE_MS, or ends the
  * preview with null. Not useThrottleFn: a pending call must be dropped when
  * the preview ends or the color is saved.
  */
-function preview(code: string | null): void {
+function preview(color: Xy | null): void {
   clearTimeout(pending);
   pending = undefined;
-  if (code === null) {
+  if (color === null) {
     void colorsPreview(null);
     return;
   }
   const wait = lastSent + MOVE_UPDATE_MS - Date.now();
   if (wait > 0) {
-    pending = setTimeout(() => preview(code), wait);
+    pending = setTimeout(() => preview(color), wait);
     return;
   }
   lastSent = Date.now();
-  void colorsPreview(code);
+  void colorsPreview(color);
 }
 
-watch(hex, (code) => {
+watch(xy, (color) => {
   if (previewing.value) {
-    preview(code);
+    preview(color);
   }
 });
-watch(previewing, (on) => preview(on ? hex.value : null), { immediate: true });
+watch(previewing, (on) => preview(on ? xy.value : null), { immediate: true });
 // Cancel, Escape and a hidden popup all leave the page: the lamp goes back
 // to its color. After a save, the backend has ended the preview already.
 onBeforeUnmount(() => preview(null));
@@ -172,7 +191,7 @@ async function save(): Promise<void> {
   const slot = await colors.saveCustom({
     slot: props.slot,
     name: name.value,
-    hex: hex.value,
+    xy: xy.value,
     keepLit: props.fromPopover,
   });
   if (slot !== undefined) {
@@ -194,7 +213,7 @@ defineExpose({ save, canSave });
     </h2>
 
     <div class="flex items-center gap-3">
-      <span aria-hidden="true" class="swatch size-8 shrink-0" :style="{ background: hex }" />
+      <span aria-hidden="true" class="swatch size-8 shrink-0" :style="{ background: swatch }" />
       <UInput
         ref="nameInput"
         v-model="name"
@@ -226,27 +245,32 @@ defineExpose({ save, canSave });
         <span
           :title="item.label"
           class="swatch-ring border-accented block size-6 rounded-full border"
-          :style="{ background: String(item.value) }"
+          :style="{ background: item.swatch }"
         />
         <span class="sr-only">{{ item.label }}</span>
       </template>
     </URadioGroup>
 
     <!-- Reka's screen-reader texts are English: the attributes set here
-         replace them. The background is ours (style below): Reka's, for
-         these axes, turns grey at the bottom. -->
+         replace them. The square is ours, a canvas under the thumb: the
+         colors of the lamp, whose gamut Reka does not know. -->
     <ColorAreaRoot :model-value="point" x-channel="hue" y-channel="saturation" @update:color="move">
       <ColorAreaArea
         :aria-roledescription="t('colors.editor.square.role')"
-        class="color-square ring-accented relative h-36 rounded-md ring select-none"
+        class="ring-accented relative h-36 rounded-md ring select-none"
       >
+        <canvas
+          ref="square"
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-0 size-full rounded-md"
+        />
         <!-- A white ring with a dark line shows on every point, in both themes. -->
         <ColorAreaThumb
           :aria-roledescription="t('colors.editor.square.thumb')"
           :aria-label="t('colors.editor.square.label')"
           :aria-valuetext="valueText"
           class="focus-visible:ring-offset-bg focus-visible:ring-primary size-5 rounded-full border-2 border-white shadow-[0_0_0_1px_rgb(0_0_0/0.45)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden"
-          :style="{ background: hex }"
+          :style="{ background: swatch }"
         />
       </ColorAreaArea>
     </ColorAreaRoot>
@@ -259,16 +283,3 @@ defineExpose({ save, canSave });
     />
   </div>
 </template>
-
-<style scoped>
-/*
- * The hues across, under white from transparent to opaque downwards. CSS
- * mixes these colors in gamma-encoded sRGB, so a point at vividness s
- * shows s * hue + (1 - s) * white: the code that the square makes there.
- */
-.color-square {
-  background:
-    linear-gradient(#fff0, #fff),
-    linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
-}
-</style>

@@ -8,25 +8,40 @@
 //! line: `lamp` at their start and at every change, and `touch` at every
 //! short press on the lid, even one that changes nothing.
 
-use disled_protocol::{BrightnessMode, ChangeSource, State};
+use disled_protocol::{BrightnessMode, ChangeSource, State, Xy};
 use serde::Serialize;
 
-use crate::colors::{PREVIEW_SLOT, Palette, hex_of};
+use crate::colors::{Kept, PREVIEW_SLOT, Palette};
 use crate::i18n::Locale;
 use crate::tray;
 
 /// A short press on the lid.
 pub const TOUCH_LINE: &str = r#"{"jsonrpc":"2.0","method":"touch","params":{"press":"short"}}"#;
 
-/// The color of the lamp, as the windows show it.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+/// The color of the lamp: its slot, its name and its chromaticity.
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Color {
-    /// The palette slot: 0 to 3 for the built-in colors, then the custom ones.
+    /// The palette slot: 0 to 3 for the built-in colors, then the custom
+    /// ones, and `PLUGIN_SLOT` for a color of a plugin itself.
     pub slot: u8,
     /// The name the user sees, none for a slot without one.
     pub name: Option<String>,
-    /// `#RRGGBB`, the swatch of a built-in color or the code of a custom one.
-    pub hex: String,
+    /// The CIE 1931 chromaticity of its light, to 4 decimals.
+    pub x: f64,
+    pub y: f64,
+}
+
+impl Color {
+    fn of(slot: u8, xy: Xy, name: Option<String>) -> Self {
+        let decimals = |coordinate: f64| (coordinate * 10_000.0).round() / 10_000.0;
+        let (x, y) = xy.coordinates();
+        Color {
+            slot,
+            name,
+            x: decimals(x),
+            y: decimals(y),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -64,7 +79,7 @@ impl From<ChangeSource> for Source {
 
 /// The `params` of a `lamp` notification. Without a lamp that the app
 /// drives, only `connected` and `follows`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Lamp {
     pub connected: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -81,13 +96,15 @@ pub struct Lamp {
 
 /// The lamp of `state`, none while the app drives no lamp. While the editor
 /// previews a color, the plugins read the state that the preview took the
-/// lamp from, `kept`, which the lamp gets back, as the tray icon does.
+/// lamp from, `kept`, which the lamp gets back, as the tray icon does. A
+/// color of a plugin itself goes by the label of its state.
 pub fn view(
     state: Option<&State>,
-    kept: Option<(bool, u8)>,
+    kept: Option<Kept>,
     palette: &Palette,
     locale: Locale,
     follows: Option<String>,
+    integration: Option<&str>,
 ) -> Lamp {
     let Some(state) = state else {
         return Lamp {
@@ -99,19 +116,15 @@ pub fn view(
             follows,
         };
     };
-    let (on, slot) = match kept {
-        Some(kept) if state.color == PREVIEW_SLOT => kept,
-        _ => (state.on, state.color),
+    let (on, slot, xy) = match kept {
+        Some(kept) if state.color == PREVIEW_SLOT => (kept.on, kept.slot, kept.xy),
+        _ => (state.on, state.color, state.xy),
     };
-    let (rgb, name) = tray::color_of(slot, state.rgb, palette, locale);
+    let name = tray::name_of(slot, palette, locale, integration);
     Lamp {
         connected: true,
         on: Some(on),
-        color: Some(Color {
-            slot,
-            name,
-            hex: hex_of(rgb),
-        }),
+        color: Some(Color::of(slot, xy, name)),
         brightness: Some(Brightness {
             mode: state.brightness_mode,
             level: state.applied_level,
@@ -141,7 +154,8 @@ pub fn line(lamp: &Lamp) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use disled_protocol::{LinearRgb, SLOT_GREEN, SLOT_RED, TouchMode, UsbLink};
+    use crate::colors::PLUGIN_SLOT;
+    use disled_protocol::{SLOT_GREEN, SLOT_RED, TouchMode, UsbLink};
     use serde_json::{Value, json};
 
     fn state(on: bool, color: u8, source: ChangeSource) -> State {
@@ -155,19 +169,14 @@ mod tests {
             link: UsbLink::Configured,
             source,
             touch_mode: TouchMode::Normal,
-            rgb: LinearRgb {
-                r: 65535,
-                g: 0,
-                b: 0,
-            },
+            xy: Xy { x: 16384, y: 7864 },
         }
     }
 
     fn palette() -> Palette {
         Palette::from_value(&json!({
-            "schema": 1,
             "names": ["Libre", null, null, null],
-            "custom": [{ "slot": 4, "name": "Musique", "hex": "#A15DFF" }]
+            "custom": [{ "slot": 4, "name": "Musique", "xy": { "x": 16384, "y": 7864 } }]
         }))
     }
 
@@ -180,24 +189,34 @@ mod tests {
 
     #[test]
     fn without_a_lamp_only_the_mode_is_known() {
-        let lamp = view(None, None, &palette(), Locale::En, None);
+        let lamp = view(None, None, &palette(), Locale::En, None, None);
         assert_eq!(
             params(&lamp),
             json!({ "connected": false, "follows": null })
         );
-        let lamp = view(None, None, &palette(), Locale::En, Some("pomodoro".into()));
+        let lamp = view(
+            None,
+            None,
+            &palette(),
+            Locale::En,
+            Some("pomodoro".into()),
+            None,
+        );
         assert_eq!(params(&lamp)["follows"], "pomodoro");
     }
 
     #[test]
-    fn the_color_has_the_name_and_the_code_that_the_user_sees() {
-        let lamp = state(true, SLOT_GREEN, ChangeSource::Touch);
+    fn the_color_has_the_name_that_the_user_sees_and_the_light_of_the_lamp() {
+        let lamp = State {
+            xy: Xy { x: 9748, y: 46140 },
+            ..state(true, SLOT_GREEN, ChangeSource::Touch)
+        };
         assert_eq!(
-            params(&view(Some(&lamp), None, &palette(), Locale::Fr, None)),
+            params(&view(Some(&lamp), None, &palette(), Locale::Fr, None, None)),
             json!({
                 "connected": true,
                 "on": true,
-                "color": { "slot": 0, "name": "Libre", "hex": "#00F57A" },
+                "color": { "slot": 0, "name": "Libre", "x": 0.1487, "y": 0.704 },
                 "brightness": { "mode": "auto", "level": 40 },
                 "source": "touch",
                 "follows": null
@@ -205,47 +224,65 @@ mod tests {
         );
         // The default name of a built-in color follows the language.
         let red = state(true, SLOT_RED, ChangeSource::Host);
-        let color = view(Some(&red), None, &palette(), Locale::Fr, None).color;
+        let color = view(Some(&red), None, &palette(), Locale::Fr, None, None).color;
         assert_eq!(
             color.and_then(|color| color.name).as_deref(),
             Some("Ne pas déranger")
         );
         let custom = state(false, 4, ChangeSource::Host);
-        let lamp = view(Some(&custom), None, &palette(), Locale::En, None);
+        let lamp = view(Some(&custom), None, &palette(), Locale::En, None, None);
         assert_eq!(lamp.on, Some(false));
         assert_eq!(
             lamp.color,
             Some(Color {
                 slot: 4,
                 name: Some("Musique".into()),
-                hex: "#A15DFF".into()
+                x: 0.25,
+                y: 0.12
             })
         );
-        // A slot the palette does not know: the light of the lamp, no name.
-        let unknown = state(true, 9, ChangeSource::Host);
-        let color = view(Some(&unknown), None, &palette(), Locale::En, None).color;
+        // A color of the plugin itself goes by the label of its state.
+        let plugin = state(true, PLUGIN_SLOT, ChangeSource::Host);
+        let lamp = view(
+            Some(&plugin),
+            None,
+            &palette(),
+            Locale::En,
+            Some("claude-code".into()),
+            Some("Claude travaille"),
+        );
         assert_eq!(
-            color,
-            Some(Color {
-                slot: 9,
-                name: None,
-                hex: "#FF0000".into()
-            })
+            lamp.color.and_then(|color| color.name).as_deref(),
+            Some("Claude travaille")
         );
+        // A slot the palette does not know: no name.
+        let unknown = state(true, 9, ChangeSource::Host);
+        let color = view(Some(&unknown), None, &palette(), Locale::En, None, None).color;
+        assert_eq!(color.and_then(|color| color.name), None);
     }
 
     #[test]
     fn a_preview_shows_the_state_the_lamp_gets_back() {
-        let preview = state(true, PREVIEW_SLOT, ChangeSource::Host);
+        let preview = State {
+            xy: Xy::D65,
+            ..state(true, PREVIEW_SLOT, ChangeSource::Host)
+        };
+        let kept = Kept {
+            on: false,
+            slot: 4,
+            xy: Xy { x: 16384, y: 7864 },
+        };
         let lamp = view(
             Some(&preview),
-            Some((false, 4)),
+            Some(kept),
             &palette(),
             Locale::En,
             None,
+            None,
         );
         assert_eq!(lamp.on, Some(false));
-        assert_eq!(lamp.color.map(|color| color.slot), Some(4));
+        let color = lamp.color.expect("color");
+        assert_eq!((color.slot, color.x, color.y), (4, 0.25, 0.12));
     }
 
     #[test]

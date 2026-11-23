@@ -3,4 +3,4 @@
 /**
  * What the protocol of a lamp lets the app do, read in its INFO.
  */
-export type Generation = "v1" | "v2" | "newer";
+export type Generation = "older" | "current" | "newer";

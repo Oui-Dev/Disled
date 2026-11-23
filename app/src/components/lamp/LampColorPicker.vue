@@ -43,9 +43,13 @@ const current = computed(() => {
 });
 
 // A radio group emits the type of its items' values. Off draws its own swatch.
-const items = computed<{ value: Choice; label: string; hex?: string }[]>(() => [
+const items = computed<{ value: Choice; label: string; swatch?: string }[]>(() => [
   { value: 'off', label: t('lamp.colors.off') },
-  ...colors.builtIn.map((color) => ({ value: color.slot, label: color.name, hex: color.hex })),
+  ...colors.builtIn.map((color) => ({
+    value: color.slot,
+    label: color.name,
+    swatch: color.swatch,
+  })),
 ]);
 const names = computed(() => items.value.map((item) => item.label).join('\n'));
 
@@ -114,7 +118,7 @@ async function select(choice: Choice): Promise<void> {
             aria-hidden="true"
             class="swatch swatch-ring block size-9"
             :class="{ 'swatch-off': item.value === 'off' }"
-            :style="{ background: item.hex }"
+            :style="{ background: item.swatch }"
           />
           <LampTileName :name="item.label" :named="false" />
         </template>

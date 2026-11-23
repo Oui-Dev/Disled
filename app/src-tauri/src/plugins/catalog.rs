@@ -319,14 +319,14 @@ mod tests {
 
     #[test]
     fn an_index_keeps_the_plugins_that_this_app_reads() {
-        let mut broken = entry(pomodoro("1.0.0", 1), 'c');
+        let mut broken = entry(pomodoro("1.0.0", 2), 'c');
         broken["sha256"] = json!("not hex");
-        let later = entry(pomodoro("3.0.0", 2), 'd');
-        let twice = entry(pomodoro("9.0.0", 1), 'e');
+        let later = entry(pomodoro("3.0.0", 3), 'd');
+        let twice = entry(pomodoro("9.0.0", 2), 'e');
         let published = parse(&index(vec![
             later,
             broken,
-            entry(pomodoro("1.2.0", 1), 'f'),
+            entry(pomodoro("1.2.0", 2), 'f'),
             twice,
         ]))
         .expect("index");
@@ -344,7 +344,7 @@ mod tests {
 
     #[test]
     fn a_plugin_shows_whether_it_is_installed_and_current() {
-        let published = parse(&index(vec![entry(pomodoro("1.2.0", 1), 'f')])).expect("index");
+        let published = parse(&index(vec![entry(pomodoro("1.2.0", 2), 'f')])).expect("index");
         let published = &published[0];
         let shown = |installed: Installed| view(published, &installed, "fr");
 
@@ -378,7 +378,7 @@ mod tests {
 
     #[test]
     fn a_plugin_has_its_zip_and_its_sources_in_the_catalog() {
-        let published = parse(&index(vec![entry(pomodoro("1.2.0", 1), 'f')])).expect("index");
+        let published = parse(&index(vec![entry(pomodoro("1.2.0", 2), 'f')])).expect("index");
         assert_eq!(
             zip_url(&published[0].manifest),
             "https://oui-dev.github.io/Disled-plugins/zips/pomodoro-1.2.0.zip"
@@ -392,7 +392,7 @@ mod tests {
     #[test]
     fn a_download_is_the_zip_of_the_index_or_nothing() {
         let zip = crate::plugins::scan::tests::zip(&[("plugin.json", "{}")]);
-        let mut published = parse(&index(vec![entry(pomodoro("1.2.0", 1), 'f')]))
+        let mut published = parse(&index(vec![entry(pomodoro("1.2.0", 2), 'f')]))
             .expect("index")
             .remove(0);
         published.size = u64::try_from(zip.len()).expect("size");
@@ -409,7 +409,7 @@ mod tests {
 
     #[test]
     fn a_plugin_given_by_path_needs_nothing_named() {
-        let mut manifest = pomodoro("1.0.0", 1);
+        let mut manifest = pomodoro("1.0.0", 2);
         manifest["run"] = json!({ "default": ["bin/timer"] });
         let published = parse(&index(vec![entry(manifest, 'f')])).expect("index");
         assert_eq!(view(&published[0], &Installed::new(), "en").needs, None);

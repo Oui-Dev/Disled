@@ -5,14 +5,15 @@
 //! Windows: a square in the color of the lamp, a short menu, and the click
 //! that opens the popup.
 
-use disled_protocol::{LinearRgb, State};
+use disled_protocol::{State, Xy};
 use parking_lot::Mutex;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, Wry};
 
-use crate::colors::{ColorsState, PREVIEW_SLOT, Palette, parse_hex, srgb_of};
+use crate::colors::{ColorsState, PLUGIN_SLOT, PREVIEW_SLOT, Palette, srgb_of};
+use crate::control::ControlState;
 use crate::device::DeviceHandle;
 use crate::i18n::{Locale, LocaleState};
 use crate::windows;
@@ -45,7 +46,7 @@ pub enum Look {
         rgb: [u8; 3],
         name: String,
     },
-    /// A version 1 lamp, which the app does not drive.
+    /// An older lamp, which the app drives once its firmware is updated.
     NeedsUpdate,
     /// A lamp of a later protocol than the app.
     Newer,
@@ -75,46 +76,66 @@ pub fn default_name(slot: u8, locale: Locale) -> Option<String> {
     Some(locale.t(&format!("lamp.colors.{key}")))
 }
 
-/// A slot as the user sees it: its color on screen and its name. A built-in
-/// color shows its swatch and the name the user gave it, or its default one;
-/// a custom color its own code and name; any other slot `light`, the light
-/// the lamp reports, and no name.
-pub fn color_of(
+/// The name of a slot as the user sees it: the name the user gave a
+/// built-in color, or its default one, the name of a custom color, and for a
+/// color of a plugin itself the label of its state, `integration`. None for
+/// any other slot.
+pub fn name_of(
     slot: u8,
-    light: LinearRgb,
     palette: &Palette,
     locale: Locale,
-) -> ([u8; 3], Option<String>) {
-    if let Some((_, rgb)) = BUILT_IN_COLORS.get(usize::from(slot)) {
-        let name = palette.names[usize::from(slot)]
+    integration: Option<&str>,
+) -> Option<String> {
+    if usize::from(slot) < BUILT_IN_COLORS.len() {
+        return palette.names[usize::from(slot)]
             .clone()
             .or_else(|| default_name(slot, locale));
-        return (*rgb, name);
     }
-    if let Some(color) = palette.custom.iter().find(|color| color.slot == slot) {
-        return (
-            parse_hex(&color.hex).unwrap_or_default(),
-            Some(color.name.clone()),
-        );
+    if slot == PLUGIN_SLOT {
+        return integration.map(str::to_owned);
     }
-    (srgb_of(light), None)
+    palette
+        .custom
+        .iter()
+        .find(|color| color.slot == slot)
+        .map(|color| color.name.clone())
 }
 
-/// The look of a lamp state, in the color and under the name of
-/// `color_of`, "More" for a slot without a name. The preview slot changes
+/// The color on screen of a slot whose light has the chromaticity `light`:
+/// the swatch of a built-in color, as the popup shows it, and for any other
+/// that chromaticity, as near as sRGB can.
+fn screen_color(slot: u8, light: Xy) -> [u8; 3] {
+    BUILT_IN_COLORS
+        .get(usize::from(slot))
+        .map_or_else(|| srgb_of(light), |(_, rgb)| *rgb)
+}
+
+/// The look of a lamp state, in its color on screen and under its name
+/// (`name_of`), "More" for a slot without a name. The preview slot changes
 /// at every move in the editor, so the icon keeps its look: `None`.
-pub fn look_of(state: &State, palette: &Palette, locale: Locale) -> Option<Look> {
+pub fn look_of(
+    state: &State,
+    palette: &Palette,
+    locale: Locale,
+    integration: Option<&str>,
+) -> Option<Look> {
     if !state.on {
         return Some(Look::Off);
     }
     if state.color == PREVIEW_SLOT {
         return None;
     }
-    let (rgb, name) = color_of(state.color, state.rgb, palette, locale);
+    let name = name_of(state.color, palette, locale, integration);
     Some(Look::On {
-        rgb,
+        rgb: screen_color(state.color, state.xy),
         name: name.unwrap_or_else(|| locale.t("lamp.colors.more")),
     })
+}
+
+/// The label of the state of the integration the lamp follows.
+pub fn integration_label(app: &AppHandle) -> Option<String> {
+    let control = app.try_state::<ControlState>()?;
+    control.status().state.map(|state| state.label)
 }
 
 /// The look on show, to word the tooltip again when the language changes.
@@ -291,7 +312,9 @@ pub fn refresh(app: &AppHandle) {
         return;
     };
     let palette = app.state::<ColorsState>().get();
-    if let Some(look) = look_of(&state, &palette, app.state::<LocaleState>().get()) {
+    let locale = app.state::<LocaleState>().get();
+    let label = integration_label(app);
+    if let Some(look) = look_of(&state, &palette, locale, label.as_deref()) {
         show(app, look);
     }
 }
@@ -332,18 +355,14 @@ mod tests {
             link: UsbLink::Configured,
             source: ChangeSource::Host,
             touch_mode: TouchMode::Normal,
-            rgb: LinearRgb {
-                r: 65535,
-                g: 32768,
-                b: 0,
-            },
+            xy: Xy { x: 16384, y: 7864 },
         }
     }
 
     fn palette() -> Palette {
         Palette::from_value(&json!({
             "names": [null, "Libre", null, null],
-            "custom": [{ "slot": 4, "name": "Musique", "hex": "#A15DFF" }]
+            "custom": [{ "slot": 4, "name": "Musique", "xy": { "x": 16384, "y": 7864 } }]
         }))
     }
 
@@ -365,7 +384,7 @@ mod tests {
 
     #[test]
     fn a_lit_lamp_is_a_full_square_in_its_color() {
-        let look = look_of(&state(true, 2), &palette(), Locale::Fr).expect("look");
+        let look = look_of(&state(true, 2), &palette(), Locale::Fr, None).expect("look");
         let image = render(&look);
         assert_eq!(pixel(&image, 16, 16), [0xff, 0x00, 0x1c, 255]);
         assert_eq!(pixel(&image, 0, 0)[3], 0, "the margin stays transparent");
@@ -375,28 +394,40 @@ mod tests {
     }
 
     #[test]
-    fn a_custom_color_shows_in_its_own_code() {
-        let look = look_of(&state(true, 4), &palette(), Locale::Fr).expect("look");
-        assert_eq!(pixel(&render(&look), 16, 16), [0xa1, 0x5d, 0xff, 255]);
+    fn a_custom_color_shows_its_light_as_near_as_srgb_can() {
+        let look = look_of(&state(true, 4), &palette(), Locale::Fr, None).expect("look");
+        assert_eq!(pixel(&render(&look), 16, 16), [183, 31, 255, 255]);
         assert_eq!(look.tooltip(Locale::Fr), "Disled\u{202f}: Musique");
+    }
+
+    #[test]
+    fn a_color_of_a_plugin_goes_by_the_label_of_its_state() {
+        let look = look_of(
+            &state(true, PLUGIN_SLOT),
+            &palette(),
+            Locale::En,
+            Some("Claude travaille"),
+        )
+        .expect("look");
+        assert_eq!(look.tooltip(Locale::En), "Disled: Claude travaille");
     }
 
     #[test]
     fn the_tooltip_says_the_name_the_user_sees() {
         let palette = palette();
-        let renamed = look_of(&state(true, 1), &palette, Locale::En).expect("look");
+        let renamed = look_of(&state(true, 1), &palette, Locale::En, None).expect("look");
         assert_eq!(renamed.tooltip(Locale::En), "Disled: Libre");
-        let default = look_of(&state(true, 0), &palette, Locale::En).expect("look");
+        let default = look_of(&state(true, 0), &palette, Locale::En, None).expect("look");
         assert_eq!(default.tooltip(Locale::En), "Disled: Available");
     }
 
     #[test]
     fn an_unknown_slot_shows_the_light_of_the_lamp() {
-        let look = look_of(&state(true, 9), &palette(), Locale::En).expect("look");
+        let look = look_of(&state(true, 9), &palette(), Locale::En, None).expect("look");
         assert_eq!(
             look,
             Look::On {
-                rgb: [255, 188, 0],
+                rgb: [183, 31, 255],
                 name: "More".into()
             }
         );
@@ -405,11 +436,11 @@ mod tests {
     #[test]
     fn the_preview_of_the_editor_leaves_the_icon_alone() {
         assert_eq!(
-            look_of(&state(true, PREVIEW_SLOT), &palette(), Locale::En),
+            look_of(&state(true, PREVIEW_SLOT), &palette(), Locale::En, None),
             None
         );
         assert_eq!(
-            look_of(&state(false, PREVIEW_SLOT), &palette(), Locale::En),
+            look_of(&state(false, PREVIEW_SLOT), &palette(), Locale::En, None),
             Some(Look::Off)
         );
     }

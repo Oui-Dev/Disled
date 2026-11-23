@@ -24,7 +24,7 @@ use super::rules::{self, Action};
 use super::states::Keys;
 use super::view::PluginView;
 use super::{http, scan, tokens};
-use crate::colors::Palette;
+use crate::colors::{LampColor, Palette};
 use crate::control::{Input, Integration, IntegrationState};
 use crate::updates;
 
@@ -212,8 +212,8 @@ impl Host {
     }
 
     /// The color of a state: the one the user picked while it exists, the
-    /// default one otherwise.
-    pub(super) fn slot(&self, id: &str, state: &str, palette: &Palette) -> Option<u8> {
+    /// one of the plugin otherwise.
+    pub(super) fn color(&self, id: &str, state: &str, palette: &Palette) -> Option<LampColor> {
         let default = self.manifest(id)?.state(state)?.color;
         let picked = self
             .stored
@@ -222,7 +222,7 @@ impl Host {
             .and_then(|entry| entry.colors.get(state))
             .copied()
             .filter(|slot| palette.defines(*slot));
-        Some(picked.unwrap_or(default))
+        Some(picked.map_or(default, LampColor::Slot))
     }
 
     /// Reads the folder again: new plugins, changed ones, gone ones. The
@@ -450,7 +450,7 @@ impl Host {
         let manifest = plugin.manifest.as_ref().ok()?;
         Some(IntegrationState {
             label: manifest.state(state)?.label.get(language).clone(),
-            slot: self.slot(id, state, palette)?,
+            color: self.color(id, state, palette)?,
             since: *since,
         })
     }
@@ -564,16 +564,17 @@ impl Host {
         Ok(())
     }
 
-    /// The color of a state of a plugin, built in or in the palette.
+    /// The color of a state of a plugin, built in or in the palette, or the
+    /// one of the plugin again, for no `slot`.
     pub(super) fn set_color(
         &mut self,
         id: &str,
         state: &str,
-        slot: u8,
+        slot: Option<u8>,
         palette: &Palette,
         outbox: &mut Outbox,
     ) -> Result<(), String> {
-        if !palette.defines(slot) {
+        if slot.is_some_and(|slot| !palette.defines(slot)) {
             return Err("no such color".into());
         }
         if self
@@ -583,7 +584,11 @@ impl Host {
         {
             return Err("no such state".into());
         }
-        self.entry(id).colors.insert(state.to_owned(), slot);
+        let colors = &mut self.entry(id).colors;
+        match slot {
+            Some(slot) => colors.insert(state.to_owned(), slot),
+            None => colors.remove(state),
+        };
         self.save(outbox);
         Ok(())
     }
@@ -734,7 +739,7 @@ mod tests {
     /// A plugin with a program, whose command these tests never start.
     fn add(host: &Host, id: &str, capabilities: &[&str]) {
         let manifest = json!({
-            "api": 1, "id": id, "name": id, "version": "1.0.0", "author": "test",
+            "api": 2, "id": id, "name": id, "version": "1.0.0", "author": "test",
             "description": "A test plugin.", "capabilities": capabilities,
             "states": [{ "id": "work", "label": "Work", "color": "red" }],
             "run": { "default": ["bin/run"] }

@@ -48,12 +48,12 @@ export function useUpdateStatus() {
   });
 
   /**
-   * The lamp: a version 1 lamp to update, a failed check or a newer
+   * The lamp: an older lamp to update, a failed check or a newer
    * firmware, after the app's; null otherwise.
    */
   const lampLine = computed(() => {
-    if (lamp.generation === 'v1') {
-      return t('lampV1.line');
+    if (lamp.generation === 'older') {
+      return t('lampOlder.line');
     }
     const { checking: lampChecking, error } = firmware.status;
     const version = firmware.updateForLamp;
@@ -78,8 +78,8 @@ export function useUpdateStatus() {
    * settings button in the popup footer: the line of a lamp update.
    */
   const offerLine = computed(() => {
-    if (lamp.generation === 'v1') {
-      return t('lampV1.line');
+    if (lamp.generation === 'older') {
+      return t('lampOlder.line');
     }
     if (offer.value === 'app') {
       return t('updates.toApp', { version: updates.status.available });

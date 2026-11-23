@@ -32,7 +32,7 @@ const state: LampState = {
   link: 'configured',
   source: 'touch',
   touch_mode: 'normal',
-  rgb: { r: 1, g: 2, b: 3 },
+  xy: { x: 20493, y: 21561 },
 };
 
 describe('the telemetry recording', () => {

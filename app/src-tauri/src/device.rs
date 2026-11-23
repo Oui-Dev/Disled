@@ -5,9 +5,9 @@
 //! command writes, message reads, and the heartbeat of the integrations
 //! mode. Results reach the frontend as events, and the control of the app.
 //!
-//! Until the INFO of a lamp says it speaks protocol 2, only GET_INFO goes to
-//! it and only its INFO comes back: a version 1 lamp gets the lock of the
-//! app, and nothing that it sends shows as an error.
+//! Until the INFO of a lamp says it speaks protocol 3, only GET_INFO goes to
+//! it and only its INFO comes back: an older lamp gets the lock of the app,
+//! with its firmware update, and nothing that it sends shows as an error.
 //!
 //! The replies to the commands that the backend sends on its own, such as
 //! the connection sequence, the heartbeat and those of the control, stay in
@@ -28,7 +28,7 @@ use disled_protocol::{
     PROTOCOL_MAJOR, SetState, State, TouchMode, USB_PRODUCT_ID_DEBUG, USB_VENDOR_ID,
 };
 
-use crate::colors::{ColorsState, Palette, PreviewState};
+use crate::colors::{ColorsState, LampColor, Palette, PreviewState};
 use crate::control::{self, ControlState, Input};
 use crate::i18n::LocaleState;
 use crate::plugins;
@@ -61,10 +61,11 @@ pub struct Connection {
 #[cfg_attr(test, derive(ts_rs::TS), ts(export))]
 #[serde(rename_all = "snake_case")]
 pub enum Generation {
-    /// Protocol 1, firmware 1.0.0 and before: the app only reads its INFO.
-    V1,
-    /// Protocol 2, which this app drives.
-    V2,
+    /// Protocol 1 or 2, firmware 2.x and before: the app only reads its
+    /// INFO, and updates its firmware.
+    Older,
+    /// Protocol 3, which this app drives.
+    Current,
     /// A later protocol, which this app does not know.
     Newer,
 }
@@ -72,8 +73,8 @@ pub enum Generation {
 impl Generation {
     fn of(info: &Info) -> Self {
         match info.protocol[0] {
-            PROTOCOL_MAJOR => Generation::V2,
-            major if major < PROTOCOL_MAJOR => Generation::V1,
+            PROTOCOL_MAJOR => Generation::Current,
+            major if major < PROTOCOL_MAJOR => Generation::Older,
             _ => Generation::Newer,
         }
     }
@@ -84,7 +85,7 @@ impl Generation {
 enum Incoming {
     /// A message for the windows.
     Forward(Frame),
-    /// A report that a version 2 lamp should not send, for the windows to show.
+    /// A report that a version 3 lamp should not send, for the windows to show.
     Unreadable(String),
     /// Dropped without a word.
     Ignore,
@@ -97,7 +98,7 @@ struct Session {
 }
 
 impl Session {
-    /// Until a version 2 lamp sent its INFO, only INFO passes: anything else
+    /// Until a version 3 lamp sent its INFO, only INFO passes: anything else
     /// from that lamp, readable or not, such as the 9-byte STATE of a version
     /// 1 lamp, drops without an error.
     fn receive(&mut self, decoded: Result<Frame, DecodeError>) -> Incoming {
@@ -120,7 +121,7 @@ impl Session {
         }
     }
 
-    /// Only GET_INFO goes to a lamp until it proved to speak protocol 2. The
+    /// Only GET_INFO goes to a lamp until it proved to speak protocol 3. The
     /// others drop without an error, as the GET_STATE that a window sends
     /// when it opens.
     fn allows(&self, command: &Command) -> bool {
@@ -128,26 +129,27 @@ impl Session {
     }
 
     fn drives(&self) -> bool {
-        self.generation == Some(Generation::V2)
+        self.generation == Some(Generation::Current)
     }
 }
 
 /// The commands that follow the first INFO of a connection. A lamp that
-/// does not speak protocol 2 gets none. A version 2 lamp keeps nothing of
+/// does not speak protocol 3 gets none. A version 3 lamp keeps nothing of
 /// the app across a power cycle, so it gets everything again, in the order
-/// of the protocol: the state first, then the corrections, the palette, and
-/// the state the app sets, with the touch mode and the color that the
-/// control imposes.
+/// of the protocol: its gamut and its state first, for the windows, then the
+/// corrections, the palette, and the state the app sets, with the touch mode
+/// and the color that the control imposes.
 fn commands_after_info(
     info: &Info,
     settings: &Settings,
     palette: &Palette,
-    (touch_mode, color): (TouchMode, Option<u8>),
+    (touch_mode, color): (TouchMode, Option<LampColor>),
 ) -> Vec<Command> {
-    if Generation::of(info) != Generation::V2 {
+    if Generation::of(info) != Generation::Current {
         return Vec::new();
     }
     let mut commands = vec![
+        Command::GetGamut,
         Command::GetState,
         Command::SetAutoBias {
             bias: settings.auto_bias,
@@ -157,13 +159,16 @@ fn commands_after_info(
         },
     ];
     commands.extend(palette.commands());
-    commands.push(Command::SetState(SetState {
-        color,
+    let state = SetState {
         brightness_mode: Some(settings.brightness_mode),
         manual_level: Some(settings.manual_level),
         touch_mode: Some(touch_mode),
         ..SetState::default()
-    }));
+    };
+    match color {
+        Some(color) => commands.extend(color.commands(state)),
+        None => commands.push(Command::SetState(state)),
+    }
     commands
 }
 
@@ -206,12 +211,12 @@ enum Request {
 }
 
 /// The tray icon for an INFO: a lamp the app cannot drive shows at once,
-/// and a version 2 lamp waits for its STATE.
+/// and a version 3 lamp waits for its STATE.
 fn look_of_info(info: &Info) -> Option<Look> {
     match Generation::of(info) {
-        Generation::V1 => Some(Look::NeedsUpdate),
+        Generation::Older => Some(Look::NeedsUpdate),
         Generation::Newer => Some(Look::Newer),
-        Generation::V2 => None,
+        Generation::Current => None,
     }
 }
 
@@ -221,7 +226,7 @@ struct Seen {
     connection: Connection,
     /// The INFO message of the connected lamp, once it answered.
     info: Option<Info>,
-    /// The last STATE of a version 2 lamp, which the app drives.
+    /// The last STATE of a version 3 lamp, which the app drives.
     state: Option<State>,
 }
 
@@ -256,13 +261,13 @@ impl DeviceHandle {
         self.seen.lock().info.clone()
     }
 
-    /// The last STATE of a version 2 lamp, which the app drives.
+    /// The last STATE of a version 3 lamp, which the app drives.
     pub fn state(&self) -> Option<State> {
         self.seen.lock().state.clone()
     }
 
     /// Queues a command of a window, whose replies the windows get. A lamp
-    /// that does not speak protocol 2 gets only GET_INFO: the worker drops
+    /// that does not speak protocol 3 gets only GET_INFO: the worker drops
     /// the others, and the caller hears of no error, since the windows show
     /// the lock instead.
     pub fn send(&self, command: Command) -> Result<(), String> {
@@ -535,7 +540,8 @@ impl Worker {
                 }
                 let palette = self.app.state::<ColorsState>().get();
                 let locale = self.app.state::<LocaleState>().get();
-                if let Some(look) = tray::look_of(state, &palette, locale) {
+                let label = tray::integration_label(&self.app);
+                if let Some(look) = tray::look_of(state, &palette, locale, label.as_deref()) {
                     tray::show(&self.app, look);
                 }
                 plugins::lamp_changed(&self.app);
@@ -612,22 +618,22 @@ impl Worker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::colors::BUILT_IN;
-    use disled_protocol::{BrightnessMode, LinearRgb, SLOT_COUNT};
+    use crate::colors::{BUILT_IN, PLUGIN_SLOT};
+    use disled_protocol::{BrightnessMode, SLOT_COUNT, Xy};
     use serde_json::{Value, json};
 
     /// The end of the connection sequence in manual mode.
-    const MANUAL: (TouchMode, Option<u8>) = (TouchMode::Normal, None);
+    const MANUAL: (TouchMode, Option<LampColor>) = (TouchMode::Normal, None);
 
     fn vectors() -> Value {
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../protocol/vectors/v2.json"
+            "/../../protocol/vectors/v3.json"
         );
-        serde_json::from_str(&std::fs::read_to_string(path).expect("v2.json")).expect("JSON")
+        serde_json::from_str(&std::fs::read_to_string(path).expect("v3.json")).expect("JSON")
     }
 
-    /// A message vector of v2.json, decoded.
+    /// A message vector of v3.json, decoded.
     fn decoded(name: &str) -> Result<Frame, DecodeError> {
         let doc = vectors();
         let vector = doc["messages"]
@@ -656,14 +662,20 @@ mod tests {
     }
 
     #[test]
-    fn a_version_1_lamp_gets_nothing_after_its_info() {
-        let info = info_of("info_of_a_version_1_lamp");
-        assert_eq!(Generation::of(&info), Generation::V1);
+    fn an_older_lamp_gets_nothing_after_its_info() {
+        for name in ["info_of_a_version_1_lamp", "info_of_a_version_2_lamp"] {
+            let info = info_of(name);
+            assert_eq!(Generation::of(&info), Generation::Older, "{name}");
+            assert!(
+                commands_after_info(&info, &Settings::default(), &Palette::default(), MANUAL)
+                    .is_empty()
+            );
+            assert_eq!(look_of_info(&info), Some(Look::NeedsUpdate));
+        }
         // The windows know it by this name.
-        assert_eq!(serde_json::to_value(Generation::V1).expect("JSON"), "v1");
-        assert!(
-            commands_after_info(&info, &Settings::default(), &Palette::default(), MANUAL)
-                .is_empty()
+        assert_eq!(
+            serde_json::to_value(Generation::Older).expect("JSON"),
+            "older"
         );
     }
 
@@ -716,7 +728,7 @@ mod tests {
     }
 
     #[test]
-    fn a_version_2_lamp_is_driven() {
+    fn a_version_3_lamp_is_driven() {
         let mut session = Session::default();
         assert!(matches!(
             session.receive(decoded("info")),
@@ -727,7 +739,7 @@ mod tests {
             session.receive(decoded("state_after_touch")),
             Incoming::Forward(_)
         ));
-        // A short body from a version 2 lamp is a fault worth showing.
+        // A short body from a version 3 lamp is a fault worth showing.
         assert!(matches!(
             session.receive(decoded("state_of_a_version_1_lamp")),
             Incoming::Unreadable(_)
@@ -737,7 +749,7 @@ mod tests {
     #[test]
     fn a_newer_lamp_is_locked_too() {
         let mut info = info_of("info");
-        info.protocol = [3, 0];
+        info.protocol = [4, 0];
         assert_eq!(Generation::of(&info), Generation::Newer);
         assert!(
             commands_after_info(&info, &Settings::default(), &Palette::default(), MANUAL)
@@ -747,7 +759,7 @@ mod tests {
     }
 
     #[test]
-    fn a_version_2_lamp_gets_the_whole_state_of_the_app() {
+    fn a_version_3_lamp_gets_the_whole_state_of_the_app() {
         let info = info_of("info");
         let settings = Settings {
             brightness_mode: BrightnessMode::Manual,
@@ -758,43 +770,39 @@ mod tests {
         };
         let palette = Palette::from_value(&json!({
             "custom": [
-                { "slot": 4, "name": "Musique", "hex": "#9B59F6" },
-                { "slot": 6, "name": "Focus", "hex": "#3B82F6" }
+                { "slot": 4, "name": "Musique", "xy": { "x": 16384, "y": 7864 } },
+                { "slot": 6, "name": "Focus", "xy": { "x": 12452, "y": 11796 } }
             ],
             "cycle": [0, 4, 1, 6]
         }));
         let commands = commands_after_info(&info, &settings, &palette, MANUAL);
-        // With GET_INFO, 18 reports: the most the protocol foresees.
-        assert_eq!(commands.len(), 17);
-        assert_eq!(commands[0], Command::GetState);
-        assert_eq!(commands[1], Command::SetAutoBias { bias: -20 });
-        assert_eq!(commands[2], Command::SetTouchSensitivity { percent: 15 });
-        let colors: Vec<u8> = commands[3..5]
+        // With GET_INFO, 19 reports: the most the protocol foresees but one,
+        // the color of a plugin.
+        assert_eq!(commands.len(), 18);
+        assert_eq!(commands[0], Command::GetGamut);
+        assert_eq!(commands[1], Command::GetState);
+        assert_eq!(commands[2], Command::SetAutoBias { bias: -20 });
+        assert_eq!(commands[3], Command::SetTouchSensitivity { percent: 15 });
+        let colors: Vec<u8> = commands[4..6]
             .iter()
             .map(|command| match command {
-                Command::SetColor { slot, rgb } if *rgb != LinearRgb::default() => *slot,
+                Command::SetColor { slot, xy } if *xy != Xy::NONE => *slot,
                 other => panic!("unexpected {other:?}"),
             })
             .collect();
         assert_eq!(colors, [4, 6]);
         assert_eq!(
-            commands[5],
+            commands[6],
             Command::SetTouchCycle {
                 slots: vec![0, 4, 1, 6]
             }
         );
-        let black = (BUILT_IN..SLOT_COUNT).filter(|slot| ![4, 6].contains(slot));
-        for (command, slot) in commands[6..16].iter().zip(black) {
-            assert_eq!(
-                *command,
-                Command::SetColor {
-                    slot,
-                    rgb: LinearRgb::default()
-                }
-            );
+        let cleared = (BUILT_IN..SLOT_COUNT).filter(|slot| ![4, 6].contains(slot));
+        for (command, slot) in commands[7..17].iter().zip(cleared) {
+            assert_eq!(*command, Command::SetColor { slot, xy: Xy::NONE });
         }
         assert_eq!(
-            commands[16],
+            commands[17],
             Command::SetState(SetState {
                 brightness_mode: Some(BrightnessMode::Manual),
                 manual_level: Some(30),
@@ -806,21 +814,39 @@ mod tests {
 
     #[test]
     fn a_lamp_that_follows_an_integration_gets_its_touch_mode_and_color() {
-        let commands = commands_after_info(
-            &info_of("info"),
-            &Settings::default(),
-            &Palette::default(),
-            (TouchMode::PowerOnly, Some(1)),
-        );
-        assert_eq!(
-            commands.last(),
-            Some(&Command::SetState(SetState {
-                color: Some(1),
+        let end = |color: u8| {
+            Command::SetState(SetState {
+                color: Some(color),
                 brightness_mode: Some(BrightnessMode::Auto),
                 manual_level: Some(Settings::default().manual_level),
                 touch_mode: Some(TouchMode::PowerOnly),
                 ..SetState::default()
-            }))
+            })
+        };
+        let commands = commands_after_info(
+            &info_of("info"),
+            &Settings::default(),
+            &Palette::default(),
+            (TouchMode::PowerOnly, Some(LampColor::Slot(1))),
+        );
+        assert_eq!(commands.last(), Some(&end(1)));
+        // A color of the plugin itself goes to its slot first.
+        let cyan = Xy { x: 13107, y: 21627 };
+        let commands = commands_after_info(
+            &info_of("info"),
+            &Settings::default(),
+            &Palette::default(),
+            (TouchMode::PowerOnly, Some(LampColor::Xy(cyan))),
+        );
+        assert_eq!(
+            commands[commands.len() - 2..],
+            [
+                Command::SetColor {
+                    slot: PLUGIN_SLOT,
+                    xy: cyan
+                },
+                end(PLUGIN_SLOT)
+            ]
         );
     }
 
@@ -879,7 +905,7 @@ mod tests {
     #[test]
     fn the_link_tells_the_replies_to_the_backend_and_ends_a_flush() {
         let mut link = Link::new();
-        link.session.generation = Some(Generation::V2);
+        link.session.generation = Some(Generation::Current);
         // The connection sequence, a command of a window, then a heartbeat.
         link.wrote(1, true);
         link.wrote(2, false);

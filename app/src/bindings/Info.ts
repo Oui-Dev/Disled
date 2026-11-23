@@ -3,8 +3,8 @@ import type { Fault } from "./Fault";
 import type { ResetCause } from "./ResetCause";
 
 /**
- * INFO, whose layout is the same in versions 1 and 2. It leaves out the
- * capability bits: every version 2 lamp has all the commands of this codec.
+ * INFO, whose layout is the same in versions 1 to 3. It leaves out the
+ * capability bits: every version 3 lamp has all the commands of this codec.
  */
 export type Info = { 
 /**

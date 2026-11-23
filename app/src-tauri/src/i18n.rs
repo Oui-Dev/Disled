@@ -241,7 +241,7 @@ mod tests {
             "updates.updateLamp",
             "updates.check",
             "updates.reinstall",
-            "lampV1.action",
+            "lampOlder.action",
             "lampUpdate.start",
             "lampUpdate.reinstall",
             "lampUpdate.retry",

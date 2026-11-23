@@ -408,9 +408,9 @@ mod tests {
         // App 1.1.2 rewrites the `settings` key without the fields it does not
         // know, and leaves the `colors` key alone.
         let colors = json!({
-            "schema": 1,
+            "schema": 2,
             "names": [null, null, null, null],
-            "custom": [{ "slot": 4, "name": "Musique", "hex": "#9B59F6" }],
+            "custom": [{ "slot": 4, "name": "Musique", "xy": { "x": 16384, "y": 7864 } }],
             "cycle": [0, 1, 2, 4]
         });
         let (settings, palette) = read_all(&file_of_1_1_2(), &colors);
@@ -425,7 +425,8 @@ mod tests {
         let (settings, _) = read_all(&file, &Value::Null);
         assert!(settings.calls.mic);
         assert_eq!(settings.calls.color, SLOT_RED);
-        let colors = json!({ "custom": [{ "slot": 6, "name": "Focus", "hex": "#3B82F6" }] });
+        let colors =
+            json!({ "custom": [{ "slot": 6, "name": "Focus", "xy": { "x": 12452, "y": 11796 } }] });
         assert_eq!(read_all(&file, &colors).0.calls.color, 6);
     }
 

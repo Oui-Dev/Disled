@@ -40,7 +40,7 @@ const items = computed(() => {
       onSelect: () => void openDiagnostics(),
     },
     // The reinstall window takes every case: a lamp up to date, one that
-    // no longer starts, which its update mode recovers, a version 1 lamp,
+    // no longer starts, which its update mode recovers, an older lamp,
     // and no firmware known yet.
     {
       label: t('updates.reinstall'),

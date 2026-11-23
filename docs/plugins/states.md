@@ -20,14 +20,26 @@ plugin with `alert` can also make the lamp breathe, whatever it follows.
 |---|---|
 | `id` | `^[a-z0-9-]{1,32}$`, unique in the plugin |
 | `label` | a localized text of 40 characters at most, which the popup shows on the card of the integration |
-| `color` | its default color: `green`, `orange`, `red` or `warm` (warm white) |
+| `color` | its default color: `green`, `orange`, `red`, `warm_white`, or a color of the plugin's own, `{ "x": 0.17, "y": 0.7 }` ([colors](#colors)) |
 | `priority` | 1 to 9, 1 by default |
 | `ttl` | its time to live, 1 to 86 400 seconds: a key keeps the state that long without a new event |
 
 A plugin has 1 to 8 states. The user can give each state another color,
-built in or of their own, in the integrations window. While the lamp
-follows the plugin, a new state changes the color of the lamp, never its
-power: a lamp turned off stays off.
+built in or of their own, in the integrations window, and give it back the
+color of the plugin. While the lamp follows the plugin, a new state changes
+the color of the lamp, never its power: a lamp turned off stays off.
+
+## Colors
+
+A built-in color goes by its name: `green`, `orange`, `red` and
+`warm_white`, the colors that the lamp shows best, its own LEDs for green
+and red. A color of the plugin's own is a CIE 1931 chromaticity, `x` and
+`y` from 0 to 1, `x + y` at most 1, as Philips Hue, Zigbee and Matter give
+them: `{ "x": 0.6892, "y": 0.3105 }` is the red LED, and
+`{ "x": 0.3127, "y": 0.329 }` the white of the lamp, D65. The lamp shows
+the light of that very color, as far as its LEDs go: a color beyond them
+comes as near as it can, with the same hue, less saturated. The brightness
+of the lamp stays the user's.
 
 ## Keys
 

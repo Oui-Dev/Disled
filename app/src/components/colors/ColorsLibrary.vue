@@ -106,7 +106,7 @@ const groups = computed(() => [colors.builtIn, colors.custom].filter((group) => 
             <span
               aria-hidden="true"
               class="swatch size-5 shrink-0"
-              :style="{ background: color.hex }"
+              :style="{ background: color.swatch }"
             />
             <span class="text-default min-w-0 flex-1 truncate text-sm" :title="color.name">
               {{ color.name }}

@@ -36,8 +36,9 @@ const TAG_PREFIX: &str = "fw-v";
 /// Where GitHub shows a release, followed by its version.
 const RELEASE_PAGE: &str = "https://github.com/Oui-Dev/Disled/releases/tag/fw-v";
 
-/// The firmware line this app drives: 2.x speaks protocol 2.
-const LINE: u64 = 2;
+/// The firmware line this app drives: 3.x speaks protocol 3, the major of
+/// the firmware being that of its protocol.
+const LINE: u64 = disled_protocol::PROTOCOL_MAJOR as u64;
 
 const LAMP_TIMEOUT: Duration = Duration::from_secs(60);
 /// Far more than a release build of the firmware, in Intel HEX.
@@ -73,7 +74,7 @@ struct GitHubAsset {
     browser_download_url: String,
 }
 
-/// What GitHub publishes for this app: every signed 2.x, newest first,
+/// What GitHub publishes for this app: every signed 3.x, newest first,
 /// never a pre-release.
 fn offer(releases: &[GitHubRelease]) -> Vec<Release> {
     let mut offered: Vec<Release> = releases
@@ -173,7 +174,7 @@ pub enum Flash {
 pub struct FirmwareStatus {
     /// A check is running.
     pub checking: bool,
-    /// The signed firmware 2.x, newest first. The update buttons install
+    /// The signed firmware 3.x, newest first. The update buttons install
     /// the first.
     pub versions: Vec<String>,
     /// Why the last check failed; cleared by the next success.
@@ -252,7 +253,7 @@ fn flasher() -> Result<Wchisp, String> {
 }
 
 /// The releases on GitHub, from every page: the API mixes the releases of
-/// every component, so that the oldest firmware 2.x leave the first page
+/// every component, so that the oldest firmware 3.x leave the first page
 /// one day.
 async fn github_releases(app: &AppHandle) -> Result<Vec<GitHubRelease>, String> {
     let mut releases = Vec::new();
@@ -538,54 +539,54 @@ mod tests {
     }
 
     #[test]
-    fn every_signed_2x_newest_first() {
+    fn every_signed_3x_newest_first() {
         let releases = [
-            release("app-v2.0.0", &["Disled_2.0.0_x64-setup.exe", "latest.json"]),
-            signed("2.0.0"),
+            release("app-v3.0.0", &["Disled_3.0.0_x64-setup.exe", "latest.json"]),
+            signed("3.0.0"),
             signed("0.2.2"),
-            signed("1.0.0"),
-            signed("2.1.0"),
+            signed("2.2.1"),
+            signed("3.1.0"),
             signed("0.9.0"),
-            signed("2.0.1"),
-            signed("2.2.0-rc.1"),
+            signed("3.0.1"),
+            signed("3.2.0-rc.1"),
             GitHubRelease {
                 prerelease: true,
-                ..signed("2.3.0")
+                ..signed("3.3.0")
             },
             GitHubRelease {
                 draft: true,
-                ..signed("2.4.0")
+                ..signed("3.4.0")
             },
             // A firmware this app cannot drive.
-            signed("3.0.0"),
+            signed("4.0.0"),
         ];
         let offered = offer(&releases);
-        assert_eq!(versions(&offered), ["2.1.0", "2.0.1", "2.0.0"]);
+        assert_eq!(versions(&offered), ["3.1.0", "3.0.1", "3.0.0"]);
         assert_eq!(
             offered[0].source,
             Source::GitHub {
-                hex: "https://example.com/fw-v2.1.0/disled-fw-2.1.0.hex".into(),
-                signature: "https://example.com/fw-v2.1.0/disled-fw-2.1.0.hex.sig".into(),
+                hex: "https://example.com/fw-v3.1.0/disled-fw-3.1.0.hex".into(),
+                signature: "https://example.com/fw-v3.1.0/disled-fw-3.1.0.hex.sig".into(),
             }
         );
-        // Before the first firmware 2.x, the update buttons have nothing to
-        // install.
-        assert!(offer(&[signed("1.0.0")]).is_empty());
+        // Before the first firmware 3.x, the update buttons have nothing to
+        // install: a firmware 2.x speaks protocol 2.
+        assert!(offer(&[signed("2.2.1")]).is_empty());
     }
 
     #[test]
     fn versions_compare_as_numbers() {
-        let releases = [signed("2.9.0"), signed("2.10.0"), signed("2.2.9")];
-        assert_eq!(versions(&offer(&releases)), ["2.10.0", "2.9.0", "2.2.9"]);
+        let releases = [signed("3.9.0"), signed("3.10.0"), signed("3.2.9")];
+        assert_eq!(versions(&offer(&releases)), ["3.10.0", "3.9.0", "3.2.9"]);
     }
 
     #[test]
     fn unsigned_firmware_is_never_offered() {
         let releases = [release(
-            "fw-v2.0.1",
+            "fw-v3.0.1",
             &[
-                "disled-fw-2.0.1.hex",
-                "disled-fw-2.0.1-debug.hex",
+                "disled-fw-3.0.1.hex",
+                "disled-fw-3.0.1-debug.hex",
                 "SHA256SUMS",
             ],
         )];
@@ -595,17 +596,17 @@ mod tests {
     #[test]
     fn a_github_answer_reads() {
         let answer = r#"[{
-            "tag_name": "fw-v2.0.0", "name": "fw-v2.0.0", "draft": false,
-            "prerelease": false, "body": "Protocol 2.0",
+            "tag_name": "fw-v3.0.0", "name": "fw-v3.0.0", "draft": false,
+            "prerelease": false, "body": "Protocol 3.0",
             "assets": [
-                {"name": "disled-fw-2.0.0.hex", "size": 58359,
-                 "browser_download_url": "https://github.com/Oui-Dev/Disled/releases/download/fw-v2.0.0/disled-fw-2.0.0.hex"},
-                {"name": "disled-fw-2.0.0.hex.sig", "size": 412,
-                 "browser_download_url": "https://github.com/Oui-Dev/Disled/releases/download/fw-v2.0.0/disled-fw-2.0.0.hex.sig"}
+                {"name": "disled-fw-3.0.0.hex", "size": 58359,
+                 "browser_download_url": "https://github.com/Oui-Dev/Disled/releases/download/fw-v3.0.0/disled-fw-3.0.0.hex"},
+                {"name": "disled-fw-3.0.0.hex.sig", "size": 412,
+                 "browser_download_url": "https://github.com/Oui-Dev/Disled/releases/download/fw-v3.0.0/disled-fw-3.0.0.hex.sig"}
             ]
         }]"#;
         let releases: Vec<GitHubRelease> = serde_json::from_str(answer).expect("releases");
-        assert_eq!(versions(&offer(&releases)), ["2.0.0"]);
+        assert_eq!(versions(&offer(&releases)), ["3.0.0"]);
     }
 
     #[test]

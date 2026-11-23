@@ -17,7 +17,7 @@ The program reads one [JSON-RPC 2.0](https://www.jsonrpc.org/specification)
 notification per line, without `id`: it answers none.
 
 ```json
-{"jsonrpc":"2.0","method":"lamp","params":{"connected":true,"on":true,"color":{"slot":2,"name":"Do not disturb","hex":"#FF001C"},"brightness":{"mode":"auto","level":40},"source":"touch","follows":"hello"}}
+{"jsonrpc":"2.0","method":"lamp","params":{"connected":true,"on":true,"color":{"slot":2,"name":"Do not disturb","x":0.6892,"y":0.3105},"brightness":{"mode":"auto","level":40},"source":"touch","follows":"hello"}}
 {"jsonrpc":"2.0","method":"touch","params":{"press":"short"}}
 ```
 
@@ -33,9 +33,9 @@ notification per line, without `id`: it answers none.
 |---|---|
 | `connected` | `true` while the app drives a lamp. Without one, the other fields but `follows` are missing. |
 | `on` | the lamp is on |
-| `color.slot` | the slot of the color: 0 to 3 for the built-in colors (green, orange, red, warm white), then the custom colors of the user |
-| `color.name` | the name the user sees, such as `Do not disturb` or a name of their own, in the language of the app; `null` for a slot without one |
-| `color.hex` | `#RRGGBB`, the color as the app shows it |
+| `color.slot` | the slot of the color: 0 to 3 for the built-in colors (green, orange, red, warm white), then the custom colors of the user, and 14 for a color of a plugin itself |
+| `color.name` | the name the user sees, such as `Do not disturb` or a name of their own, in the language of the app, and the label of the state for a color of a plugin; `null` for a slot without one |
+| `color.x`, `color.y` | the CIE 1931 chromaticity of the light of the lamp, to 4 decimals, as a plugin gives its own colors ([states](states.md#colors)) |
 | `brightness.mode` | `auto`, after the light of the room, or `manual` |
 | `brightness.level` | the level in use, in percent |
 | `source` | what made the latest change: `touch`, the lid; `app`, the user in the app, a plugin or a call; `light`, the automatic brightness; `lamp`, the lamp itself, at its start or when the USB link changes |
@@ -95,7 +95,7 @@ readline.createInterface({ input: process.stdin })
   .on('line', (line) => {
     const { method, params } = JSON.parse(line);
     if (method === 'lamp' && params.connected) {
-      console.error(`${params.on ? 'on' : 'off'}: ${params.color.name ?? params.color.hex}`);
+      console.error(`${params.on ? 'on' : 'off'}: ${params.color.name ?? `${params.color.x} ${params.color.y}`}`);
     } else if (method === 'touch') {
       console.error('a press on the lid');
     }

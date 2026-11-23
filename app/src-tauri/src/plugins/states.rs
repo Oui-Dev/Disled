@@ -110,13 +110,13 @@ mod tests {
     fn manifest() -> Manifest {
         Manifest::from_value(
             &json!({
-                "api": 1, "id": "claude-code", "name": "Claude Code", "version": "1.0.0",
+                "api": 2, "id": "claude-code", "name": "Claude Code", "version": "1.0.0",
                 "author": "le projet Disled", "description": "…",
                 "capabilities": ["color", "events"],
                 "states": [
                     { "id": "waiting", "label": "attend", "color": "orange", "priority": 3, "ttl": 1800 },
                     { "id": "working", "label": "travaille", "color": "red", "priority": 2, "ttl": 600 },
-                    { "id": "paused", "label": "en pause", "color": "warm", "priority": 2 },
+                    { "id": "paused", "label": "en pause", "color": "warm_white", "priority": 2 },
                     { "id": "done", "label": "a fini", "color": "green", "priority": 1, "ttl": 1800 }
                 ],
                 "idle": "done",

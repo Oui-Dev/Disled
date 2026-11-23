@@ -24,7 +24,7 @@ export const useDiagnosticsStore = defineStore('diagnostics', () => {
   const selfTestResult = ref<SelfTestResult | null>(null);
 
   /** The connected lamp reports diagnostics. */
-  const supported = computed(() => lamp.connection.connected && lamp.generation === 'v2');
+  const supported = computed(() => lamp.connection.connected && lamp.generation === 'current');
   /** Set by start(), so that only the Diagnostics window asks the lamp. */
   const following = ref(false);
 

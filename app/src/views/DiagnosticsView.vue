@@ -20,8 +20,8 @@ const lamp = useLampStore();
 
 /** Why a lamp that the app does not drive shows no tabs. */
 const lockedLine = computed(() => {
-  if (lamp.generation === 'v1') {
-    return t('lampV1.line');
+  if (lamp.generation === 'older') {
+    return t('lampOlder.line');
   }
   return lamp.generation === 'newer' ? t('lampNewer.text') : null;
 });

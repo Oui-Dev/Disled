@@ -109,7 +109,7 @@ const status = computed(() => {
   if (!lamp.connection.connected) {
     return t('status.noLamp');
   }
-  if (lamp.generation === 'v1') {
+  if (lamp.generation === 'older') {
     return t('status.needsUpdate');
   }
   // A lamp newer than the app is connected, and its alert says the rest.

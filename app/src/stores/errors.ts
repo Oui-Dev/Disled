@@ -14,7 +14,7 @@ export type AppError =
   | { kind: 'backend'; detail: string }
   /** The lamp answered a command with ERROR. */
   | { kind: 'rejected'; command: number; error: ProtocolError }
-  /** A report from a version 2 lamp that the backend could not decode. */
+  /** A report from a version 3 lamp that the backend could not decode. */
   | { kind: 'unreadable'; detail: string };
 
 export const useErrorStore = defineStore('errors', () => {
